@@ -2,11 +2,9 @@ package net.corda.node.utilities
 
 import net.corda.core.serialization.CordaSerializable
 
-/**
- * Enum for when adding/removing something, for example adding or removing an entry in a directory.
- */
 @CordaSerializable
-enum class AddOrRemove {
-    ADD,
-    REMOVE
+sealed class Change<out T> {
+    abstract val item: T
+    data class Add<out T>(override val item: T) : Change<T>()
+    data class Remove<out T>(override val item: T) : Change<T>()
 }

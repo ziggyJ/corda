@@ -37,7 +37,6 @@ interface NodeConfiguration : NodeSSLConfiguration {
     val messageRedeliveryDelaySeconds: Int
     val notary: NotaryConfig?
     val activeMQServer: ActiveMqServerConfiguration
-    val additionalNodeInfoPollingFrequencyMsec: Long
     val p2pAddress: NetworkHostAndPort
     val rpcOptions: NodeRpcOptions
     val messagingServerAddress: NetworkHostAndPort?
@@ -144,8 +143,6 @@ data class NodeConfigurationImpl(
         override val useTestClock: Boolean = false,
         override val detectPublicIp: Boolean = true,
         override val activeMQServer: ActiveMqServerConfiguration,
-        // TODO See TODO above. Rename this to nodeInfoPollingFrequency and make it of type Duration
-        override val additionalNodeInfoPollingFrequencyMsec: Long = 5.seconds.toMillis(),
         override val sshd: SSHDConfiguration? = null,
         override val database: DatabaseConfig = DatabaseConfig(initialiseSchema = devMode, exportHibernateJMXStatistics = devMode),
         private val transactionCacheSizeMegaBytes: Int? = null,

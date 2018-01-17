@@ -81,7 +81,6 @@ import java.security.PublicKey
 import java.security.cert.X509Certificate
 import java.sql.Connection
 import java.time.Clock
-import java.time.Duration
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
@@ -261,7 +260,7 @@ abstract class AbstractNode(val configuration: NodeConfiguration,
             Pair(StartedNodeImpl(this, _services, nodeInfo, checkpointStorage, smm, attachments, network, database, rpcOps, flowStarter, notaryService), schedulerService)
         }
         networkMapUpdater = NetworkMapUpdater(services.networkMapCache,
-                NodeInfoWatcher(configuration.baseDirectory, getRxIoScheduler(), Duration.ofMillis(configuration.additionalNodeInfoPollingFrequencyMsec)),
+                NodeInfoWatcher(configuration.baseDirectory),
                 networkMapClient,
                 networkParameters.serialize().hash,
                 configuration.baseDirectory)
