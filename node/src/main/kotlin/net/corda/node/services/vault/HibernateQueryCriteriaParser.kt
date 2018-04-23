@@ -8,6 +8,7 @@ import net.corda.core.node.services.Vault
 import net.corda.core.node.services.VaultQueryException
 import net.corda.core.node.services.vault.*
 import net.corda.core.node.services.vault.QueryCriteria.CommonQueryCriteria
+import net.corda.core.schemas.MappedSchema
 import net.corda.core.schemas.PersistentState
 import net.corda.core.schemas.PersistentStateRef
 import net.corda.core.utilities.OpaqueBytes
@@ -20,6 +21,7 @@ import org.hibernate.query.criteria.internal.predicate.ComparisonPredicate
 import org.hibernate.query.criteria.internal.predicate.InPredicate
 import java.time.Instant
 import java.util.*
+import javax.persistence.Entity
 import javax.persistence.Tuple
 import javax.persistence.criteria.*
 
@@ -403,6 +405,13 @@ class HibernateQueryCriteriaParser(val contractStateType: Class<out ContractStat
         val entityClass = resolveEnclosingObjectFromExpression(criteria.expression)
 
         try {
+//            val resolvedEntityClass =
+//                if (!entityClass.isAnnotationPresent(Entity::class.java)) {
+//                    entityClass.superclass
+//                }
+//                else entityClass
+//
+//            val entityRoot = criteriaQuery.from(entityClass.superclass) as Root<L>
             val entityRoot = criteriaQuery.from(entityClass)
             rootEntities.putIfAbsent(entityClass, entityRoot)
 

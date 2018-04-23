@@ -21,6 +21,7 @@ import net.corda.finance.contracts.asset.Cash
 import net.corda.finance.schemas.CashSchemaV1
 import net.corda.finance.schemas.CashSchemaV1.PersistentCashState
 import net.corda.finance.schemas.CommercialPaperSchemaV1
+import net.corda.finance.schemas.SampleCashSchemaV2
 import net.corda.finance.schemas.SampleCashSchemaV3
 import net.corda.node.internal.configureDatabase
 import net.corda.nodeapi.internal.persistence.CordaPersistence
@@ -95,6 +96,7 @@ class VaultQueryTests {
             "net.corda.testing.contracts",
             "net.corda.finance.contracts",
             CashSchemaV1::class.packageName,
+            SampleCashSchemaV2::class.packageName,
             DummyLinearStateSchemaV1::class.packageName)
     private lateinit var services: MockServices
     private lateinit var vaultFiller: VaultFiller
@@ -757,6 +759,24 @@ class VaultQueryTests {
             assertThat(expectedRows["CHF"]).isEqualTo(actualRows["CHF"])
             assertThat(expectedRows["GBP"]).isEqualTo(actualRows["GBP"])
             assertThat(expectedRows["USD"]).isEqualTo(actualRows["USD"])
+        }
+    }
+
+    @Test
+    fun queryCash() {
+        database.transaction {
+            val sum = builder {
+
+                val field = SampleCashSchemaV2.PersistentCashState::quantity
+
+//                SampleCashSchemaV2.PersistentCashState::_quantity.sum(
+                SampleCashSchemaV2.PersistentCashState::quantity.sum(
+                        groupByColumns = listOf(SampleCashSchemaV2.PersistentCashState::currency),
+                        orderBy = Sort.Direction.ASC
+                )
+            }
+            val criteria = VaultCustomQueryCriteria(sum)
+            vaultService.queryBy<FungibleAsset<*>>(criteria)
         }
     }
 

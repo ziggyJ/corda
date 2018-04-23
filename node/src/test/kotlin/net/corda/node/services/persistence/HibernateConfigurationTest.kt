@@ -25,6 +25,7 @@ import net.corda.finance.SWISS_FRANCS
 import net.corda.finance.contracts.asset.Cash
 import net.corda.finance.contracts.asset.DummyFungibleContract
 import net.corda.finance.schemas.CashSchemaV1
+import net.corda.finance.schemas.CashSchemaV2
 import net.corda.finance.schemas.SampleCashSchemaV2
 import net.corda.finance.schemas.SampleCashSchemaV3
 import net.corda.finance.utils.sumCash
@@ -140,7 +141,7 @@ class HibernateConfigurationTest {
             cashStates = vaultFiller.fillWithSomeTestCash(100.DOLLARS, issuerServices, numStates, issuer.ref(1), rng = Random(0L)).states.toList()
         }
 
-        sessionFactory = sessionFactoryForSchemas(VaultSchemaV1, CashSchemaV1, SampleCashSchemaV2, SampleCashSchemaV3)
+        sessionFactory = sessionFactoryForSchemas(VaultSchemaV1, CashSchemaV2, SampleCashSchemaV2, SampleCashSchemaV3)
         entityManager = sessionFactory.createEntityManager()
         criteriaBuilder = sessionFactory.criteriaBuilder
     }
@@ -440,11 +441,11 @@ class HibernateConfigurationTest {
 
         // structure query
         val criteriaQuery = criteriaBuilder.createQuery(Tuple::class.java)
-        val cashStates = criteriaQuery.from(CashSchemaV1.PersistentCashState::class.java)
+        val cashStates = criteriaQuery.from(CashSchemaV2.PersistentCashState::class.java)
 
         // aggregate function
         criteriaQuery.multiselect(cashStates.get<String>("currency"),
-                criteriaBuilder.sum(cashStates.get<Long>("pennies")))
+                criteriaBuilder.sum(cashStates.get<Long>("quantity")))
 
         // where
         criteriaQuery.where(criteriaBuilder.equal(cashStates.get<String>("currency"), "GBP"))

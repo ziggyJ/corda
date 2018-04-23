@@ -40,4 +40,16 @@ object SampleCashSchemaV2 : MappedSchema(schemaFamily = CashSchema.javaClass, ve
             @Transient
             val _issuerRef: OpaqueBytes
     ) : CommonSchemaV1.FungibleState(_participants.toMutableSet(), _owner, _quantity, _issuerParty, _issuerRef.bytes)
+
+    @Entity
+    class Parent(
+            @Transient
+            val _quantity: Long
+    ) : Child(_quantity)
+
+    @MappedSuperclass
+    open class Child(
+        @Column(name = "quantity")
+        var quantity: Long
+    )
 }

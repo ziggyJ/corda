@@ -20,6 +20,7 @@ import net.corda.core.transactions.LedgerTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.finance.contracts.asset.cash.selection.AbstractCashSelection
 import net.corda.finance.schemas.CashSchemaV1
+import net.corda.finance.schemas.CashSchemaV2
 import net.corda.finance.utils.sumCash
 import net.corda.finance.utils.sumCashOrNull
 import net.corda.finance.utils.sumCashOrZero
@@ -76,12 +77,20 @@ class Cash : OnLedgerAsset<Currency, Cash.Commands, Cash.State>() {
         /** Object Relational Mapping support. */
         override fun generateMappedObject(schema: MappedSchema): PersistentState {
             return when (schema) {
-                is CashSchemaV1 -> CashSchemaV1.PersistentCashState(
-                        owner = this.owner,
-                        pennies = this.amount.quantity,
+//                is CashSchemaV1 -> CashSchemaV1.PersistentCashState(
+//                        owner = this.owner,
+//                        pennies = this.amount.quantity,
+//                        currency = this.amount.token.product.currencyCode,
+//                        issuerPartyHash = this.amount.token.issuer.party.owningKey.toStringShort(),
+//                        issuerRef = this.amount.token.issuer.reference.bytes
+//                )
+                is CashSchemaV2 -> CashSchemaV2.PersistentCashState(
+                        _owner = this.owner,
+                        _quantity = this.amount.quantity,
                         currency = this.amount.token.product.currencyCode,
-                        issuerPartyHash = this.amount.token.issuer.party.owningKey.toStringShort(),
-                        issuerRef = this.amount.token.issuer.reference.bytes
+                        _issuerParty = this.amount.token.issuer.party,
+                        _issuerRef = this.amount.token.issuer.reference,
+                        _participants = this.participants.toMutableSet()
                 )
             /** Additional schema mappings would be added here (eg. CashSchemaV2, CashSchemaV3, ...) */
                 else -> throw IllegalArgumentException("Unrecognised schema $schema")
@@ -89,7 +98,8 @@ class Cash : OnLedgerAsset<Currency, Cash.Commands, Cash.State>() {
         }
 
         /** Object Relational Mapping support. */
-        override fun supportedSchemas(): Iterable<MappedSchema> = listOf(CashSchemaV1)
+//        override fun supportedSchemas(): Iterable<MappedSchema> = listOf(CashSchemaV1, CashSchemaV2)
+        override fun supportedSchemas(): Iterable<MappedSchema> = listOf(CashSchemaV2)
         /** Additional used schemas would be added here (eg. CashSchemaV2, CashSchemaV3, ...) */
     }
     // DOCEND 1
