@@ -1,4 +1,4 @@
-package net.corda.nodeapi.internal.network
+package net.corda.bootstrapper
 
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
@@ -21,7 +21,11 @@ import net.corda.core.utilities.days
 import net.corda.core.utilities.getOrThrow
 import net.corda.core.utilities.seconds
 import net.corda.nodeapi.internal.*
+import net.corda.nodeapi.internal.network.NETWORK_PARAMS_FILE_NAME
+import net.corda.nodeapi.internal.network.NetworkParametersCopier
 import net.corda.nodeapi.internal.network.NodeInfoFilesCopier.Companion.NODE_INFO_FILE_NAME_PREFIX
+import net.corda.nodeapi.internal.network.SignedNetworkParameters
+import net.corda.nodeapi.internal.network.verifiedNetworkMapCert
 import net.corda.serialization.internal.AMQP_P2P_CONTEXT
 import net.corda.serialization.internal.CordaSerializationMagic
 import net.corda.serialization.internal.SerializationFactoryImpl

@@ -1,4 +1,4 @@
-package net.corda.nodeapi.internal.network
+package net.corda.bootstrapper
 
 import net.corda.core.contracts.ContractClassName
 import net.corda.core.crypto.SecureHash
