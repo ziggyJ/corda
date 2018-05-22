@@ -37,6 +37,10 @@ class ValidatingNotaryFlow(otherSideSession: FlowSession, service: TrustedAuthor
             checkNotary(notary)
             resolveAndContractVerify(stx)
             verifySignatures(stx)
+            // Due to idempotency requirements, time-window validity is not checked here.
+            // I.e., the time-window could be invalid, but the transaction might already have been committed.
+            // This is helpful when one sends a transaction for notarisation, it gets committed but the response is lost.
+            // Then the client can retry with a different replica to get the signature.
             val timeWindow: TimeWindow? = if (stx.coreTransaction is WireTransaction) stx.tx.timeWindow else null
             return TransactionParts(stx.id, stx.inputs, timeWindow, notary!!)
         } catch (e: Exception) {

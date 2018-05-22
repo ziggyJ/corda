@@ -224,6 +224,7 @@ object BFTSMaRt {
         abstract fun executeCommand(command: ByteArray): ByteArray?
 
         protected fun commitInputStates(states: List<StateRef>, txId: SecureHash, callerName: CordaX500Name, requestSignature: NotarisationRequestSignature, timeWindow: TimeWindow?) {
+            val currentTime = services.clock.instant() // Get current time first thing to ensure extra delays will not affect time-window validity.
             log.debug { "Attempting to commit inputs for transaction: $txId" }
             services.database.transaction {
                 logRequest(txId, callerName, requestSignature)
@@ -237,7 +238,7 @@ object BFTSMaRt {
                         throw NotaryInternalException(NotaryError.Conflict(txId, conflictingStates))
                     }
                 } else {
-                    val outsideTimeWindowError = validateTimeWindow(services.clock.instant(), timeWindow)
+                    val outsideTimeWindowError = validateTimeWindow(currentTime, timeWindow)
                     if (outsideTimeWindowError == null) {
                         states.forEach { commitLog[it] = txId }
                         log.debug { "Successfully committed all input states: $states" }

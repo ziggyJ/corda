@@ -73,6 +73,7 @@ class RaftTransactionCommitLog<E, EK>(
 
     /** Commits the input states for the transaction as specified in the given [Commands.CommitTransaction]. */
     fun commitTransaction(raftCommit: Commit<Commands.CommitTransaction>): NotaryError? {
+        val currentTime = clock.instant() // Get current time first thing to ensure extra delays will not affect time-window validity.
         raftCommit.use {
             val index = it.index()
             return db.transaction {
@@ -93,7 +94,7 @@ class RaftTransactionCommitLog<E, EK>(
                         NotaryError.Conflict(txId, conflictingStates)
                     }
                 } else {
-                    val outsideTimeWindowError = validateTimeWindow(clock.instant(), commitCommand.timeWindow)
+                    val outsideTimeWindowError = validateTimeWindow(currentTime, commitCommand.timeWindow)
                     if (outsideTimeWindowError == null) {
                         val entries = states.map { it to Pair(index, txId) }.toMap()
                         map.putAll(entries)

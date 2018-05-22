@@ -106,12 +106,13 @@ class PersistentUniquenessProvider(val clock: Clock) : UniquenessProvider, Singl
             requestSignature: NotarisationRequestSignature,
             timeWindow: TimeWindow?) {
         mutex.locked {
+            val currentTime = clock.instant() // Get current time first thing to ensure extra delays will not affect time-window validity.
             logRequest(txId, callerIdentity, requestSignature)
             val conflictingStates = findAlreadyCommitted(states, commitLog)
             if (conflictingStates.isNotEmpty()) {
                 handleConflicts(txId, conflictingStates)
             } else {
-                handleNoConflicts(timeWindow, states, txId, commitLog)
+                handleNoConflicts(currentTime, timeWindow, states, txId, commitLog)
             }
         }
     }
@@ -147,8 +148,8 @@ class PersistentUniquenessProvider(val clock: Clock) : UniquenessProvider, Singl
         }
     }
 
-    private fun handleNoConflicts(timeWindow: TimeWindow?, states: List<StateRef>, txId: SecureHash, commitLog: AppendOnlyPersistentMap<StateRef, SecureHash, CommittedState, PersistentStateRef>) {
-        val outsideTimeWindowError = validateTimeWindow(clock.instant(), timeWindow)
+    private fun handleNoConflicts(timeInstant: Instant, timeWindow: TimeWindow?, states: List<StateRef>, txId: SecureHash, commitLog: AppendOnlyPersistentMap<StateRef, SecureHash, CommittedState, PersistentStateRef>) {
+        val outsideTimeWindowError = validateTimeWindow(timeInstant, timeWindow)
         if (outsideTimeWindowError == null) {
             states.forEach { stateRef ->
                 commitLog[stateRef] = txId
