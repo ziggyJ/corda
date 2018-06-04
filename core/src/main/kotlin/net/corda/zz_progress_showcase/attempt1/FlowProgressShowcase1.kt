@@ -57,7 +57,7 @@ interface Ops {
     fun submitFlow(): CordaFuture<Flow.Execution<String>>
 }
 
-interface Flow<RESULT> {
+interface Flow {
 
     interface Execution<RESULT> {
 
