@@ -5,6 +5,7 @@ import net.corda.bootstrapper.context.Context
 import net.corda.bootstrapper.nodes.*
 import net.corda.bootstrapper.notaries.NotaryCopier
 import net.corda.bootstrapper.notaries.NotaryFinder
+import net.corda.nodeapi.internal.DevIdentityGenerator
 import java.io.File
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
@@ -168,6 +169,11 @@ private class NetworkBuilderImpl : NetworkBuilder {
         }
 
         val notariesFuture = notaryDiscoveryFuture.thenCompose { copiedNotaries ->
+            val notaryClusters = copiedNotaries.filter { it.isClusteredNotary }.groupBy { it.notaryServiceId() }
+            notaryClusters.forEach { (serviceId, nodes) ->
+                // TODO: Handle BFT notary clusters.
+                DevIdentityGenerator.generateDistributedNotarySingularIdentity(nodes.map { it.baseDirectory.toPath() }, serviceId)
+            }
             copiedNotaries
                     .map { copiedNotary ->
                         nodeBuilder.buildNode(copiedNotary).also(onNodeBuiltCallback)
