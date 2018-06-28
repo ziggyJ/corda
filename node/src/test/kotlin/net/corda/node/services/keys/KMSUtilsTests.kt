@@ -1,6 +1,7 @@
 package net.corda.node.services.keys
 
 import net.corda.core.CordaOID
+import net.corda.core.crypto.Crypto
 import net.corda.core.crypto.generateKeyPair
 import net.corda.core.internal.CertRole
 import net.corda.testing.core.ALICE_NAME
@@ -15,6 +16,7 @@ import kotlin.test.assertEquals
 class KMSUtilsTests {
     @Test
     fun `should generate certificates with the correct role`() {
+        Crypto.registerProviders()
         val aliceKey = generateKeyPair()
         val alice = getTestPartyAndCertificate(ALICE_NAME, aliceKey.public)
         val cordappPackages = emptyList<String>()
