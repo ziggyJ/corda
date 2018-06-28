@@ -17,6 +17,11 @@ fun main(args: Array<String>) {
     SerializationEngine.init()
     CommandLine(baseArgs).parse(*args)
 
+    if (baseArgs.usageHelpRequested) {
+        CommandLine.usage(CliParser(), System.out)
+        return
+    }
+
     if (baseArgs.gui) {
         Application.launch(Gui::class.java)
         return

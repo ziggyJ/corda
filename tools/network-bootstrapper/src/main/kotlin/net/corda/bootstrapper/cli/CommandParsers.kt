@@ -26,6 +26,9 @@ open class CliParser {
     @Option(names = ["--add", "-a"])
     var nodesToAdd: MutableList<String> = arrayListOf()
 
+    @Option(names = ["-h", "--help"], usageHelp = true, description = ["Display this help message"])
+    var usageHelpRequested: Boolean = false
+
     fun isNew(): Boolean {
         return nodesToAdd.isEmpty()
     }
