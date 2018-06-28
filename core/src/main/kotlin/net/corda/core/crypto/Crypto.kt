@@ -1014,8 +1014,11 @@ object Crypto {
      * CRL & CSR checks etc.).
      */
     // TODO: perform all cryptographic operations via Crypto.
-    @JvmStatic
+    @JvmStatic @Deprecated("Providers are now registered automatically the first time Crypto is accessed.")
     fun registerProviders() {
         providerMap
     }
+
+    // Ensure the providers are all initialized as part of the setup of this object.
+    private val forceProviderLoad = providerMap
 }
