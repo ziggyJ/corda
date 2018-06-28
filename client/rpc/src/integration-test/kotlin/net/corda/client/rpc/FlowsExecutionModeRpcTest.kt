@@ -56,7 +56,7 @@ class FlowsExecutionModeTests : NodeBasedTest(listOf("net.corda.finance.contract
     fun setup() {
 
         node = startNode(ALICE_NAME, rpcUsers = listOf(rpcUser))
-        client = CordaRPCClient(node.internals.configuration.rpcOptions.address!!)
+        client = CordaRPCClient(node.internals.configuration.rpcOptions.address)
     }
 
     @Test
