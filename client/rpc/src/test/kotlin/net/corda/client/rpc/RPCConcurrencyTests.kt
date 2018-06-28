@@ -24,7 +24,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
-@RunWith(Parameterized::class)
 class RPCConcurrencyTests : AbstractRPCTest() {
 
     /**

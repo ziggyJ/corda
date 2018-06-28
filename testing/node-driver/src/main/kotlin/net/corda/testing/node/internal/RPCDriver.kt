@@ -98,7 +98,6 @@ val fakeNodeLegalName = CordaX500Name(organisation = "Not:a:real:name", locality
 // Use a global pool so that we can run RPC tests in parallel
 private val globalPortAllocation = PortAllocation.Incremental(10000)
 private val globalDebugPortAllocation = PortAllocation.Incremental(5005)
-private val globalMonitorPortAllocation = PortAllocation.Incremental(7005)
 
 fun <A> rpcDriver(
         isDebug: Boolean = false,

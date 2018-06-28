@@ -5,28 +5,23 @@ import net.corda.core.messaging.RPCOps
 import net.corda.core.utilities.minutes
 import net.corda.core.utilities.seconds
 import net.corda.node.services.messaging.RPCServerConfiguration
-import net.corda.testing.node.internal.RPCDriverDSL
 import net.corda.testing.internal.performance.div
+import net.corda.testing.node.internal.RPCDriverDSL
 import net.corda.testing.node.internal.performance.startPublishingFixedRateInjector
 import net.corda.testing.node.internal.performance.startReporter
 import net.corda.testing.node.internal.performance.startTightLoopInjector
 import net.corda.testing.node.internal.rpcDriver
 import org.junit.Ignore
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.Parameterized
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 @Ignore("Only use this locally for profiling")
-@RunWith(Parameterized::class)
 class RPCPerformanceTests : AbstractRPCTest() {
-    companion object {
-        @JvmStatic
-        @Parameterized.Parameters(name = "Mode = {0}")
-        fun modes() = modes(RPCTestMode.Netty)
+    init {
+        mode = RPCTestMode.Netty
     }
 
     private interface TestOps : RPCOps {

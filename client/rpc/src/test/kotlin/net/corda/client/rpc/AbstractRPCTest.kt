@@ -12,7 +12,6 @@ import net.corda.testing.node.internal.startInVmRpcClient
 import net.corda.testing.node.internal.startRpcClient
 import org.apache.activemq.artemis.api.core.client.ClientSession
 import org.junit.Rule
-import org.junit.runners.Parameterized
 
 open class AbstractRPCTest {
     @Rule
@@ -24,16 +23,7 @@ open class AbstractRPCTest {
         Netty
     }
 
-    companion object {
-        @JvmStatic
-        @Parameterized.Parameters(name = "Mode = {0}")
-        fun defaultModes() = modes(RPCTestMode.InVm, RPCTestMode.Netty)
-
-        fun modes(vararg modes: RPCTestMode) = listOf(*modes).map { arrayOf(it) }
-    }
-
-    @Parameterized.Parameter
-    lateinit var mode: RPCTestMode
+    var mode: RPCTestMode = RPCTestMode.valueOf(System.getProperty("rpcTestMode") ?: "InVm")
 
     data class TestProxy<out I : RPCOps>(
             val ops: I,

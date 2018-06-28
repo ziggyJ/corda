@@ -14,8 +14,6 @@ import net.corda.testing.node.internal.rpcTestUser
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.Parameterized
 import rx.Observable
 import rx.subjects.PublishSubject
 import java.util.concurrent.CountDownLatch
@@ -24,7 +22,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-@RunWith(Parameterized::class)
 class ClientRPCInfrastructureTests : AbstractRPCTest() {
     // TODO: Test that timeouts work
 

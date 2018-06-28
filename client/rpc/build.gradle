@@ -91,8 +91,9 @@ dependencies {
 }
 
 task integrationTest(type: Test) {
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    classpath = sourceSets.integrationTest.runtimeClasspath
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs + sourceSets.test.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath + sourceSets.test.runtimeClasspath
+    systemProperty "runTestMode", "Netty"  // See AbstractRPCTest
 }
 
 task smokeTest(type: Test) {
