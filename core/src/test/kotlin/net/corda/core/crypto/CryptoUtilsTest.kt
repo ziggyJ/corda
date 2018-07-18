@@ -9,8 +9,11 @@ import net.i2p.crypto.eddsa.spec.EdDSANamedCurveSpec
 import net.i2p.crypto.eddsa.spec.EdDSANamedCurveTable
 import net.i2p.crypto.eddsa.spec.EdDSAPublicKeySpec
 import org.apache.commons.lang.ArrayUtils.EMPTY_BYTE_ARRAY
+import org.bouncycastle.asn1.nist.NISTNamedCurves
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
+import org.bouncycastle.asn1.sec.SECNamedCurves
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
+import org.bouncycastle.crypto.ec.CustomNamedCurves
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey
 import org.bouncycastle.jce.ECNamedCurveTable
@@ -22,6 +25,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Test
 import java.math.BigInteger
 import java.security.KeyPairGenerator
+import java.security.spec.ECPoint
 import java.util.*
 import kotlin.test.*
 
@@ -891,5 +895,31 @@ class CryptoUtilsTest {
         assertEquals("DL3Wr5EQGrMTaKBy5XMvG8rvSfKX1AYZLCRU8kixGbxt1E", keyPairBiggerThan512bits.public.toStringShort())
         val keyPairBiggerThan258bits = Crypto.deriveKeyPairFromEntropy(Crypto.ECDSA_SECP256K1_SHA256, BigInteger("2").pow(259).plus(BigInteger.ONE))
         assertEquals("DL7NbssqvuuJ4cqFkkaVYu9j1MsVswESGgCfbqBS9ULwuM", keyPairBiggerThan258bits.public.toStringShort())
+    }
+
+    @Test
+    fun testecc() {
+        val s = "Corda" // input String
+
+        println("Mapping \"Corda\" to an elliptic curve point")
+
+        val r1 = NISTNamedCurves.getByName("P-521")
+        val r1Point = r1.curve.mapToPoint(s)
+
+        println("P-521 x: ${r1Point.affineXCoord.toBigInteger()}")
+        println("P-521 y: ${r1Point.affineYCoord.toBigInteger()}")
+
+        val k1 = SECNamedCurves.getByName("secp256k1")
+        val k1Point = k1.curve.mapToPoint(s)
+        println("---")
+        println("secp256k1 x: ${k1Point.affineXCoord.toBigInteger()}")
+        println("secp256k1 y: ${k1Point.affineYCoord.toBigInteger()}")
+
+        val X25519 = CustomNamedCurves.getByName("Curve25519");
+        val xPoint = X25519.curve.mapToPoint(s)
+        println("---")
+        println("x25519 x: ${xPoint.affineXCoord.toBigInteger()}")
+        println("x25519 y: ${xPoint.affineYCoord.toBigInteger()}")
+
     }
 }
