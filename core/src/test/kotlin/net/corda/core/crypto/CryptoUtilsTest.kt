@@ -1,6 +1,7 @@
 package net.corda.core.crypto
 
 import com.google.common.collect.Sets
+import net.corda.testing.node.createMockCordaService
 import net.i2p.crypto.eddsa.EdDSAKey
 import net.i2p.crypto.eddsa.EdDSAPrivateKey
 import net.i2p.crypto.eddsa.EdDSAPublicKey
@@ -19,13 +20,13 @@ import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.interfaces.ECKey
 import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
+import org.bouncycastle.math.ec.ECPoint
 import org.bouncycastle.pqc.jcajce.provider.sphincs.BCSphincs256PrivateKey
 import org.bouncycastle.pqc.jcajce.provider.sphincs.BCSphincs256PublicKey
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
 import java.math.BigInteger
 import java.security.KeyPairGenerator
-import java.security.spec.ECPoint
 import java.util.*
 import kotlin.test.*
 
@@ -898,8 +899,9 @@ class CryptoUtilsTest {
     }
 
     @Test
-    fun testecc() {
-        val s = "Corda" // input String
+    fun testMap2Point() {
+        Crypto.registerProviders()
+        val s = "Corda".toByteArray() // input String
 
         println("Mapping \"Corda\" to an elliptic curve point")
 
@@ -920,6 +922,98 @@ class CryptoUtilsTest {
         println("---")
         println("x25519 x: ${xPoint.affineXCoord.toBigInteger()}")
         println("x25519 y: ${xPoint.affineYCoord.toBigInteger()}")
+    }
 
+    @Test
+    fun testCTRangeProof() {
+        val maxValue = 1024 // range [0, 1023]
+        val commitment = 30
+        println("Commitment to the value of 30 in the range [0..$maxValue]")
+        println("----")
+        println("Curve25519 is used")
+        val X25519 = CustomNamedCurves.getByName("Curve25519");
+        val randomBase = X25519.curve.mapToPoint(X25519.g)
+        println("Ensuring nothing up my sleeve... DONE" +
+                "\n -- computing map2point of Curve25519.g.encoded using the Try-And-Increment method of Boneh et al... DONE" +
+                "\n -- finding quadratic residue using Shanks-Tonelli algorithm... DONE")
+
+        val cAmounts = CTx(X25519, randomBase)
+
+        val x = BigInteger("4239784793298479823749828349823642394862349876923487")// private key
+        println("Calculate a Pedersen blinding factor... DONE")
+        val a = BigInteger.valueOf(commitment.toLong()) // committed to amount
+
+        // xG + aH
+        val pedersenPoint: ECPoint = cAmounts.pedersenCommitment(x, a)
+        println("Compute Pedersen commitment to value $commitment... DONE")
+
+        // [0..7] Range proof, all public keys as points.
+        val rangeKeys: List<ECPoint> = cAmounts.createAllRingPublicKeyPoints(pedersenPoint, maxValue)
+
+        assertEquals(X25519.g.multiply(x), rangeKeys[commitment])
+        println("Compute all other public keys in ring (range keys) for commitments 0 to $maxValue... DONE")
+
+        val h = cAmounts.aosComputehOpt(pedersenPoint)
+        // val h = cAmounts.aosComputehOpt(rangeKeys)
+
+        val y = cAmounts.aosComputey(x, h)
+
+        val u = BigInteger("9093859079483274983264238467329443286328479432")
+        println("Calculate u value of the AOS ring signature scheme... DONE")
+
+        val chk1 = cAmounts.aosFirstChallengeOpt(y, pedersenPoint, u, h)
+        // val chk1 = cAmounts.aosFirstChallenge(rangeKeys, y, pedersenPoint, u, h)
+
+        val sis = kotlin.arrayOfNulls<BigInteger>(maxValue)
+        var chk = chk1
+        for (i in commitment + 1 until maxValue) {
+            val si = BigInteger.valueOf(99999L * (i + 1)) // We should be able to recompute it.
+            sis[i] = si
+            // chi+1 = H(L, y, m, [si] * g + [chi] * yi, [si] * h + [chi] * y)
+            chk = cAmounts.aosOtherChallengesOpt(
+                    // rangeKeys,
+                    y,
+                    pedersenPoint,
+                    cAmounts.x9ECParameters.g.multiply(si).add(rangeKeys[i].multiply(chk)),
+                    h.multiply(si).add(y.multiply(chk))
+            )
+        }
+
+        val chk0 = chk
+        for (i in 0 until commitment) {
+            val si = BigInteger.valueOf(99999L * (i + 1)) // We should be able to recompute it.
+            sis[i] = si
+            // chi+1 = H(L, y, m, [si] * g + [chi] * yi, [si] * h + [chi] * y)
+            chk = cAmounts.aosOtherChallengesOpt(
+                    // rangeKeys,
+                    y,
+                    pedersenPoint,
+                    cAmounts.x9ECParameters.g.multiply(si).add(rangeKeys[i].multiply(chk)),
+                    h.multiply(si).add(y.multiply(chk))
+            )
+        }
+
+        val sk = cAmounts.aosSk(u, x, chk)
+        sis[commitment] = sk
+        val ctxSig = ctxSignature(chk0, sis.toList() , y)
+        println("---")
+        println("Calculating AOS signature... DONE")
+        println("Signature: $ctxSig")
+
+        // VERIFY
+        var chk2 = ctxSig.chk0
+        for (i in 0 until maxValue) {
+            // chi+1 = H(L, y, m, [si] * g + [chi] * yi, [si] * h + [chi] * y)
+            chk2 = cAmounts.aosOtherChallengesOpt(
+                    // rangeKeys,
+                    y,
+                    pedersenPoint,
+                    cAmounts.x9ECParameters.g.multiply(ctxSig.si[i]).add(rangeKeys[i].multiply(chk2)),
+                    h.multiply(ctxSig.si[i]).add(y.multiply(chk2))
+            )
+            // println(chk2)
+        }
+        assertEquals(ctxSig.chk0, chk2)
+        println("Verifying Range Proof... DONE")
     }
 }
