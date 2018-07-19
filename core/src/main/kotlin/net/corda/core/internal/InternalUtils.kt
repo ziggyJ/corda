@@ -179,20 +179,19 @@ fun <T> Observer<T>.tee(vararg teeTo: Observer<T>): Observer<T> {
 
 /** Executes the given code block and returns a [Duration] of how long it took to execute in nanosecond precision. */
 @DeleteForDJVM
-inline fun elapsedTime(block: () -> Unit): Duration {
+inline fun <T> elapsedTime(block: () -> T): Pair<Duration, T> {
     val start = System.nanoTime()
-    block()
+    val result = block()
     val end = System.nanoTime()
-    return Duration.ofNanos(end - start)
+    return Pair(Duration.ofNanos(end - start), result)
 }
-
 
 fun <T> Logger.logElapsedTime(label: String, body: () -> T): T = logElapsedTime(label, this, body)
 
 // TODO: Add inline back when a new Kotlin version is released and check if the java.lang.VerifyError
 // returns in the IRSSimulationTest. If not, commit the inline back.
 @DeleteForDJVM
-fun <T> logElapsedTime(label: String, logger: Logger? = null, body: () -> T): T {
+inline fun <T> logElapsedTime(label: String, logger: Logger? = null, body: () -> T): T {
     // Use nanoTime as it's monotonic.
     val now = System.nanoTime()
     var failed = false
@@ -205,7 +204,7 @@ fun <T> logElapsedTime(label: String, logger: Logger? = null, body: () -> T): T 
     }
     finally {
         val elapsed = Duration.ofNanos(System.nanoTime() - now).toMillis()
-        val msg = (if(failed) "Failed " else "") + "$label took $elapsed msec"
+        val msg = (if(failed) "Failed " else "") + "$label took $elapsed ms"
         if (logger != null)
             logger.info(msg)
         else

@@ -25,13 +25,10 @@ import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
 import net.corda.core.identity.PartyAndCertificate
-import net.corda.core.internal.Emoji
-import net.corda.core.internal.FlowStateMachine
-import net.corda.core.internal.VisibleForTesting
+import net.corda.core.internal.*
 import net.corda.core.internal.concurrent.map
 import net.corda.core.internal.concurrent.openFuture
 import net.corda.core.internal.notary.NotaryService
-import net.corda.core.internal.uncheckedCast
 import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.messaging.FlowHandle
 import net.corda.core.messaging.FlowHandleImpl
@@ -287,6 +284,7 @@ abstract class AbstractNode(val configuration: NodeConfiguration,
     }
 
     open fun start(): StartedNode<AbstractNode> {
+        val startTime = System.currentTimeMillis()
         check(started == null) { "Node has already been started" }
         if (configuration.devMode) {
             System.setProperty("co.paralleluniverse.fibers.verifyInstrumentation", "true")
@@ -294,14 +292,21 @@ abstract class AbstractNode(val configuration: NodeConfiguration,
         }
         log.info("Node starting up ...")
         initCertificate()
+        println("AbstractNode.start after initCertificate() ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
         initialiseJVMAgents()
+        println("AbstractNode.start after initialiseJVMAgents() ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
         val schemaService = NodeSchemaService(cordappLoader.cordappSchemas, configuration.notary != null)
         schemaService.mappedSchemasWarnings().forEach {
             val warning = it.toWarning()
             log.warn(warning)
             Node.printWarning(warning)
         }
+        println("AbstractNode.start after schemaService ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
         val (identity, identityKeyPair) = obtainIdentity(notaryConfig = null)
+        println("AbstractNode.start after obtainIdentity ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
 
         // Wrapped in an atomic reference just to allow setting it before the closure below gets invoked.
         val identityServiceRef = AtomicReference<IdentityService>()
@@ -311,27 +316,55 @@ abstract class AbstractNode(val configuration: NodeConfiguration,
                 schemaService,
                 { name -> identityServiceRef.get().wellKnownPartyFromX500Name(name) },
                 { party -> identityServiceRef.get().wellKnownPartyFromAnonymous(party) })
+        println("AbstractNode.start after initialiseDatabasePersistence ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
         val identityService = makeIdentityService(identity.certificate, database).also(identityServiceRef::set)
+        println("AbstractNode.start after makeIdentityService ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
         networkMapClient = configuration.networkServices?.let { NetworkMapClient(it.networkMapURL, identityService.trustRoot) }
         val networkParameteresReader = NetworkParametersReader(identityService.trustRoot, networkMapClient, configuration.baseDirectory)
         val networkParameters = networkParameteresReader.networkParameters
+        println("AbstractNode.start after networkParameters ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
         check(networkParameters.minimumPlatformVersion <= versionInfo.platformVersion) {
             "Node's platform version is lower than network's required minimumPlatformVersion"
         }
 
         val (startedImpl, schedulerService) = database.transaction {
-            val networkMapCache = NetworkMapCacheImpl(PersistentNetworkMapCache(database, networkParameters.notaries).start(), identityService, database)
+            println("AbstractNode.start after in transaction ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
+            val persistentNetworkMapCache = PersistentNetworkMapCache(database, networkParameters.notaries)
+            println("AbstractNode.start after PersistentNetworkMapCache ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
+            persistentNetworkMapCache.start()
+            println("AbstractNode.start after persistentNetworkMapCache.start() ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
+            val networkMapCache = NetworkMapCacheImpl(persistentNetworkMapCache, identityService, database)
             val (keyPairs, nodeInfo) = updateNodeInfo(networkMapCache, networkMapClient, identity, identityKeyPair)
+            println("AbstractNode.start after updateNodeInfo ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             identityService.loadIdentities(nodeInfo.legalIdentitiesAndCerts)
+            println("AbstractNode.start after loadIdentities ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             val metrics = MetricRegistry()
             val transactionStorage = makeTransactionStorage(database, configuration.transactionCacheSizeBytes)
+            println("AbstractNode.start after makeTransactionStorage ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             log.debug("Transaction storage created")
             attachments = NodeAttachmentService(metrics, configuration.attachmentContentCacheSizeBytes, configuration.attachmentCacheBound, database)
+            println("AbstractNode.start after NodeAttachmentService ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             log.debug("Attachment service created")
             val cordappProvider = CordappProviderImpl(cordappLoader, CordappConfigFileProvider(), attachments, networkParameters.whitelistedContractImplementations)
+            println("AbstractNode.start after CordappProviderImpl ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             log.debug("Cordapp provider created")
             val servicesForResolution = ServicesForResolutionImpl(identityService, attachments, cordappProvider, networkParameters, transactionStorage)
+            println("AbstractNode.start after ServicesForResolutionImpl ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             val nodeProperties = NodePropertiesPersistentStore(StubbedNodeUniqueIdProvider::value, database)
+            println("AbstractNode.start after NodePropertiesPersistentStore ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             val nodeServices = makeServices(
                     keyPairs,
                     schemaService,
@@ -345,8 +378,12 @@ abstract class AbstractNode(val configuration: NodeConfiguration,
                     nodeProperties,
                     cordappProvider,
                     networkParameters)
+            println("AbstractNode.start after makeServices ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             val notaryService = makeNotaryService(nodeServices, database)
             val smm = makeStateMachineManager(database)
+            println("AbstractNode.start after makeStateMachineManager ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             val flowLogicRefFactory = FlowLogicRefFactoryImpl(cordappLoader.appClassLoader)
             val flowStarter = FlowStarterImpl(smm, flowLogicRefFactory)
             val cordaServices = installCordaServices(flowStarter)
@@ -365,6 +402,8 @@ abstract class AbstractNode(val configuration: NodeConfiguration,
 
             try {
                 verifyCheckpointsCompatible(checkpointStorage, cordappProvider.cordapps, versionInfo.platformVersion, _services, tokenizableServices)
+                println("AbstractNode.start after verifyCheckpointsCompatible ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             } catch (e: CheckpointIncompatibleException) {
                 if (configuration.devMode) {
                     Node.printWarning(e.message)
@@ -383,14 +422,29 @@ abstract class AbstractNode(val configuration: NodeConfiguration,
             }
 
             makeVaultObservers(schedulerService, database.hibernateConfig, schemaService, flowLogicRefFactory)
+            println("AbstractNode.start after makeVaultObservers ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             val rpcOps = makeRPCOps(flowStarter, smm)
+            println("AbstractNode.start after makeRPCOps ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             startMessagingService(rpcOps)
+            println("AbstractNode.start after startMessagingService ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             installCoreFlows()
+            println("AbstractNode.start after installCoreFlows ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
 
             registerCordappFlows(smm)
+            println("AbstractNode.start after registerCordappFlows ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
             _services.rpcFlows += cordappLoader.cordapps.flatMap { it.rpcFlows }
             startShell()
-            Pair(StartedNodeImpl(this@AbstractNode, _services, nodeInfo, checkpointStorage, smm, attachments, network, database, rpcOps, flowStarter, notaryService), schedulerService)
+            println("AbstractNode.start after startShell ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
+            val startedNodeImpl = StartedNodeImpl(this@AbstractNode, _services, nodeInfo, checkpointStorage, smm, attachments, network, database, rpcOps, flowStarter, notaryService)
+
+            println("AbstractNode.start took ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
+            Pair(startedNodeImpl, schedulerService)
         }
 
         networkMapUpdater = NetworkMapUpdater(services.networkMapCache,
@@ -463,7 +517,9 @@ abstract class AbstractNode(val configuration: NodeConfiguration,
                 serial = 0
         )
 
-        val nodeInfoFromDb = getPreviousNodeInfoIfPresent(networkMapCache, identity)
+        val nodeInfoFromDb = logElapsedTime("getPreviousNodeInfoIfPresent") {
+            getPreviousNodeInfoIfPresent(networkMapCache, identity)
+        }
 
 
         val nodeInfo = if (potentialNodeInfo == nodeInfoFromDb?.copy(serial = 0)) {
@@ -478,13 +534,18 @@ abstract class AbstractNode(val configuration: NodeConfiguration,
             newNodeInfo
         }
 
-        val nodeInfoAndSigned = NodeInfoAndSigned(nodeInfo) { publicKey, serialised ->
-            val privateKey = keyPairs.single { it.public == publicKey }.private
-            privateKey.sign(serialised.bytes)
+        val nodeInfoAndSigned = logElapsedTime("nodeInfoAndSigned") {
+            NodeInfoAndSigned(nodeInfo) { publicKey, serialised ->
+                val privateKey = keyPairs.single { it.public == publicKey }.private
+                privateKey.sign(serialised.bytes)
+            }
         }
 
-        // Write the node-info file even if nothing's changed, just in case the file has been deleted.
-        NodeInfoWatcher.saveToFile(configuration.baseDirectory, nodeInfoAndSigned)
+
+        logElapsedTime("NodeInfoWatcher.saveToFile") {
+            // Write the node-info file even if nothing's changed, just in case the file has been deleted.
+            NodeInfoWatcher.saveToFile(configuration.baseDirectory, nodeInfoAndSigned)
+        }
 
         // Always republish on startup, it's treated by network map server as a heartbeat.
         if (networkMapClient != null) {

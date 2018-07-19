@@ -9,6 +9,7 @@ import net.corda.core.identity.Party
 import net.corda.core.identity.PartyAndCertificate
 import net.corda.core.internal.bufferUntilSubscribed
 import net.corda.core.internal.concurrent.openFuture
+import net.corda.core.internal.logElapsedTime
 import net.corda.core.messaging.DataFeed
 import net.corda.core.node.NodeInfo
 import net.corda.core.node.NotaryInfo
@@ -100,12 +101,18 @@ open class PersistentNetworkMapCache(
         // if we find any network map information in the db, we are good to go - if not
         // we have to wait for some being added
         synchronized(_changed) {
-            val allNodes = database.transaction { getAllInfos(session) }
+            val allNodes = database.transaction {
+                logElapsedTime("getAllInfos") {
+                    getAllInfos(session)
+                }
+            }
             if (allNodes.isNotEmpty()) {
                 _loadDBSuccess = true
             }
-            allNodes.forEach {
-                changePublisher.onNext(MapChange.Added(it.toNodeInfo()))
+            logElapsedTime("allNodes.forEach.changePublisher") {
+                allNodes.forEach {
+                    changePublisher.onNext(MapChange.Added(it.toNodeInfo()))
+                }
             }
             _registrationFuture.set(null)
         }

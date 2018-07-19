@@ -6,11 +6,9 @@ import net.corda.core.concurrent.CordaFuture
 import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
-import net.corda.core.internal.Emoji
+import net.corda.core.internal.*
 import net.corda.core.internal.concurrent.openFuture
 import net.corda.core.internal.concurrent.thenMatch
-import net.corda.core.internal.div
-import net.corda.core.internal.uncheckedCast
 import net.corda.core.messaging.RPCOps
 import net.corda.core.node.NetworkParameters
 import net.corda.core.node.NodeInfo
@@ -365,7 +363,9 @@ open class Node(configuration: NodeConfiguration,
 
     override fun start(): StartedNode<Node> {
         serverThread = AffinityExecutor.ServiceAffinityExecutor("Node thread-$sameVmNodeNumber", 1)
-        initialiseSerialization()
+        logElapsedTime("start.initialiseSerialization") {
+            initialiseSerialization()
+        }
         val started: StartedNode<Node> = uncheckedCast(super.start())
         nodeReadyFuture.thenMatch({
             serverThread.execute {
@@ -415,7 +415,9 @@ open class Node(configuration: NodeConfiguration,
 
     /** Starts a blocking event loop for message dispatch. */
     fun run() {
-        internalRpcMessagingClient?.start(rpcBroker!!.serverControl)
+        logElapsedTime("internalRpcMessagingClient?.start") {
+            internalRpcMessagingClient?.start(rpcBroker!!.serverControl)
+        }
         (network as P2PMessagingClient).run()
     }
 

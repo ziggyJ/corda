@@ -288,6 +288,7 @@ class P2PMessagingClient(val config: NodeConfiguration,
      * Starts the p2p event loop: this method only returns once [stop] has been called.
      */
     fun run() {
+        val start = System.currentTimeMillis()
         val latch = CountDownLatch(1)
         try {
             val consumer = state.locked {
@@ -308,6 +309,7 @@ class P2PMessagingClient(val config: NodeConfiguration,
                 p2pConsumer!!
             }
             consumer.start()
+            println("P2PMessagingClient.run() took ${System.currentTimeMillis() - start} ms")
             latch.await()
         } finally {
             shutdownLatch.countDown()

@@ -1,6 +1,5 @@
 package net.corda.node.internal
 
-import com.jcabi.manifests.Manifests
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigRenderOptions
@@ -8,16 +7,12 @@ import io.netty.channel.unix.Errors
 import joptsimple.OptionParser
 import joptsimple.util.PathConverter
 import net.corda.core.crypto.Crypto
-import net.corda.core.internal.Emoji
+import net.corda.core.internal.*
 import net.corda.core.internal.concurrent.thenMatch
-import net.corda.core.internal.createDirectories
-import net.corda.core.internal.div
 import net.corda.core.internal.errors.AddressBindingException
-import net.corda.core.internal.exists
-import net.corda.core.internal.location
-import net.corda.core.internal.randomOrNull
 import net.corda.core.utilities.Try
 import net.corda.core.utilities.loggerFor
+import net.corda.core.utilities.seconds
 import net.corda.node.*
 import net.corda.node.internal.cordapp.MultipleCordappsForFlowException
 import net.corda.node.services.config.NodeConfiguration
@@ -48,6 +43,8 @@ import java.net.InetAddress
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
+import java.util.jar.Attributes
+import java.util.jar.Manifest
 import kotlin.system.exitProcess
 
 /** This class is responsible for starting a Node from command line arguments. */
@@ -84,67 +81,92 @@ open class NodeStartup(val args: Array<String>) {
         }
         // We do the single node check before we initialise logging so that in case of a double-node start it
         // doesn't mess with the running node's logs.
-        enforceSingleNodeIsRunning(cmdlineOptions.baseDirectory)
+        logElapsedTime("enforceSingleNodeIsRunning") {
+            enforceSingleNodeIsRunning(cmdlineOptions.baseDirectory)
+        }
 
-        initLogging(cmdlineOptions)
+        logElapsedTime("initLogging") {
+            initLogging(cmdlineOptions)
+        }
+
+        println("Start up time just after initLogging ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
         // Register all cryptography [Provider]s.
         // Required to install our [SecureRandom] before e.g., UUID asks for one.
         // This needs to go after initLogging(netty clashes with our logging).
-        Crypto.registerProviders()
+        logElapsedTime("registerProviders") {
+            Crypto.registerProviders()
+        }
 
-        val versionInfo = getVersionInfo()
+        val versionInfo = logElapsedTime("getVersionInfo") {
+            getVersionInfo()
+        }
 
         if (cmdlineOptions.isVersion) {
             println("${versionInfo.vendor} ${versionInfo.releaseVersion}")
-            println("Revision ${versionInfo.revision}")
             println("Platform Version ${versionInfo.platformVersion}")
+            println("Revision ${versionInfo.revision}")
             return true
         }
 
-        drawBanner(versionInfo)
-        Node.printBasicNodeInfo(LOGS_CAN_BE_FOUND_IN_STRING, System.getProperty("log-path"))
-        val conf = try {
-            val (rawConfig, conf0Result) = loadConfigFile(cmdlineOptions)
-            if (cmdlineOptions.devMode) {
-                println("Config:\n${rawConfig.root().render(ConfigRenderOptions.defaults())}")
-            }
-            val conf0 = conf0Result.getOrThrow()
-            if (cmdlineOptions.bootstrapRaftCluster) {
-                if (conf0 is NodeConfigurationImpl) {
-                    println("Bootstrapping raft cluster (starting up as seed node).")
-                    // Ignore the configured clusterAddresses to make the node bootstrap a cluster instead of joining.
-                    conf0.copy(notary = conf0.notary?.copy(raft = conf0.notary?.raft?.copy(clusterAddresses = emptyList())))
-                } else {
-                    println("bootstrap-raft-notaries flag not recognized, exiting...")
-                    return false
+        println("Start up time just before drawBanner ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
+        logElapsedTime("draw") {
+            drawBanner(versionInfo)
+            Node.printBasicNodeInfo(LOGS_CAN_BE_FOUND_IN_STRING, System.getProperty("log-path"))
+        }
+        val conf = logElapsedTime("conf") {
+            try {
+                val (rawConfig, conf0Result) = loadConfigFile(cmdlineOptions)
+                if (cmdlineOptions.devMode) {
+                    println("Config:\n${rawConfig.root().render(ConfigRenderOptions.defaults())}")
                 }
-            } else {
-                conf0
-            }
-        } catch (e: UnknownConfigurationKeysException) {
-            logger.error(e.message)
-            return false
-        } catch (e: ConfigException.IO) {
-            println("""
+                val conf0 = conf0Result.getOrThrow()
+                if (cmdlineOptions.bootstrapRaftCluster) {
+                    if (conf0 is NodeConfigurationImpl) {
+                        println("Bootstrapping raft cluster (starting up as seed node).")
+                        // Ignore the configured clusterAddresses to make the node bootstrap a cluster instead of joining.
+                        conf0.copy(notary = conf0.notary?.copy(raft = conf0.notary?.raft?.copy(clusterAddresses = emptyList())))
+                    } else {
+                        println("bootstrap-raft-notaries flag not recognized, exiting...")
+                        return false
+                    }
+                } else {
+                    conf0
+                }
+            } catch (e: UnknownConfigurationKeysException) {
+                logger.error(e.message)
+                return false
+            } catch (e: ConfigException.IO) {
+                println("""
                 Unable to load the node config file from '${cmdlineOptions.configFile}'.
 
                 Try experimenting with the --base-directory flag to change which directory the node
                 is looking in, or use the --config-file flag to specify it explicitly.
             """.trimIndent())
-            return false
-        } catch (e: Exception) {
-            logger.error("Unexpected error whilst reading node configuration", e)
-            return false
+                return false
+            } catch (e: Exception) {
+                logger.error("Unexpected error whilst reading node configuration", e)
+                return false
+            }
         }
-        val errors = conf.validate()
-        if (errors.isNotEmpty()) {
-            logger.error("Invalid node configuration. Errors where:${System.lineSeparator()}${errors.joinToString(System.lineSeparator())}")
-            return false
+        logElapsedTime("validate") {
+            val errors = conf.validate()
+            if (errors.isNotEmpty()) {
+                logger.error("Invalid node configuration. Errors where:${System.lineSeparator()}${errors.joinToString(System.lineSeparator())}")
+                return false
+            }
         }
 
+        println("Start up time just before banJavaSerialisation ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
+
         try {
-            banJavaSerialisation(conf)
-            preNetworkRegistration(conf)
+            logElapsedTime("banJavaSerialisation") {
+                banJavaSerialisation(conf)
+            }
+            logElapsedTime("preNetworkRegistration") {
+                preNetworkRegistration(conf)
+            }
             if (cmdlineOptions.nodeRegistrationOption != null) {
                 // Null checks for [compatibilityZoneURL], [rootTruststorePath] and [rootTruststorePassword] has been done in [CmdLineOptions.loadConfig]
                 registerWithNetwork(conf, versionInfo, cmdlineOptions.nodeRegistrationOption)
@@ -161,6 +183,7 @@ open class NodeStartup(val args: Array<String>) {
             return false
         }
 
+        println("Start up time just before startNode ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
         try {
             cmdlineOptions.baseDirectory.createDirectories()
             startNode(conf, versionInfo, startTime, cmdlineOptions)
@@ -249,7 +272,9 @@ open class NodeStartup(val args: Array<String>) {
     protected open fun createNode(conf: NodeConfiguration, versionInfo: VersionInfo): Node = Node(conf, versionInfo)
 
     protected open fun startNode(conf: NodeConfiguration, versionInfo: VersionInfo, startTime: Long, cmdlineOptions: CmdLineOptions) {
-        val node = createNode(conf, versionInfo)
+        val node = logElapsedTime("createNode") {
+            createNode(conf, versionInfo)
+        }
         if (cmdlineOptions.clearNetworkMapCache) {
             node.clearNetworkMapCache()
             return
@@ -323,7 +348,9 @@ open class NodeStartup(val args: Array<String>) {
             return
         }
 
-        val startedNode = node.start()
+        val startedNode = logElapsedTime("node.start()") {
+            node.start()
+        }
         Node.printBasicNodeInfo("Loaded CorDapps", startedNode.services.cordappProvider.cordapps.joinToString { it.name })
         startedNode.internals.nodeReadyFuture.thenMatch({
             val elapsed = (System.currentTimeMillis() - startTime) / 10 / 100.0
@@ -334,7 +361,7 @@ open class NodeStartup(val args: Array<String>) {
             if (conf.shouldStartLocalShell()) {
                 startedNode.internals.startupComplete.then {
                     try {
-                        InteractiveShell.runLocalShell({ startedNode.dispose() })
+                        InteractiveShell.runLocalShell(startedNode::dispose)
                     } catch (e: Throwable) {
                         logger.error("Shell failed to start", e)
                     }
@@ -347,6 +374,7 @@ open class NodeStartup(val args: Array<String>) {
                 { th ->
                     logger.error("Unexpected exception during registration", th)
                 })
+        println("Start up time just before run() ${(System.currentTimeMillis() - startTime) / 10 / 100.0} sec")
         startedNode.internals.run()
     }
 
@@ -399,15 +427,24 @@ open class NodeStartup(val args: Array<String>) {
     }
 
     protected open fun getVersionInfo(): VersionInfo {
-        // Manifest properties are only available if running from the corda jar
-        fun manifestValue(name: String): String? = if (Manifests.exists(name)) Manifests.read(name) else null
+        val manifestAttrs = Thread.currentThread()
+                .contextClassLoader
+                .getResources("META-INF/MANIFEST.MF")
+                .asSequence()
+                .map { it.openStream().use { Manifest(it).mainAttributes } }
+                .firstOrNull { Attributes.Name("Corda-Platform-Version") in it }
 
-        return VersionInfo(
-                manifestValue("Corda-Platform-Version")?.toInt() ?: 1,
-                manifestValue("Corda-Release-Version") ?: "Unknown",
-                manifestValue("Corda-Revision") ?: "Unknown",
-                manifestValue("Corda-Vendor") ?: "Unknown"
-        )
+        return if (manifestAttrs == null) {
+            logger.error("Manifest for Corda node not found")
+            VersionInfo(1, "Unknown", "Unknown", "Unknown")
+        } else {
+            VersionInfo(
+                    manifestAttrs.getValue("Corda-Platform-Version").toInt(),
+                    manifestAttrs.getValue("Corda-Release-Version"),
+                    manifestAttrs.getValue("Corda-Revision"),
+                    manifestAttrs.getValue("Corda-Vendor")
+            )
+        }
     }
 
     private fun enforceSingleNodeIsRunning(baseDirectory: Path) {
@@ -448,10 +485,8 @@ open class NodeStartup(val args: Array<String>) {
     }
 
     private fun lookupMachineNameAndMaybeWarn(): String {
-        val start = System.currentTimeMillis()
-        val hostName: String = InetAddress.getLocalHost().hostName
-        val elapsed = System.currentTimeMillis() - start
-        if (elapsed > 1000 && hostName.endsWith(".local")) {
+        val (elapsed, hostName) = elapsedTime { InetAddress.getLocalHost().hostName }
+        if (elapsed > 1.seconds && hostName.endsWith(".local")) {
             // User is probably on macOS and experiencing this problem: http://stackoverflow.com/questions/10064581/how-can-i-eliminate-slow-resolving-loading-of-localhost-virtualhost-a-2-3-secon
             //
             // Also see https://bugs.openjdk.java.net/browse/JDK-8143378
