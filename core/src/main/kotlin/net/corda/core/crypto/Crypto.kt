@@ -197,6 +197,9 @@ object Crypto {
             + signatureSchemeMap.values.map { Pair(it.signatureOID, it) })
             .toMap()
 
+    private val signatureSchemeNumberIDMap: Map<Int, SignatureScheme>
+            = Crypto.supportedSignatureSchemes().associateBy { it.schemeNumberID }
+
     @JvmStatic
     fun supportedSignatureSchemes(): List<SignatureScheme> = ArrayList(signatureSchemeMap.values)
 
@@ -262,6 +265,12 @@ object Crypto {
     fun findSignatureScheme(key: PrivateKey): SignatureScheme {
         val keyInfo = PrivateKeyInfo.getInstance(key.encoded)
         return findSignatureScheme(keyInfo.privateKeyAlgorithm)
+    }
+
+    /** Find [SignatureScheme] by schemeNumberID. */
+    internal fun findSignatureScheme(schemeNumberID: Int): SignatureScheme {
+            return signatureSchemeNumberIDMap[schemeNumberID]
+                    ?: throw IllegalArgumentException("Unsupported key/algorithm for schemeCodeName: $schemeNumberID")
     }
 
     /**
@@ -439,12 +448,14 @@ object Crypto {
     @JvmStatic
     @Throws(InvalidKeyException::class, SignatureException::class)
     fun doSign(keyPair: KeyPair, signableData: SignableData): TransactionSignature {
-        val sigKey: SignatureScheme = findSignatureScheme(keyPair.private)
-        val sigMetaData: SignatureScheme = findSignatureScheme(keyPair.public)
-        require(sigKey == sigMetaData) {
-            "Metadata schemeCodeName: ${sigMetaData.schemeCodeName} is not aligned with the key type: ${sigKey.schemeCodeName}."
+        val metaDataScheme: SignatureScheme = findSignatureScheme(signableData.signatureMetadata.schemeNumberID)
+        // TODO: we can remove this sanity check and use metadataScheme directly.
+        val keyScheme: SignatureScheme = findSignatureScheme(keyPair.public)
+        require(keyScheme == metaDataScheme) {
+            "Metadata schemeCodeName: ${metaDataScheme.schemeCodeName} is not aligned with the key type: ${keyScheme.schemeCodeName}."
         }
-        val signatureBytes = doSign(sigKey.schemeCodeName, keyPair.private, signableData.serialize().bytes)
+
+        val signatureBytes = doSign(metaDataScheme.schemeCodeName, keyPair.private, signableData.serialize().bytes)
         return TransactionSignature(signatureBytes, keyPair.public, signableData.signatureMetadata)
     }
 
@@ -536,6 +547,8 @@ object Crypto {
     @Throws(InvalidKeyException::class, SignatureException::class)
     fun doVerify(txId: SecureHash, transactionSignature: TransactionSignature): Boolean {
         val signableData = SignableData(originalSignedHash(txId, transactionSignature.partialMerkleTree), transactionSignature.signatureMetadata)
+        // TODO: consider using metadata advertised scheme. We still don't do, for backwards compatibility purposes
+        //      as old clustered clients might still mention COMPOSITE_KEY in signature metadata.
         return Crypto.doVerify(transactionSignature.by, transactionSignature.bytes, signableData.serialize().bytes)
     }
 

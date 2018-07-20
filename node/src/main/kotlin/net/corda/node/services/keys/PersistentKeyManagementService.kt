@@ -75,7 +75,7 @@ class PersistentKeyManagementService(val identityService: IdentityService,
     override val keys: Set<PublicKey> get() = database.transaction { keysMap.allPersisted().map { it.first }.toSet() }
 
     override fun filterMyKeys(candidateKeys: Iterable<PublicKey>): Iterable<PublicKey> = database.transaction {
-        candidateKeys.filter { keysMap[it] != null }
+        candidateKeys.filter { keysMap.contains(it) }
     }
 
     override fun freshKey(): PublicKey {
@@ -92,10 +92,11 @@ class PersistentKeyManagementService(val identityService: IdentityService,
 
     private fun getSigner(publicKey: PublicKey): ContentSigner = getSigner(getSigningKeyPair(publicKey))
 
-    //It looks for the PublicKey in the (potentially) CompositeKey that is ours, and then returns the associated PrivateKey to use in signing
+    // It looks for the PublicKey in the (potentially) CompositeKey that is ours, and then returns the associated PrivateKey to use in signing.
     private fun getSigningKeyPair(publicKey: PublicKey): KeyPair {
         return database.transaction {
-            val pk = publicKey.keys.first { keysMap[it] != null } //TODO here for us to re-write this using an actual query if publicKey.keys.size > 1
+            val pk = publicKey.keys.firstOrNull() { keysMap.contains(it) } // TODO here for us to re-write this using an actual query if publicKey.keys.size > 1
+                    ?: throw IllegalArgumentException("Public key not found: ${publicKey.toStringShort()}")
             KeyPair(pk, keysMap[pk]!!)
         }
     }
