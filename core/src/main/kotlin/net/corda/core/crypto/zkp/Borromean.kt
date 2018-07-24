@@ -2,10 +2,8 @@ package net.corda.core.crypto.zkp
 
 import net.corda.core.crypto.newSecureRandom
 import net.corda.core.crypto.sha256
-import net.corda.core.utilities.toHex
 import org.bouncycastle.math.ec.ECPoint
 import java.math.BigInteger
-import java.util.*
 
 /** Borromean signature implementation. */
 object Borromean {

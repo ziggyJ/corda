@@ -1,8 +1,6 @@
 package net.corda.core.crypto
 
-import net.corda.core.crypto.zkp.Borromean
-import net.corda.core.crypto.zkp.generateRandomKeys
-import net.corda.core.crypto.zkp.mapToPoint
+import net.corda.core.crypto.zkp.*
 import org.bouncycastle.asn1.nist.NISTNamedCurves
 import org.bouncycastle.asn1.sec.SECNamedCurves
 import org.bouncycastle.crypto.ec.CustomNamedCurves
@@ -41,7 +39,7 @@ class CtxTests {
 
     @Test
     fun testCTRangeProof() {
-        val maxValue = 1024 // range [0, 1023]
+        val maxValue = 256 // range [0, 256)
         val commitment = 30
         println("Commitment to the value of 30 in the range [0..$maxValue]")
         println("----")
@@ -56,7 +54,7 @@ class CtxTests {
 
         val x = BigInteger("4239784793298479823749828349823642394862349876923487")// private key
         println("Calculate a Pedersen blinding factor... DONE")
-        val a = BigInteger.valueOf(commitment.toLong()) // committed to amount
+        val a = BigInteger.valueOf(commitment.toLong()) // commitment to an amount.
 
         // xG + aH
         val pedersenPoint: ECPoint = cAmounts.pedersenCommitment(x, a)
@@ -66,77 +64,30 @@ class CtxTests {
         val rangeKeys: List<ECPoint> = cAmounts.createAllRingPublicKeyPoints(pedersenPoint, maxValue)
 
         assertEquals(X25519.g.multiply(x), rangeKeys[commitment])
-        println("Compute all other public keys in ring (range keys) for commitments 0 to $maxValue... DONE")
+        println("Compute all other public keys in ring (range keys) for commitments [0-$maxValue)... DONE")
 
-        val h = cAmounts.aosComputehOpt(pedersenPoint)
-        // val h = cAmounts.aosComputehOpt(rangeKeys)
+        val aosSig = AOS.sign(X25519.n, X25519.g, pedersenPoint.getEncoded(true), rangeKeys, a.toInt(), x)
+        println("AOS Range Proof ... DONE")
 
-        val y = cAmounts.aosComputey(x, h)
-
-        val u = BigInteger("9093859079483274983264238467329443286328479432")
-        println("Calculate u value of the AOS ring signature scheme... DONE")
-
-        val chk1 = cAmounts.aosFirstChallengeOpt(y, pedersenPoint, u, h)
-        // val chk1 = cAmounts.aosFirstChallenge(rangeKeys, y, pedersenPoint, u, h)
-
-        val sis = kotlin.arrayOfNulls<BigInteger>(maxValue)
-        var chk = chk1
-        for (i in commitment + 1 until maxValue) {
-            val si = BigInteger.valueOf(99999L * (i + 1)) // We should be able to recompute it.
-            sis[i] = si
-            // chi+1 = H(L, y, m, [si] * g + [chi] * yi, [si] * h + [chi] * y)
-            chk = cAmounts.aosOtherChallengesOpt(
-                    // rangeKeys,
-                    y,
-                    pedersenPoint,
-                    cAmounts.x9ECParameters.g.multiply(si).add(rangeKeys[i].multiply(chk)),
-                    h.multiply(si).add(y.multiply(chk))
-            )
-        }
-
-        val chk0 = chk
-        for (i in 0 until commitment) {
-            val si = BigInteger.valueOf(99999L * (i + 1)) // We should be able to recompute it.
-            sis[i] = si
-            // chi+1 = H(L, y, m, [si] * g + [chi] * yi, [si] * h + [chi] * y)
-            chk = cAmounts.aosOtherChallengesOpt(
-                    // rangeKeys,
-                    y,
-                    pedersenPoint,
-                    cAmounts.x9ECParameters.g.multiply(si).add(rangeKeys[i].multiply(chk)),
-                    h.multiply(si).add(y.multiply(chk))
-            )
-        }
-
-        val sk = cAmounts.aosSk(u, x, chk)
-        sis[commitment] = sk
-        val ctxSig = ctxSignature(chk0, sis.toList(), y)
-        println("---")
-        println("Calculating AOS signature... DONE")
-        println("Signature: $ctxSig")
-
-        // VERIFY
-        var chk2 = ctxSig.chk0
-        for (i in 0 until maxValue) {
-            // chi+1 = H(L, y, m, [si] * g + [chi] * yi, [si] * h + [chi] * y)
-            chk2 = cAmounts.aosOtherChallengesOpt(
-                    // rangeKeys,
-                    y,
-                    pedersenPoint,
-                    cAmounts.x9ECParameters.g.multiply(ctxSig.si[i]).add(rangeKeys[i].multiply(chk2)),
-                    h.multiply(ctxSig.si[i]).add(y.multiply(chk2))
-            )
-            // println(chk2)
-        }
-        assertEquals(ctxSig.chk0, chk2)
+        AOS.verify(X25519.g, pedersenPoint.getEncoded(true), rangeKeys, aosSig)
         println("Verifying Range Proof... DONE")
+    }
+
+    @Test
+    fun `AOS signature test`() {
+        val m = "messageToSign".toByteArray()
+        val X25519 = NISTNamedCurves.getByName("P-256")
+        val randomKeys = generateRandomAOSKeys(X25519.g, 256)
+
+        val sig = AOS.sign(X25519.n, X25519.g, m, randomKeys.publicKeys, randomKeys.index, randomKeys.privateKey)
+        AOS.verify(X25519.g, m, randomKeys.publicKeys, sig)
     }
 
     @Test
     fun `Borromean signature test`() {
         val m = "messageToSign".toByteArray()
         val X25519 = NISTNamedCurves.getByName("P-256")
-        val randomKeys = generateRandomKeys(X25519.g, 16, 4)
+        val randomKeys = generateRandomBorromeanKeys(X25519.g, 16, 4)
 
         val sig = Borromean.sign(X25519.n, X25519.g, m, randomKeys.publicKeys, randomKeys.indices, randomKeys.privateKeys)
         Borromean.verify(X25519.g, m, randomKeys.publicKeys, sig)

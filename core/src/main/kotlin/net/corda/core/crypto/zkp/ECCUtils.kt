@@ -7,7 +7,7 @@ import org.bouncycastle.math.ec.ECPoint
 import org.bouncycastle.pqc.math.linearalgebra.IntegerFunctions
 import java.math.BigInteger
 
-private val k = 256  // Security parameter, based on Boneh et al. scheme.
+private const val k = 256  // Security parameter, based on Boneh et al. scheme.
 
 /** Map a ByteArray to an elliptic curve point using using the Boneh et al. Try-And-Increment algorithm. */
 fun ECCurve.mapToPoint(bytes: ByteArray): ECPoint {

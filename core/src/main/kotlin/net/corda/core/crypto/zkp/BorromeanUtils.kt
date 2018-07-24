@@ -9,7 +9,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 // TODO: allow variant size per ring.
 /** Generate random keys required to test Borromean signatures. */
-fun generateRandomKeys(g: ECPoint, numOfRings: Int = 1, keysPerRing: Int = 2): BorromeanKeys {
+fun generateRandomBorromeanKeys(g: ECPoint, numOfRings: Int = 1, keysPerRing: Int = 2): BorromeanKeys {
     val indices = List(numOfRings) { ThreadLocalRandom.current().nextInt(keysPerRing) }
     val privateKeys = mutableListOf<BigInteger>()
     val publicKeys = mutableListOf<List<ECPoint>>()
