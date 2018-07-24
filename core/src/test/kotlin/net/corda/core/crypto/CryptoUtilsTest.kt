@@ -2,6 +2,8 @@ package net.corda.core.crypto
 
 import com.google.common.collect.Sets
 import net.corda.core.crypto.zkp.Borromean
+import net.corda.core.crypto.zkp.generateRandomKeys
+import net.corda.core.crypto.zkp.mapToPoint
 import net.i2p.crypto.eddsa.EdDSAKey
 import net.i2p.crypto.eddsa.EdDSAPrivateKey
 import net.i2p.crypto.eddsa.EdDSAPublicKey
@@ -28,7 +30,6 @@ import org.junit.Test
 import java.math.BigInteger
 import java.security.KeyPairGenerator
 import java.util.*
-import java.util.concurrent.ThreadLocalRandom
 import kotlin.test.*
 
 /**
@@ -1021,25 +1022,10 @@ class CryptoUtilsTest {
     @Test
     fun `Borromean signature test`() {
         val m = "messageToSign".toByteArray()
-        val X25519 = CustomNamedCurves.getByName("Curve25519")
-        val randomKeys = generateRandomKeys(X25519.g)
+        val X25519 = NISTNamedCurves.getByName("P-256")
+        val randomKeys = generateRandomKeys(X25519.g, 16, 4)
+
         val sig = Borromean.sign(X25519.n, X25519.g, m, randomKeys.publicKeys, randomKeys.indices, randomKeys.privateKeys)
-        println(sig)
-        Borromean.verify(X25519.n, X25519.g, m, randomKeys.publicKeys, sig)
+        Borromean.verify(X25519.g, m, randomKeys.publicKeys, sig)
     }
-
-    // TODO: allow variant size per ring.
-    private fun generateRandomKeys(g: ECPoint, numOfRings: Int = 8, keysPerRing: Int = 2): RandomKeys {
-        val indices = List(numOfRings) { ThreadLocalRandom.current().nextInt(keysPerRing) }
-        val privateKeys = mutableListOf<BigInteger>()
-        val publicKeys = mutableListOf<List<ECPoint>>()
-        for (i in 0 until numOfRings) {
-            val privateK = List(keysPerRing) { BigInteger(256, newSecureRandom()) }
-            privateKeys.add(privateK[indices[i]])
-            publicKeys.add(privateK.map { g.multiply(it) })
-        }
-        return RandomKeys(publicKeys, indices, privateKeys)
-    }
-
-    private data class RandomKeys(val publicKeys: List<List<ECPoint>>, val indices: List<Int>, val privateKeys: List<BigInteger>)
 }
