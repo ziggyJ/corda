@@ -107,15 +107,16 @@ buildscript {
         classpath "net.i2p.crypto:eddsa:$eddsa_version" // Needed for ServiceIdentityGenerator in the build environment.
         classpath "org.owasp:dependency-check-gradle:${dependency_checker_version}"
         classpath "org.jfrog.buildinfo:build-info-extractor-gradle:$artifactory_plugin_version"
+        classpath "gradle.plugin.com.github.spotbugs:spotbugs-gradle-plugin:1.6.2"
     }
 }
+
 
 plugins {
     // TODO The capsule plugin requires the newer DSL plugin block.It would be nice if we could unify all the plugins into one style,
     // but the DSL has some restrictions e.g can't be used on the allprojects section. So we should revisit this if there are improvements in Gradle.
     // Version 1.0.2 of this plugin uses capsule:1.0.1
     id "us.kirchmeier.capsule" version "1.0.2"
-    id "com.github.spotbugs" version "1.6.2"
 }
 
 ext {
@@ -137,12 +138,21 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 
+
+
+
 allprojects {
+
+
     apply plugin: 'kotlin'
     apply plugin: 'jacoco'
     apply plugin: 'org.owasp.dependencycheck'
+    apply plugin: 'com.github.spotbugs'
     apply plugin: 'kotlin-allopen'
-    apply plugin:'com.github.spotbugs'
+
+    dependencies {
+        spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.7.1'
+    }
 
     allOpen {
         annotations(
@@ -156,9 +166,30 @@ allprojects {
         suppressionFile = '.ci/dependency-checker/suppressedLibraries.xml'
         cveValidForHours = 1
         format = 'ALL'
+        outputDirectory = 'build/reports/owasp'
     }
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
+
+    //FindBugs task that load security rules only
+    task findSecurityBugs(type:  com.github.spotbugs.SpotBugsTask) {
+
+        classes = fileTree(project.rootDir.absolutePath).include("**/*.class");
+        source = fileTree(project.rootDir.absolutePath).include("**/*.kt");
+        classpath = files()
+        pluginClasspath = project.configurations.spotbugsPlugins
+
+        spotbugs {
+            toolVersion = "3.1.6"
+            sourceSets = [] // [sourceSets.main] for Java project
+            ignoreFailures = true
+            reportsDir = file("$project.buildDir/reports/findsecbugs")
+            effort = "max"
+            reportLevel = "low"
+            //includeFilter = file("$rootProject.projectDir/fsb-include.xml")
+            //excludeFilter = file("$rootProject.projectDir/fsb-exclude.xml")
+        }
+    }    
 
     tasks.withType(JavaCompile) {
         options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-Xlint:-options" << "-parameters"
@@ -247,6 +278,8 @@ allprojects {
     }
 }
 
+
+
 // Check that we are running on a Java 8 JDK. The source/targetCompatibility values above aren't sufficient to
 // guarantee this because those are properties checked by the Java plugin, but we're using Kotlin.
 //
@@ -260,6 +293,7 @@ repositories {
     mavenCentral()
     jcenter()
 }
+
 
 // Required for building out the fat JAR.
 dependencies {
