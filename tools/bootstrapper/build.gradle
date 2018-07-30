@@ -5,6 +5,10 @@ apply plugin: 'com.jfrog.artifactory'
 
 description 'Network bootstrapper'
 
+repositories {
+    mavenLocal()
+}
+
 dependencies {
     compile project(':node-api')
     compile "info.picocli:picocli:$picocli_version"
