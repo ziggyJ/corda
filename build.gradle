@@ -115,6 +115,7 @@ plugins {
     // but the DSL has some restrictions e.g can't be used on the allprojects section. So we should revisit this if there are improvements in Gradle.
     // Version 1.0.2 of this plugin uses capsule:1.0.1
     id "us.kirchmeier.capsule" version "1.0.2"
+    id "com.github.spotbugs" version "1.6.2"
 }
 
 ext {
@@ -141,6 +142,7 @@ allprojects {
     apply plugin: 'jacoco'
     apply plugin: 'org.owasp.dependencycheck'
     apply plugin: 'kotlin-allopen'
+    apply plugin:'com.github.spotbugs'
 
     allOpen {
         annotations(
