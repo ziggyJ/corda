@@ -8,6 +8,9 @@ import picocli.CommandLine.*
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.system.exitProcess
+import java.util.ArrayList
+
+
 
 fun main(args: Array<String>) {
     val main = Main()
@@ -49,6 +52,11 @@ class Main : Runnable {
 
     @Option(names = ["--install-shell-extensions"], description = ["Install bootstrapper alias and autocompletion for bash and zsh"])
     var install: Boolean = false
+
+    internal class LoggingLevels : ArrayList<String>(listOf("INFO", "DEBUG", "WARN", "ERROR"))
+
+    @Option(names = ["--logging-level"], completionCandidates = LoggingLevels::class, description = ["Valid values: \${COMPLETION-CANDIDATES}"])
+    var loggingLevel: String = "ERROR"
 
     // Return the lines in the file if it exists, else return an empty mutable list
     private fun getFileLines(filePath: Path): MutableList<String> {
