@@ -28,7 +28,6 @@ import net.corda.testing.node.TestClock
 import net.corda.testing.node.internal.*
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
-import org.junit.Before
 import org.junit.Test
 import java.time.Duration
 import java.time.Instant
@@ -38,20 +37,12 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ValidatingNotaryServiceTests {
-    private lateinit var mockNet: InternalMockNetwork
-    private lateinit var notaryNode: TestStartedNode
-    private lateinit var aliceNode: TestStartedNode
-    private lateinit var notary: Party
-    private lateinit var alice: Party
 
-    @Before
-    fun setup() {
-        mockNet = InternalMockNetwork(cordappsForAllNodes = cordappsForPackages("net.corda.testing.contracts"))
-        aliceNode = mockNet.createNode(InternalMockNodeParameters(legalName = ALICE_NAME))
-        notaryNode = mockNet.defaultNotaryNode
-        notary = mockNet.defaultNotaryIdentity
-        alice = aliceNode.info.singleIdentity()
-    }
+    private val mockNet = InternalMockNetwork(cordappsForAllNodes = cordappsForPackages("net.corda.testing.contracts"))
+    private val notaryNode = mockNet.defaultNotaryNode
+    private val aliceNode = mockNet.createNode(InternalMockNodeParameters(legalName = ALICE_NAME))
+    private val notary = mockNet.defaultNotaryIdentity
+    private val alice = aliceNode.info.singleIdentity()
 
     @After
     fun cleanUp() {
@@ -327,7 +318,7 @@ class ValidatingNotaryServiceTests {
         return future
     }
 
-    private fun issueState(serviceHub: ServiceHub, identity: Party): StateAndRef<*> {
+    private fun issueState(serviceHub: ServiceHub, identity: Party, notary: Party = this.notary): StateAndRef<*> {
         val tx = DummyContract.generateInitial(Random().nextInt(), notary, identity.ref(0))
         val signedByNode = serviceHub.signInitialTransaction(tx)
         val stx = notaryNode.services.addSignature(signedByNode, notary.owningKey)
