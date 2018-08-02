@@ -1,6 +1,7 @@
 package net.corda.node.flows
 
 import co.paralleluniverse.fibers.Suspendable
+import net.corda.core.cordapp.Cordapp
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.internal.concurrent.transpose
@@ -8,10 +9,12 @@ import net.corda.core.internal.packageName
 import net.corda.core.messaging.startFlow
 import net.corda.core.utilities.getOrThrow
 import net.corda.core.utilities.unwrap
+import net.corda.testing.core.DUMMY_NOTARY_NAME
 import net.corda.testing.core.singleIdentity
 import net.corda.testing.driver.DriverParameters
 import net.corda.testing.driver.TestCorDapp
 import net.corda.testing.driver.driver
+import net.corda.testing.node.NotarySpec
 import org.junit.Test
 import kotlin.test.assertEquals
 
@@ -47,7 +50,6 @@ class AsymmetricCorDappsTests {
     fun noSharedCorDappsWithAsymmetricSpecificClasses() {
 
         driver(DriverParameters(startNodesInProcess = false, cordappsForAllNodes = emptySet())) {
-
             val nodeA = startNode(additionalCordapps = setOf(TestCorDapp.Factory.create("Szymon CorDapp", "1.0", classes = setOf(Ping::class.java)))).getOrThrow()
             val nodeB = startNode(additionalCordapps = setOf(TestCorDapp.Factory.create("Szymon CorDapp", "1.0", classes = setOf(Ping::class.java, Pong::class.java)))).getOrThrow()
             nodeA.rpc.startFlow(::Ping, nodeB.nodeInfo.singleIdentity(), 1).returnValue.getOrThrow()
@@ -78,6 +80,25 @@ class AsymmetricCorDappsTests {
         driver(DriverParameters(startNodesInProcess = true, cordappsForAllNodes = setOf(sharedCordapp))) {
 
             val (nodeA, nodeB) = listOf(startNode(), startNode(additionalCordapps = setOf(cordappForNodeB))).transpose().getOrThrow()
+            nodeA.rpc.startFlow(::Ping, nodeB.nodeInfo.singleIdentity(), 1).returnValue.getOrThrow()
+        }
+    }
+
+    @Test
+    fun `validating notary without cordapp fails gracefully`() {
+        val cordappForNodeA = TestCorDapp.Factory.create("nodeA_only", "1.0", classes = setOf(Ping::class.java))
+        val cordappForNodeB = TestCorDapp.Factory.create("nodeB_only", "1.0", classes = setOf(Pong::class.java))
+
+        driver(DriverParameters(
+                startNodesInProcess = false,
+                notarySpecs = listOf(NotarySpec(DUMMY_NOTARY_NAME, true)),
+                cordappsForAllNodes = emptySet())) {
+
+            val (nodeA, nodeB) = listOf(
+                    startNode(additionalCordapps = setOf(cordappForNodeA)),
+                    startNode(additionalCordapps = setOf(cordappForNodeB)))
+                    .transpose().getOrThrow()
+
             nodeA.rpc.startFlow(::Ping, nodeB.nodeInfo.singleIdentity(), 1).returnValue.getOrThrow()
         }
     }
