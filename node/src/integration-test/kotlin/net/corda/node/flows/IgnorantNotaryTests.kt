@@ -34,7 +34,12 @@ class IOUContract : Contract {
         val IOU_CONTRACT_ID: ContractClassName = IOUContract::class.java.name
     }
 
-    override fun verify(tx: LedgerTransaction) = Unit
+    override fun verify(tx: LedgerTransaction) = requireThat {
+        val output = tx.outputs.single().data
+        "This must be an IOU transaction." using (output is IOUState)
+        val iou = output as IOUState
+        "I won't accept IOUs with a value over 100." using (iou.value <= 100)
+    }
 
     interface Commands : CommandData {
         class Create : Commands
