@@ -8,14 +8,23 @@ import net.corda.core.context.InvocationOrigin
 import net.corda.core.node.AppServiceHub
 import net.corda.core.node.ServiceHub
 import net.corda.core.node.services.CordaService
+import net.corda.core.node.services.Vault
+import net.corda.core.node.services.queryBy
+import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.serialization.SingletonSerializeAsToken
 import net.corda.core.utilities.OpaqueBytes
 import net.corda.core.utilities.ProgressTracker
 import net.corda.finance.DOLLARS
+import net.corda.finance.contracts.asset.Cash
 import net.corda.finance.flows.CashIssueFlow
 import net.corda.node.internal.cordapp.DummyRPCFlow
+import net.corda.testing.core.DUMMY_NOTARY_NAME
+import net.corda.testing.core.TestIdentity
+import net.corda.testing.internal.vault.DummyLinearContract
+import net.corda.testing.internal.vault.VaultFiller
 import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.StartedMockNode
+import org.assertj.core.api.Assertions
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -74,15 +83,40 @@ class TestCordaService2(val appServiceHub: AppServiceHub): SingletonSerializeAsT
 @CordaService
 class LegacyCordaService(@Suppress("UNUSED_PARAMETER") simpleServiceHub: ServiceHub) : SingletonSerializeAsToken()
 
+
+@CordaService
+class TestObserverService(private val appServiceHub: AppServiceHub) : SingletonSerializeAsToken() {
+    init {
+        monitor()
+    }
+
+    private fun monitor() =
+            appServiceHub.vaultService.trackBy(
+                    DummyLinearContract.State::class.java,
+                    QueryCriteria.LinearStateQueryCriteria(status = Vault.StateStatus.UNCONSUMED)
+            ).updates.subscribe {
+                it.produced.forEach {
+                    println("Starting flow for vault update: $it")
+                    val handle = appServiceHub.startFlow(DummyServiceFlow())
+                    handle.returnValue.get()
+                    println("Completed flow for vault update: $it")
+                }
+            }
+}
+
 class CordaServiceTest {
     private lateinit var mockNet: MockNetwork
     private lateinit var nodeA: StartedMockNode
+    private lateinit var vaultFiller: VaultFiller
 
     @Before
     fun start() {
-        mockNet = MockNetwork(threadPerNode = true, cordappPackages = listOf("net.corda.node.internal","net.corda.finance"))
+        mockNet = MockNetwork(threadPerNode = true, cordappPackages = listOf("net.corda.node.internal","net.corda.testing.internal.vault","net.corda.finance"))
         nodeA = mockNet.createNode()
         mockNet.startNodes()
+
+        val dummyNotary = TestIdentity(mockNet.defaultNotaryIdentity.name, 20)
+        vaultFiller = VaultFiller(nodeA.services, dummyNotary)
     }
 
     @After
@@ -95,10 +129,12 @@ class CordaServiceTest {
         val service = nodeA.services.cordaService(TestCordaService::class.java)
         val service2 = nodeA.services.cordaService(TestCordaService2::class.java)
         val legacyService = nodeA.services.cordaService(LegacyCordaService::class.java)
+        val observerService = nodeA.services.cordaService(TestObserverService::class.java)
         assertEquals(TestCordaService::class.java, service.javaClass)
         assertEquals(TestCordaService2::class.java, service2.javaClass)
         assertNotEquals(service.appServiceHub, service2.appServiceHub) // Each gets a customised AppServiceHub
         assertEquals(LegacyCordaService::class.java, legacyService.javaClass)
+        assertEquals(TestObserverService::class.java, observerService.javaClass)
     }
 
     @Test
@@ -120,4 +156,12 @@ class CordaServiceTest {
         service.startServiceFlowAndTrack()
     }
 
+    @Test
+    fun `Test flow can be triggered by trackBy Observer`() {
+        nodeA.services.cordaService(TestObserverService::class.java)
+        vaultFiller.fillWithSomeTestLinearStates(1, "ABC", notary = mockNet.defaultNotaryIdentity)
+        // note: our TestObserverService starts a simple flow that issues Cash upon encountering a new Linear State
+        val result = nodeA.services.vaultService.queryBy<Cash.State>()
+        Assertions.assertThat(result.states).hasSize(1)
+    }
 }

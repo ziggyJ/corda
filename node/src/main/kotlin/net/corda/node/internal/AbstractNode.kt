@@ -326,9 +326,9 @@ abstract class AbstractNode<S>(val configuration: NodeConfiguration,
             nodeProperties.start()
             keyManagementService.start(keyPairs)
             val notaryService = makeNotaryService(myNotaryIdentity)
-            installCordaServices(myNotaryIdentity)
             contractUpgradeService.start()
             vaultService.start()
+            installCordaServices(myNotaryIdentity)
             ScheduledActivityObserver.install(vaultService, schedulerService, flowLogicRefFactory)
 
             val frozenTokenizableServices = tokenizableServices!!

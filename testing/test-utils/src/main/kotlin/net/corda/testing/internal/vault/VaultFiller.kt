@@ -72,13 +72,14 @@ class VaultFiller @JvmOverloads constructor(
     @JvmOverloads
     fun fillWithSomeTestDeals(dealIds: List<String>,
                               issuerServices: ServiceHub = services,
-                              participants: List<AbstractParty> = emptyList()): Vault<DealState> {
+                              participants: List<AbstractParty> = emptyList(),
+                              notary: Party = defaultNotary.party): Vault<DealState> {
         val myKey: PublicKey = services.myInfo.chooseIdentity().owningKey
         val me = AnonymousParty(myKey)
 
         val transactions: List<SignedTransaction> = dealIds.map {
             // Issue a deal state
-            val dummyIssue = TransactionBuilder(notary = defaultNotary.party).apply {
+            val dummyIssue = TransactionBuilder(notary = notary).apply {
                 addOutputState(DummyDealContract.State(ref = it, participants = participants.plus(me)), DUMMY_DEAL_PROGRAM_ID)
                 addCommand(dummyCommand())
             }
@@ -98,6 +99,7 @@ class VaultFiller @JvmOverloads constructor(
     fun fillWithSomeTestLinearStates(numberToCreate: Int,
                                      externalId: String? = null,
                                      participants: List<AbstractParty> = emptyList(),
+                                     notary: Party = defaultNotary.party,
                                      uniqueIdentifier: UniqueIdentifier? = null,
                                      linearString: String = "",
                                      linearNumber: Long = 0L,
@@ -109,7 +111,7 @@ class VaultFiller @JvmOverloads constructor(
         val signatureMetadata = SignatureMetadata(services.myInfo.platformVersion, Crypto.findSignatureScheme(issuerKey.public).schemeNumberID)
         val transactions: List<SignedTransaction> = (1..numberToCreate).map {
             // Issue a Linear state
-            val dummyIssue = TransactionBuilder(notary = defaultNotary.party).apply {
+            val dummyIssue = TransactionBuilder(notary = notary).apply {
                 addOutputState(DummyLinearContract.State(
                         linearId = uniqueIdentifier ?: UniqueIdentifier(externalId),
                         participants = participants.plus(me),
