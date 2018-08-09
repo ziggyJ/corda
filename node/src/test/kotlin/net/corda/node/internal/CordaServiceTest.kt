@@ -1,16 +1,15 @@
 package net.corda.node.internal
 
 import co.paralleluniverse.fibers.Suspendable
-import net.corda.core.flows.FlowLogic
-import net.corda.core.flows.StartableByService
 import net.corda.core.context.InvocationContext
 import net.corda.core.context.InvocationOrigin
+import net.corda.core.flows.FlowLogic
+import net.corda.core.flows.StartableByService
 import net.corda.core.node.AppServiceHub
 import net.corda.core.node.ServiceHub
 import net.corda.core.node.services.CordaService
-import net.corda.core.node.services.Vault
 import net.corda.core.node.services.queryBy
-import net.corda.core.node.services.vault.QueryCriteria
+import net.corda.core.node.services.trackBy
 import net.corda.core.serialization.SingletonSerializeAsToken
 import net.corda.core.utilities.OpaqueBytes
 import net.corda.core.utilities.ProgressTracker
@@ -18,9 +17,7 @@ import net.corda.finance.DOLLARS
 import net.corda.finance.contracts.asset.Cash
 import net.corda.finance.flows.CashIssueFlow
 import net.corda.node.internal.cordapp.DummyRPCFlow
-import net.corda.testing.core.DUMMY_NOTARY_NAME
 import net.corda.testing.core.TestIdentity
-import net.corda.testing.internal.vault.DummyLinearContract
 import net.corda.testing.internal.vault.VaultFiller
 import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.StartedMockNode
@@ -91,10 +88,7 @@ class TestObserverService(private val appServiceHub: AppServiceHub) : SingletonS
     }
 
     private fun monitor() =
-            appServiceHub.vaultService.trackBy(
-                    DummyLinearContract.State::class.java,
-                    QueryCriteria.LinearStateQueryCriteria(status = Vault.StateStatus.UNCONSUMED)
-            ).updates.subscribe {
+            appServiceHub.vaultService.trackBy<Cash.State>().updates.subscribe {
                 it.produced.forEach {
                     println("Starting flow for vault update: $it")
                     val handle = appServiceHub.startFlow(DummyServiceFlow())
@@ -159,8 +153,9 @@ class CordaServiceTest {
     @Test
     fun `Test flow can be triggered by trackBy Observer`() {
         nodeA.services.cordaService(TestObserverService::class.java)
-        vaultFiller.fillWithSomeTestLinearStates(1, "ABC", notary = mockNet.defaultNotaryIdentity)
-        // note: our TestObserverService starts a simple flow that issues Cash upon encountering a new Linear State
+        nodeA.startFlow(DummyServiceFlow())
+        // note: triggers TestObserverService via its pre-registered trackBy() observer, which starts another Flow
+        // DEADLOCKED here !!!
         val result = nodeA.services.vaultService.queryBy<Cash.State>()
         Assertions.assertThat(result.states).hasSize(1)
     }
