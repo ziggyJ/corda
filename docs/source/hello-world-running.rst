@@ -42,9 +42,7 @@ Interacting with the nodes
 Once our nodes are running, let's order Bank of Breakfast Tea to create an IOU of 99 with Bank of Big Apples. We do
 this by going to Bank of Breakfast Tea tab and starting the ``IOUFlow`` by typing:
 
-.. container:: codeset
-
-    .. code-block:: kotlin
+.. code:: bash
 
         start IOUFlow iouValue: 99, otherParty: "Bank of Big Apples"
 
@@ -55,7 +53,7 @@ single function call.
 If the flow worked, it should have recorded a new IOU in the vaults of both Bank of Breakfast Tea and Bank of Big
 Apples. As before, we can check the contents of each node's vault by running:
 
-.. code-block:: bash
+.. code:: bash
 
         run vaultQuery contractStateType: com.template.IOUState
 
