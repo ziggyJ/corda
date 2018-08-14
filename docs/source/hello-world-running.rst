@@ -9,48 +9,57 @@ Running our CorDapp
 
 Now that we've written a CorDapp, it's time to test it by running it on a network of Corda nodes.
 
-Building our CorDapp
---------------------
+Compiling our CorDapp
+---------------------
+Open a terminal window at the root of the template folder and run the following command:
 
-TODO
+* Unix/Mac OSX: ``./gradlew jar``
+* Windows: ``gradlew.bat jar``
+
+This will compile each module in the project into its own CorDapp JAR and output it to the module's ``build/libs``
+folder. In our case, we are interested in two CorDapps:
+
+* ``cordapp-contracts-states/build/libs/cordapp-contracts-states-0.1.jar``
+* ``cordapp/build/libs/cordapp-0.1.jar``
+
+The first contains our state and contract definitions. The second contains our flow definitions.
 
 Installing our CorDapp
 ----------------------
+We are going to run our CorDapp on the same network we defined last time (Notary, Bank of Breakfast Tea, and Bank of
+Big Apples). Perform the following steps:
 
-TODO
+* Start DemoBench
+* Create a non-validating notary as before
+* When adding the Bank of Breakfast Tea and Bank of Big Apples nodes:
+    * Click ``Add CorDapp``
+    * Navigate to the ``build/libs`` folder
+    * Select our CorDapp JARs - ``cordapp-contracts-states-0.1.jar`` and ``cordapp-0.1.jar``
+    * Click ``Start Node``
 
 Interacting with the nodes
 --------------------------
-Now that our nodes are running, let's order one of them to create an IOU by kicking off our ``IOUFlow``. In a larger
-app, we'd generally provide a web API sitting on top of our node. Here, for simplicity, we'll be interacting with the
-node via its built-in CRaSH shell.
-
-Go to the terminal window displaying the CRaSH shell of PartyA. Typing ``help`` will display a list of the available
-commands.
-
-.. note:: Local terminal shell is available only in a development mode. In production environment SSH server can be enabled.
-    More about SSH and how to connect can be found on the :doc:`shell` page.
-
-We want to create an IOU of 99 with PartyB. We start the ``IOUFlow`` by typing:
+Once our nodes are running, let's order Bank of Breakfast Tea to create an IOU of 99 with Bank of Big Apples. We do
+this by going to Bank of Breakfast Tea tab and starting the ``IOUFlow`` by typing:
 
 .. container:: codeset
 
     .. code-block:: kotlin
 
-        start IOUFlow iouValue: 99, otherParty: "O=PartyB,L=New York,C=US"
+        start IOUFlow iouValue: 99, otherParty: "Bank of Big Apples"
 
-This single command will cause PartyA and PartyB to automatically agree an IOU. This is one of the great advantages of
-the flow framework - it allows you to reduce complex negotiation and update processes into a single function call.
+This single command will cause Bank of Breakfast Tea and Bank of Big Apples to automatically agree an IOU. This is one
+of the great strengths of the flow framework - it allows you to reduce complex negotiation and update processes into a
+single function call.
 
-If the flow worked, it should have recorded a new IOU in the vaults of both PartyA and PartyB. Let's check.
-
-We can check the contents of each node's vault by running:
+If the flow worked, it should have recorded a new IOU in the vaults of both Bank of Breakfast Tea and Bank of Big
+Apples. As before, we can check the contents of each node's vault by running:
 
 .. code-block:: bash
 
         run vaultQuery contractStateType: com.template.IOUState
 
-The vaults of PartyA and PartyB should both display the following output:
+The vaults of Bank of Breakfast Tea and Bank of Big Apples should both display the following output:
 
 .. code:: bash
 
@@ -58,13 +67,13 @@ The vaults of PartyA and PartyB should both display the following output:
     - state:
         data:
           value: 99
-          lender: "C=GB,L=London,O=PartyA"
-          borrower: "C=US,L=New York,O=PartyB"
+          lender: "O=Bank of Breakfast Tea,L=Liverpool,C=GB"
+          borrower: "O=Bank of Big Apples,L=New York,C=US"
           participants:
-          - "C=GB,L=London,O=PartyA"
-          - "C=US,L=New York,O=PartyB"
+          - "O=Bank of Breakfast Tea,L=Liverpool,C=GB"
+          - "O=Bank of Big Apples,L=New York,C=US"
         contract: "com.template.contract.IOUContract"
-        notary: "C=GB,L=London,O=Notary"
+        notary: "O=Notary,L=Rome,C=IT"
         encumbrance: null
         constraint:
           attachmentId: "F578320232CAB87BB1E919F3E5DB9D81B7346F9D7EA6D9155DC0F7BA8E472552"
@@ -79,7 +88,7 @@ The vaults of PartyA and PartyB should both display the following output:
       recordedTime: 1506415268.875000000
       consumedTime: null
       status: "UNCONSUMED"
-      notary: "C=GB,L=London,O=Notary"
+      notary: "O=Notary,L=Rome,C=IT"
       lockId: null
       lockUpdateTime: 1506415269.548000000
     totalStatesAvailable: -1
