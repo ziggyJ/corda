@@ -7,6 +7,8 @@
 Writing the state
 =================
 
+.. contents::
+
 In Corda, shared facts on the ledger are represented as states. Our first task will be to define a new state type to
 represent an IOU.
 

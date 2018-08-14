@@ -7,6 +7,8 @@
 Running our CorDapp
 ===================
 
+.. contents::
+
 Now that we've written a CorDapp, it's time to test it by running it on a network of Corda nodes.
 
 Compiling our CorDapp
@@ -31,7 +33,7 @@ Big Apples). Perform the following steps:
 
 * Start DemoBench
 * Create a non-validating notary as before
-* When adding the Bank of Breakfast Tea and Bank of Big Apples nodes:
+* When adding the Bank of Breakfast Tea and Bank of Big Apples nodes, also do the following:
     * Click ``Add CorDapp``
     * Navigate to the ``build/libs`` folder
     * Select our CorDapp JARs - ``cordapp-contracts-states-0.1.jar`` and ``cordapp-0.1.jar``
@@ -94,6 +96,8 @@ The vaults of Bank of Breakfast Tea and Bank of Big Apples should both display t
     otherResults: []
 
 This is the transaction issuing our ``IOUState`` onto a ledger.
+
+TODO: TALK ABOUT DATA PRIVACY BY CREATING AN ADDITIONAL NODE THAT SEES NOTHING
 
 Conclusion
 ----------

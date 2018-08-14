@@ -6,6 +6,9 @@
 
 Writing the flow
 ================
+
+.. contents::
+
 A flow encodes a sequence of steps that a node can perform to achieve a specific ledger update. By installing new flows
 on a node, we allow the node to handle new business processes. The flow we define will allow a node to issue an
 ``IOUState`` onto the ledger.

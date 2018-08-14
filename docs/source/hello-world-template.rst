@@ -7,6 +7,8 @@
 The CorDapp Template
 ====================
 
+.. contents::
+
 When writing a new CorDapp, you’ll generally want to base it on the standard templates:
 
 * The `Java Cordapp Template <https://github.com/corda/cordapp-template-java>`_

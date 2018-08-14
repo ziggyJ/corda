@@ -1,5 +1,17 @@
-Writing a CorDapp
-=================
+Hello, World! Pt.2 - Writing a CorDapp
+======================================
+
+.. contents::
+
+.. note:: This tutorial follows on from :doc:`Hello, World Pt.1 <tutorial-demobench>`.
+
+By this point, you've :doc:`run your first set of nodes <tutorial-demobench>` using DemoBench and carried out some
+transactions using the ``corda-finance`` CorDapp.
+
+If you're a developer, the next step is to write your own CorDapp. Before doing so, make sure you :doc:`follow these
+instructions <getting-set-up>` to ensure that your dev environment is set up.
+
+This tutorial is split into four sections:
 
 .. toctree::
     :maxdepth: 1
@@ -8,12 +20,6 @@ Writing a CorDapp
     hello-world-state
     hello-world-flow
     hello-world-running
-
-By this point, you've :doc:`run your first set of nodes <tutorial-demobench-introduction>` using DemoBench and carried
-out some transactions using the Finance CorDapp.
-
-If you're a developer, the next step is to write your own CorDapp. Before doing so, make sure you :doc:`follow these
-instructions <getting-set-up>` to ensure that your dev environment is set up.
 
 Our use-case
 ------------
