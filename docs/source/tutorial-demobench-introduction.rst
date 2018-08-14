@@ -1,19 +1,21 @@
-Writing a CorDapp
-=================
+Hello, World!
+=============
 
-.. toctree::
-    :maxdepth: 1
+.. contents::
 
-    hello-world-template
-    hello-world-state
-    hello-world-flow
-    hello-world-running
+Corda is an open-source blockchain platform. It allows participants who are running nodes to agree updates to a shared
+ledger.
 
-By this point, you've :doc:`run your first set of nodes <tutorial-demobench-introduction>` using DemoBench and carried
-out some transactions using the Finance CorDapp.
+In this, the first of a sequence of Hello, World! tutorials, we'll create a local Corda network and carry out our first
+ledger updates.
 
-If you're a developer, the next step is to write your own CorDapp. Before doing so, make sure you :doc:`follow these
-instructions <getting-set-up>` to ensure that your dev environment is set up.
+DemoBench
+---------
+We'll create our local network using a tool called DemoBench, a standalone desktop application that makes it easy to
+configure and launch local Corda nodes. Installers compatible with the latest Corda release can be downloaded from the
+`Corda website`_.
+
+.. _Corda website: https://www.corda.net/downloads
 
 Our use-case
 ------------

@@ -9,6 +9,7 @@ into a full CorDapp.
 .. toctree::
    :maxdepth: 1
 
+   tutorial-demobench-introduction
    hello-world-introduction
    tut-two-party-introduction
 

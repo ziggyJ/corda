@@ -7,91 +7,17 @@
 Running our CorDapp
 ===================
 
-Now that we've written a CorDapp, it's time to test it by running it on some real Corda nodes.
+Now that we've written a CorDapp, it's time to test it by running it on a network of Corda nodes.
 
-Deploying our CorDapp
----------------------
-Let's take a look at the nodes we're going to deploy. Open the project's ``build.gradle`` file and scroll down to the
-``task deployNodes`` section. This section defines three nodes. There are two standard nodes (``PartyA`` and
-``PartyB``), plus a special network map/notary node that is running the network map service and advertises a validating notary
-service.
+Building our CorDapp
+--------------------
 
-.. code:: bash
+TODO
 
-    task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
-        directory "./build/nodes"
-        node {
-            name "O=Notary,L=London,C=GB"
-            notary = [validating : true]
-            p2pPort 10002
-            rpcPort 10003
-            cordapps = ["net.corda:corda-finance:$corda_release_version"]
-        }
-        node {
-            name "O=PartyA,L=London,C=GB"
-            p2pPort 10005
-            rpcPort 10006
-            webPort 10007
-            cordapps = ["net.corda:corda-finance:$corda_release_version"]
-            rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL]]]
-        }
-        node {
-            name "O=PartyB,L=New York,C=US"
-            p2pPort 10008
-            rpcPort 10009
-            webPort 10010
-            sshdPort 10024
-            cordapps = ["net.corda:corda-finance:$corda_release_version"]
-            rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
-        }
-    }
+Installing our CorDapp
+----------------------
 
-We can run this ``deployNodes`` task using Gradle. For each node definition, Gradle will:
-
-* Package the project's source files into a CorDapp jar
-* Create a new node in ``build/nodes`` with our CorDapp already installed
-
-We can do that now by running the following commands from the root of the project:
-
-.. code:: bash
-
-    // On Windows
-    gradlew clean deployNodes
-
-    // On Mac
-    ./gradlew clean deployNodes
-
-Running the nodes
------------------
-Running ``deployNodes`` will build the nodes under ``build/nodes``. If we navigate to one of these folders, we'll see
-the three node folders. Each node folder has the following structure:
-
-    .. code:: bash
-
-        .
-        |____corda.jar                     // The runnable node
-        |____corda-webserver.jar           // The node's webserver (The notary doesn't need a web server)
-        |____node.conf                     // The node's configuration file
-        |____cordapps
-        |____java/kotlin-source-0.1.jar  // Our IOU CorDapp
-
-Let's start the nodes by running the following commands from the root of the project:
-
-.. code:: bash
-
-    // On Windows
-    build/nodes/runnodes.bat
-
-    // On Mac
-    build/nodes/runnodes
-
-This will start a terminal window for each node, and an additional terminal window for each node's webserver - five
-terminal windows in all. Give each node a moment to start - you'll know it's ready when its terminal windows displays
-the message, "Welcome to the Corda interactive shell.".
-
-  .. image:: resources/running_node.png
-     :scale: 25%
-     :align: center
+TODO
 
 Interacting with the nodes
 --------------------------
