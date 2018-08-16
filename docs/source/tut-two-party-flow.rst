@@ -144,9 +144,6 @@ After completing this tutorial, your CorDapp should look like this:
 * Java: https://github.com/corda/corda-tut2-solution-java
 * Kotlin: https://github.com/corda/corda-tut2-solution-kotlin
 
-You should now be ready to develop your own CorDapps. You can also find a list of sample CorDapps
-`here <https://www.corda.net/samples/>`_. As you write CorDapps, you'll also want to learn more about the
-:doc:`Corda API <corda-api>`.
-
-If you get stuck at any point, please reach out on `Slack <https://slack.corda.net/>`_ or
-`Stack Overflow <https://stackoverflow.com/questions/tagged/corda>`_.
+Next steps
+----------
+In the next tutorial, we'll look at an alternative way of spinning up Corda networks.

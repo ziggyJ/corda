@@ -138,4 +138,4 @@ There are a number of improvements we could make to this CorDapp:
 * We could add an API, to make it easier to interact with the CorDapp
 
 But for now, the biggest priority is to add an ``IOUContract`` imposing constraints on the evolution of each
-``IOUState`` over time. This will be the focus of our next tutorial.
+``IOUState`` over time. We'll be this in our next tutorial.

@@ -9,9 +9,11 @@ into a full CorDapp.
 .. toctree::
    :maxdepth: 1
 
-   tutorial-demobench
+   tutorial-hello-world-demobench
    hello-world-introduction
    tut-two-party-introduction
+   tutorial-hello-world-rpc
+   tutorial-hello-world-cordform
 
 The remaining tutorials cover individual platform features in isolation. They don't depend on the code from the Hello,
 World tutorials, and can be read in any order.

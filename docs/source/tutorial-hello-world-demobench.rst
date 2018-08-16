@@ -214,4 +214,4 @@ the Corda platform that differentiate it from other blockchains:
 Next steps
 ----------
 In running the ``corda-finance`` CorDapp, we're only scratching the surface of what Corda can do. In the next tutorial,
-we'll define our own CorDapp to allow the issuance of IOUs on the ledger.
+we'll define our own CorDapp to interact with the ledger.
