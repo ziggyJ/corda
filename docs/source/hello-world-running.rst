@@ -28,12 +28,14 @@ The first contains our state and contract definitions. The second contains our f
 
 Installing our CorDapp
 ----------------------
-We are going to run our CorDapp on the same network we defined last time (Notary, Bank of Breakfast Tea, and Bank of
-Big Apples). Perform the following steps:
+This time, we're going to run our CorDapp on a four-node network. It will include the three nodes we defined last time
+- Notary, Bank of Breakfast Tea, and Bank of Big Apples - along with a new node called Bank of Baguettes.
+
+Create the networking by performing the following steps:
 
 * Start DemoBench
 * Create a non-validating notary as before
-* When adding the Bank of Breakfast Tea and Bank of Big Apples nodes, also do the following:
+* When adding the Bank of Breakfast Tea, Bank of Big Apples and Bank of Baguettes nodes, do the following:
     * Click ``Add CorDapp``
     * Navigate to the ``build/libs`` folder
     * Select our CorDapp JARs - ``cordapp-contracts-states-0.1.jar`` and ``cordapp-0.1.jar``
@@ -59,7 +61,7 @@ Apples. As before, we can check the contents of each node's vault by running:
 
         run vaultQuery contractStateType: com.template.IOUState
 
-The vaults of Bank of Breakfast Tea and Bank of Big Apples should both display the following output:
+The vaults of Bank of Breakfast Tea and Bank of Big Apples should both display the IOU:
 
 .. code:: bash
 
@@ -95,9 +97,24 @@ The vaults of Bank of Breakfast Tea and Bank of Big Apples should both display t
     stateTypes: "UNCONSUMED"
     otherResults: []
 
-This is the transaction issuing our ``IOUState`` onto a ledger.
+However, Bank of Baguettes, another node on the same network, was not involved in this transaction and is therefore
+unaware of the agreement. Check the contents of Bank of Baguettes' vault by running:
 
-TODO: TALK ABOUT DATA PRIVACY BY CREATING AN ADDITIONAL NODE THAT SEES NOTHING
+.. code:: bash
+
+        run vaultQuery contractStateType: com.template.IOUState
+
+And you'll see nothing:
+
+.. code:: bash
+
+    {
+      "states" : [ ],
+      "statesMetadata" : [ ],
+      "totalStatesAvailable" : -1,
+      "stateTypes" : "UNCONSUMED",
+      "otherResults" : [ ]
+    }
 
 Conclusion
 ----------
