@@ -10,6 +10,7 @@ import net.corda.core.node.ServiceHub
 import net.corda.core.node.services.CordaService
 import net.corda.core.node.services.queryBy
 import net.corda.core.node.services.trackBy
+import net.corda.core.serialization.CordaSerializable
 import net.corda.core.serialization.SingletonSerializeAsToken
 import net.corda.core.utilities.OpaqueBytes
 import net.corda.core.utilities.ProgressTracker
@@ -32,6 +33,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 @StartableByService
+@CordaSerializable
 class DummyServiceFlow : FlowLogic<InvocationContext>() {
     companion object {
         object TEST_STEP : ProgressTracker.Step("Custom progress step")

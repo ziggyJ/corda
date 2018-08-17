@@ -27,6 +27,7 @@ import java.util.*
  * @param notary the notary to set on the output states.
  */
 @StartableByRPC
+@CordaSerializable
 class CashIssueFlow(private val amount: Amount<Currency>,
                     private val issuerBankPartyRef: OpaqueBytes,
                     private val notary: Party,
