@@ -1,6 +1,7 @@
 package net.corda.core.crypto
 
 import net.corda.core.crypto.zkp.*
+import net.corda.core.crypto.zkp.BulletProofs.computeGenerators
 import org.bouncycastle.asn1.nist.NISTNamedCurves
 import org.bouncycastle.asn1.sec.SECNamedCurves
 import org.bouncycastle.crypto.ec.CustomNamedCurves
@@ -77,6 +78,7 @@ class CtxTests {
     fun `AOS signature test`() {
         val m = "messageToSign".toByteArray()
         val X25519 = NISTNamedCurves.getByName("P-256")
+        // X25519.curve.decodePoint()
         val randomKeys = generateRandomAOSKeys(X25519.g, 256)
 
         val sig = AOS.sign(X25519.n, X25519.g, m, randomKeys.publicKeys, randomKeys.index, randomKeys.privateKey)
@@ -91,5 +93,19 @@ class CtxTests {
 
         val sig = Borromean.sign(X25519.n, X25519.g, m, randomKeys.publicKeys, randomKeys.indices, randomKeys.privateKeys)
         Borromean.verify(X25519.g, m, randomKeys.publicKeys, sig)
+    }
+
+    @Test
+    fun binaryRespresentation() {
+        val aL = BulletProofs.aL(BigInteger.valueOf(100), 8)
+        aL.forEach { print(it) }
+    }
+
+    @Test
+    fun `compute generators`() {
+        val curve = NISTNamedCurves.getByName("P-256")
+        val gens = computeGenerators(curve.curve, curve.g, 64, "Corda".toByteArray())
+
+        println(gens)
     }
 }
