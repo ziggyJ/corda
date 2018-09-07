@@ -1,6 +1,7 @@
 package net.corda.serialization.internal
 
 import net.corda.core.KeepForDJVM
+import net.corda.core.serialization.AMQPSerializationEncoding
 import net.corda.core.serialization.SerializationEncoding
 import net.corda.core.utilities.ByteSequence
 import net.corda.core.utilities.OpaqueBytes
@@ -39,7 +40,7 @@ enum class SectionId : OrdinalWriter {
 }
 
 @KeepForDJVM
-enum class CordaSerializationEncoding : SerializationEncoding, OrdinalWriter {
+enum class CordaSerializationEncoding : SerializationEncoding, AMQPSerializationEncoding, OrdinalWriter {
     DEFLATE {
         override fun wrap(stream: OutputStream) = DeflaterOutputStream(stream)
         override fun wrap(stream: InputStream) = InflaterInputStream(stream)

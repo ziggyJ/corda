@@ -4,9 +4,7 @@ import net.corda.core.crypto.toStringShort
 import net.corda.core.identity.PartyAndCertificate
 import net.corda.core.node.NodeInfo
 import net.corda.core.schemas.MappedSchema
-import net.corda.core.serialization.SerializationDefaults
-import net.corda.core.serialization.deserialize
-import net.corda.core.serialization.serialize
+import net.corda.core.serialization.*
 import net.corda.core.utilities.MAX_HASH_HEX_SIZE
 import net.corda.core.utilities.NetworkHostAndPort
 import net.corda.node.services.persistence.NodePropertiesPersistentStore
@@ -112,7 +110,7 @@ object NodeInfoSchemaV1 : MappedSchema(
         constructor(partyAndCert: PartyAndCertificate, isMain: Boolean = false)
                 : this(partyAndCert.name.toString(),
                 partyAndCert.party.owningKey.toStringShort(),
-                partyAndCert.serialize(context = SerializationDefaults.STORAGE_CONTEXT).bytes, isMain)
+                partyAndCert.amqpSerialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT).bytes, isMain)
 
         fun toLegalIdentityAndCert(): PartyAndCertificate {
             return partyCertBinary.deserialize()

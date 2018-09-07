@@ -7,7 +7,9 @@ import net.corda.core.DeleteForDJVM
 import net.corda.core.KeepForDJVM
 import net.corda.core.contracts.PrivacySalt
 import net.corda.core.crypto.internal.platformSecureRandomFactory
+import net.corda.core.serialization.AMQPSerializationDefaults
 import net.corda.core.serialization.SerializationDefaults
+import net.corda.core.serialization.amqpSerialize
 import net.corda.core.serialization.serialize
 import net.corda.core.utilities.OpaqueBytes
 import net.corda.core.utilities.toBase58
@@ -230,7 +232,7 @@ fun componentHash(nonce: SecureHash, opaqueBytes: OpaqueBytes): SecureHash = Sec
  * across platform versions: serialization can produce different values if any of the types being serialized have changed,
  * or if the version of serialization specified by the context changes.
  */
-fun <T : Any> serializedHash(x: T): SecureHash = x.serialize(context = SerializationDefaults.P2P_CONTEXT.withoutReferences()).bytes.sha256()
+fun <T : Any> serializedHash(x: T): SecureHash = x.amqpSerialize(context = AMQPSerializationDefaults.P2P_CONTEXT.withoutReferences()).bytes.sha256()
 
 /**
  * Method to compute a nonce based on privacySalt, component group index and component internal index.

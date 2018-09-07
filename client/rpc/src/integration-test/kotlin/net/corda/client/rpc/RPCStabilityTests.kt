@@ -6,7 +6,9 @@ import net.corda.core.crypto.random63BitValue
 import net.corda.core.internal.concurrent.fork
 import net.corda.core.internal.concurrent.transpose
 import net.corda.core.messaging.RPCOps
+import net.corda.core.serialization.AMQPSerializationDefaults
 import net.corda.core.serialization.SerializationDefaults
+import net.corda.core.serialization.amqpSerialize
 import net.corda.core.serialization.serialize
 import net.corda.core.utilities.*
 import net.corda.node.services.messaging.RPCServerConfiguration
@@ -517,7 +519,7 @@ class RPCStabilityTests {
             val request = RPCApi.ClientToServer.RpcRequest(
                     clientAddress = SimpleString(myQueue),
                     methodName = SlowConsumerRPCOps::streamAtInterval.name,
-                    serialisedArguments = listOf(10.millis, 123456).serialize(context = SerializationDefaults.RPC_SERVER_CONTEXT),
+                    serialisedArguments = listOf(10.millis, 123456).amqpSerialize(context = AMQPSerializationDefaults.RPC_SERVER_CONTEXT),
                     replyId = Trace.InvocationId.newInstance(),
                     sessionId = Trace.SessionId.newInstance()
             )
@@ -556,7 +558,7 @@ class RPCStabilityTests {
             val request = RPCApi.ClientToServer.RpcRequest(
                     clientAddress = SimpleString(myQueue),
                     methodName = DummyOps::protocolVersion.name,
-                    serialisedArguments = emptyList<Any>().serialize(context = SerializationDefaults.RPC_SERVER_CONTEXT),
+                    serialisedArguments = emptyList<Any>().amqpSerialize(context = AMQPSerializationDefaults.RPC_SERVER_CONTEXT),
                     replyId = Trace.InvocationId.newInstance(),
                     sessionId = Trace.SessionId.newInstance()
             )
@@ -589,7 +591,7 @@ class RPCStabilityTests {
                     is RPCApi.ClientToServer.RpcRequest -> {
                         val reply = RPCApi.ServerToClient.RpcReply(request.replyId, Try.Success(1000), "server")
                         val message = session.createMessage(false)
-                        reply.writeToClientMessage(SerializationDefaults.RPC_SERVER_CONTEXT, message)
+                        reply.writeToClientMessage(AMQPSerializationDefaults.RPC_SERVER_CONTEXT, message)
                         message.putLongProperty(RPCApi.DEDUPLICATION_SEQUENCE_NUMBER_FIELD_NAME, dedupeId.getAndIncrement())
                         producer.send(request.clientAddress, message)
                         // duplicate the reply

@@ -7,12 +7,10 @@ import net.corda.core.flows.FlowSession
 import net.corda.core.identity.Party
 import net.corda.core.internal.FlowIORequest
 import net.corda.core.internal.FlowStateMachine
-import net.corda.core.serialization.SerializationDefaults
-import net.corda.core.serialization.SerializedBytes
-import net.corda.core.serialization.serialize
 import net.corda.core.utilities.NonEmptySet
 import net.corda.core.utilities.UntrustworthyData
 import net.corda.core.internal.checkPayloadIs
+import net.corda.core.serialization.*
 
 class FlowSessionImpl(
         override val counterparty: Party,
@@ -48,7 +46,7 @@ class FlowSessionImpl(
     ): UntrustworthyData<R> {
         enforceNotPrimitive(receiveType)
         val request = FlowIORequest.SendAndReceive(
-                sessionToMessage = mapOf(this to payload.serialize(context = SerializationDefaults.P2P_CONTEXT)),
+                sessionToMessage = mapOf(this to payload.amqpSerialize(context = AMQPSerializationDefaults.P2P_CONTEXT)),
                 shouldRetrySend = false
         )
         val responseValues: Map<FlowSession, SerializedBytes<Any>> = getFlowStateMachine().suspend(request, maySkipCheckpoint)
@@ -73,7 +71,7 @@ class FlowSessionImpl(
     @Suspendable
     override fun send(payload: Any, maySkipCheckpoint: Boolean) {
         val request = FlowIORequest.Send(
-                sessionToMessage = mapOf(this to payload.serialize(context = SerializationDefaults.P2P_CONTEXT))
+                sessionToMessage = mapOf(this to payload.amqpSerialize(context = AMQPSerializationDefaults.P2P_CONTEXT))
         )
         return getFlowStateMachine().suspend(request, maySkipCheckpoint)
     }

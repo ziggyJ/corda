@@ -1,5 +1,7 @@
 package net.corda.core.flows;
 
+import net.corda.core.serialization.AMQPSerializationDefaults;
+import net.corda.core.serialization.AMQPSerializationFactory;
 import net.corda.core.serialization.SerializationDefaults;
 import net.corda.core.serialization.SerializationFactory;
 import net.corda.testing.core.SerializationEnvironmentRule;
@@ -7,6 +9,7 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import static net.corda.core.serialization.SerializationAPIKt.serialize;
+import static net.corda.core.serialization.SerializationAPIKt.amqpSerialize;
 import static org.junit.Assert.assertNull;
 
 /**
@@ -28,10 +31,13 @@ public class SerializationApiInJavaTest {
     public void enforceSerializationDefaultsApi() {
         SerializationDefaults defaults = SerializationDefaults.INSTANCE;
         SerializationFactory factory = defaults.getSERIALIZATION_FACTORY();
-        serialize("hello", factory, defaults.getP2P_CONTEXT());
-        serialize("hello", factory, defaults.getRPC_SERVER_CONTEXT());
-        serialize("hello", factory, defaults.getRPC_CLIENT_CONTEXT());
-        serialize("hello", factory, defaults.getSTORAGE_CONTEXT());
         serialize("hello", factory, defaults.getCHECKPOINT_CONTEXT());
+
+        AMQPSerializationDefaults amqpDefaults = AMQPSerializationDefaults.INSTANCE;
+        AMQPSerializationFactory amqpFactory = amqpDefaults.getSERIALIZATION_FACTORY();
+        amqpSerialize("hello", amqpFactory, amqpDefaults.getP2P_CONTEXT());
+        amqpSerialize("hello", amqpFactory, amqpDefaults.getRPC_SERVER_CONTEXT());
+        amqpSerialize("hello", amqpFactory, amqpDefaults.getRPC_CLIENT_CONTEXT());
+        amqpSerialize("hello", amqpFactory, amqpDefaults.getSTORAGE_CONTEXT());
     }
 }

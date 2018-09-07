@@ -216,9 +216,8 @@ open class SerializationFactoryImpl(
 @KeepForDJVM
 class AMQPSerializationFactoryImpl(
         // TODO: This is read-mostly. Probably a faster implementation to be found.
-        private val schemes: MutableMap<AMQPSerializationContext.UseCase, AMQPSerializationScheme>,
-        private val contextManager: AMQPSerializationContextManager = AMQPSerializationContextManagerImpl()
-) : AMQPSerializationFactory, AMQPSerializationContextManager by contextManager {
+        private val schemes: MutableMap<AMQPSerializationContext.UseCase, AMQPSerializationScheme>
+) : AMQPSerializationFactory() {
     @DeleteForDJVM
     constructor() : this(ConcurrentHashMap())
 

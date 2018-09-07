@@ -1,8 +1,6 @@
 package net.corda.finance.compat
 
-import net.corda.core.serialization.SerializationDefaults
-import net.corda.core.serialization.deserialize
-import net.corda.core.serialization.serialize
+import net.corda.core.serialization.*
 import net.corda.core.transactions.SignedTransaction
 import net.corda.finance.contracts.asset.Cash
 import net.corda.testing.core.SerializationEnvironmentRule
@@ -25,14 +23,14 @@ class CompatibilityTest {
         val inputStream = javaClass.classLoader.getResourceAsStream("compatibilityData/v3/node_transaction.dat")
         assertNotNull(inputStream)
         val inByteArray: ByteArray = inputStream.readBytes()
-        val transaction = inByteArray.deserialize<SignedTransaction>(context = SerializationDefaults.STORAGE_CONTEXT)
+        val transaction = inByteArray.amqpDeserialize<SignedTransaction>(context = AMQPSerializationDefaults.STORAGE_CONTEXT)
         assertNotNull(transaction)
         val commands = transaction.tx.commands
         assertEquals(1, commands.size)
         assertTrue(commands.first().value is Cash.Commands.Issue)
 
         // Serialize back and check that representation is byte-to-byte identical to what it was originally.
-        val serializedForm = transaction.serialize(context = SerializationDefaults.STORAGE_CONTEXT)
+        val serializedForm = transaction.amqpSerialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT)
         assertTrue(inByteArray.contentEquals(serializedForm.bytes))
     }
 }

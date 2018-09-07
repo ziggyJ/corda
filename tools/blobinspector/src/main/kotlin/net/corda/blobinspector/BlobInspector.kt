@@ -6,10 +6,7 @@ import com.jcabi.manifests.Manifests
 import net.corda.client.jackson.JacksonSupport
 import net.corda.core.internal.isRegularFile
 import net.corda.core.internal.rootMessage
-import net.corda.core.serialization.AMQPSerializationContext
-import net.corda.core.serialization.SerializationContext
-import net.corda.core.serialization.SerializationDefaults
-import net.corda.core.serialization.deserialize
+import net.corda.core.serialization.*
 import net.corda.core.serialization.internal.AMQPSerializationEnvironmentImpl
 import net.corda.core.serialization.internal.SerializationEnvironmentImpl
 import net.corda.core.serialization.internal._contextAMQPSerializationEnv
@@ -83,7 +80,7 @@ class BlobInspector : Runnable {
                 ?: throw IllegalArgumentException("Error: this input does not appear to be encoded in Corda's AMQP extended format, sorry.")
 
         if (schema) {
-            val envelope = DeserializationInput.getEnvelope(bytes.sequence(), SerializationDefaults.STORAGE_CONTEXT.encodingWhitelist)
+            val envelope = DeserializationInput.getEnvelope(bytes.sequence(), AMQPSerializationDefaults.STORAGE_CONTEXT.encodingWhitelist)
             out.println(envelope.schema)
             out.println()
             out.println(envelope.transformsSchema)
@@ -99,7 +96,7 @@ class BlobInspector : Runnable {
 
         initialiseSerialization()
         try {
-            val deserialized = bytes.deserialize<Any>(context = SerializationDefaults.STORAGE_CONTEXT)
+            val deserialized = bytes.amqpDeserialize<Any>(context = AMQPSerializationDefaults.STORAGE_CONTEXT)
             out.println(deserialized.javaClass.name)
             mapper.writeValue(out, deserialized)
         } finally {

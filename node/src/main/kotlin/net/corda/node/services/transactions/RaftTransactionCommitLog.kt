@@ -20,10 +20,7 @@ import net.corda.core.flows.StateConsumptionDetails
 import net.corda.core.internal.VisibleForTesting
 import net.corda.core.internal.notary.isConsumedByTheSameTx
 import net.corda.core.internal.notary.validateTimeWindow
-import net.corda.core.serialization.SerializationDefaults
-import net.corda.core.serialization.SerializationFactory
-import net.corda.core.serialization.deserialize
-import net.corda.core.serialization.serialize
+import net.corda.core.serialization.*
 import net.corda.core.utilities.ByteSequence
 import net.corda.core.utilities.contextLogger
 import net.corda.core.utilities.debug
@@ -139,7 +136,7 @@ class RaftTransactionCommitLog<E, EK>(
         db.transaction {
             writer.writeInt(map.size)
             map.allPersisted().forEach {
-                val bytes = it.serialize(context = SerializationDefaults.STORAGE_CONTEXT).bytes
+                val bytes = it.amqpSerialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT).bytes
                 writer.writeUnsignedShort(bytes.size)
                 writer.writeObject(bytes)
             }
@@ -150,7 +147,7 @@ class RaftTransactionCommitLog<E, EK>(
 
             writer.writeInt(results.size)
             results.forEach {
-                val bytes = it.serialize(context = SerializationDefaults.STORAGE_CONTEXT).bytes
+                val bytes = it.amqpSerialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT).bytes
                 writer.writeUnsignedShort(bytes.size)
                 writer.writeObject(bytes)
             }

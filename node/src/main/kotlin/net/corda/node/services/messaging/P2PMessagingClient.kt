@@ -10,11 +10,8 @@ import net.corda.core.messaging.SingleMessageRecipient
 import net.corda.core.node.NodeInfo
 import net.corda.core.node.services.NetworkMapCache
 import net.corda.core.node.services.PartyInfo
-import net.corda.core.serialization.SerializationDefaults
-import net.corda.core.serialization.SingletonSerializeAsToken
-import net.corda.core.serialization.deserialize
+import net.corda.core.serialization.*
 import net.corda.core.serialization.internal.nodeSerializationEnv
-import net.corda.core.serialization.serialize
 import net.corda.core.utilities.*
 import net.corda.node.VersionInfo
 import net.corda.node.internal.LifecycleSupport
@@ -207,7 +204,7 @@ class P2PMessagingClient(val config: NodeConfiguration,
         bridgeConsumer.setMessageHandler { msg ->
             state.locked {
                 val data: ByteArray = ByteArray(msg.bodySize).apply { msg.bodyBuffer.readBytes(this) }
-                val notifyMessage = data.deserialize<BridgeControl>(context = SerializationDefaults.P2P_CONTEXT)
+                val notifyMessage = data.amqpDeserialize<BridgeControl>(context = AMQPSerializationDefaults.P2P_CONTEXT)
                 log.info(notifyMessage.toString())
                 when (notifyMessage) {
                     is BridgeControl.BridgeToNodeSnapshotRequest -> enumerateBridges(session, inboxes)
@@ -221,7 +218,7 @@ class P2PMessagingClient(val config: NodeConfiguration,
 
     private fun sendBridgeControl(message: BridgeControl) {
         state.locked {
-            val controlPacket = message.serialize(context = SerializationDefaults.P2P_CONTEXT).bytes
+            val controlPacket = message.amqpSerialize(context = AMQPSerializationDefaults.P2P_CONTEXT).bytes
             val artemisMessage = producerSession!!.createMessage(false)
             artemisMessage.writeBodyBufferBytes(controlPacket)
             sendMessage(BRIDGE_CONTROL, artemisMessage)

@@ -2,6 +2,7 @@ package net.corda.node.internal.serialization.testutils
 
 import net.corda.client.rpc.internal.serialization.amqp.RpcClientObservableDeSerializer
 import net.corda.core.context.Trace
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.serialization.ClassWhitelist
 import net.corda.core.serialization.SerializationContext
 import net.corda.core.serialization.SerializationCustomSerializer
@@ -20,28 +21,25 @@ import net.corda.client.rpc.internal.ObservableContext as ClientObservableContex
  */
 
 
-class AMQPRoundTripRPCSerializationScheme(
-        private val serializationContext: SerializationContext,
+class AMQPRoundTripRPCSerializationScheme(private val serializationContext: AMQPSerializationContext,
         cordappCustomSerializers: Set<SerializationCustomSerializer<*, *>>,
         serializerFactoriesForContexts: AccessOrderLinkedHashMap<Pair<ClassWhitelist, ClassLoader>, SerializerFactory>)
     : AbstractAMQPSerializationScheme(
         cordappCustomSerializers, serializerFactoriesForContexts
 ) {
-    override fun rpcClientSerializerFactory(context: SerializationContext): SerializerFactory {
+    override fun rpcClientSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
         return SerializerFactory(AllWhitelist, javaClass.classLoader).apply {
             register(RpcClientObservableDeSerializer)
         }
     }
 
-    override fun rpcServerSerializerFactory(context: SerializationContext): SerializerFactory {
+    override fun rpcServerSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
         return SerializerFactory(AllWhitelist, javaClass.classLoader).apply {
             register(RpcServerObservableSerializer())
         }
     }
 
-    override fun canDeserializeVersion(
-            magic: CordaSerializationMagic,
-            target: SerializationContext.UseCase) = true
+    override fun canDeserializeVersion(target: AMQPSerializationContext.UseCase) = true
 
     fun rpcClientSerializerFactory(observableContext: ClientObservableContext, id: Trace.InvocationId) =
             rpcClientSerializerFactory(

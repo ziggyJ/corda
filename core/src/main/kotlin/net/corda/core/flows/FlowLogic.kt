@@ -11,9 +11,7 @@ import net.corda.core.internal.*
 import net.corda.core.messaging.DataFeed
 import net.corda.core.node.NodeInfo
 import net.corda.core.node.ServiceHub
-import net.corda.core.serialization.CordaSerializable
-import net.corda.core.serialization.SerializationDefaults
-import net.corda.core.serialization.serialize
+import net.corda.core.serialization.*
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.UntrustworthyData
@@ -231,7 +229,7 @@ abstract class FlowLogic<out T> {
     @Suspendable
     internal fun <R : Any> FlowSession.sendAndReceiveWithRetry(receiveType: Class<R>, payload: Any): UntrustworthyData<R> {
         val request = FlowIORequest.SendAndReceive(
-                sessionToMessage = mapOf(this to payload.serialize(context = SerializationDefaults.P2P_CONTEXT)),
+                sessionToMessage = mapOf(this to payload.amqpSerialize(context = AMQPSerializationDefaults.P2P_CONTEXT)),
                 shouldRetrySend = true
         )
         return stateMachine.suspend(request, maySkipCheckpoint = false)[this]!!.checkPayloadIs(receiveType)

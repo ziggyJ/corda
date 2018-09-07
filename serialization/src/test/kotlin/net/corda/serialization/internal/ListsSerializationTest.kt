@@ -27,7 +27,7 @@ class ListsSerializationTest {
 
         fun <T : Any> verifyEnvelope(serBytes: SerializedBytes<T>, envVerBody: (Envelope) -> Unit) =
                 amqpSpecific("AMQP specific envelope verification") {
-                    val context = SerializationFactory.defaultFactory.defaultContext
+                    val context = AMQPSerializationFactory.defaultFactory.defaultContext
                     val envelope = DeserializationInput(SerializerFactory(context.whitelist, context.deserializationClassLoader)).getEnvelope(serBytes, context)
                     envVerBody(envelope)
                 }

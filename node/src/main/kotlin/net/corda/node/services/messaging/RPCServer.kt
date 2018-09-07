@@ -16,7 +16,7 @@ import net.corda.core.internal.LifeCycle
 import net.corda.core.internal.buildNamed
 import net.corda.core.messaging.RPCOps
 import net.corda.core.serialization.*
-import net.corda.core.serialization.SerializationDefaults.RPC_SERVER_CONTEXT
+import net.corda.core.serialization.AMQPSerializationDefaults.RPC_SERVER_CONTEXT
 import net.corda.core.utilities.*
 import net.corda.node.internal.security.AuthorizingSubject
 import net.corda.node.internal.security.RPCSecurityManager
@@ -328,7 +328,7 @@ class RPCServer(
                         return
                     }
                     val arguments = Try.on {
-                        clientToServer.serialisedArguments.deserialize<List<Any?>>(context = RPC_SERVER_CONTEXT)
+                        clientToServer.serialisedArguments.amqpDeserialize<List<Any?>>(context = RPC_SERVER_CONTEXT)
                     }
                     val context = artemisMessage.context(clientToServer.sessionId)
                     context.invocation.pushToLoggingContext()

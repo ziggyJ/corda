@@ -106,7 +106,7 @@ abstract class SerializationFactory {
     }
 }
 
-interface AMQPSerializationFactory : AMQPSerializationContextManager {
+abstract class AMQPSerializationFactory {
 
     companion object {
         private val _currentFactory = ThreadLocal<AMQPSerializationFactory?>()
@@ -130,7 +130,7 @@ interface AMQPSerializationFactory : AMQPSerializationContextManager {
      * @param clazz The class or superclass or the object to be deserialized, or [Any] or [Object] if unknown.
      * @param context A context that configures various parameters to deserialization.
      */
-    fun <T : Any> deserialize(byteSequence: ByteSequence, clazz: Class<T>, context: AMQPSerializationContext): T
+    abstract fun <T : Any> deserialize(byteSequence: ByteSequence, clazz: Class<T>, context: AMQPSerializationContext): T
 
     /**
      * Deserialize the bytes in to an object, using the prefixed bytes to determine the format.
@@ -149,7 +149,7 @@ interface AMQPSerializationFactory : AMQPSerializationContextManager {
      * @param obj The object to be serialized.
      * @param context A context that configures various parameters to serialization, including the serialization format version.
      */
-    fun <T : Any> serialize(obj: T, context: AMQPSerializationContext): SerializedBytes<T>
+    abstract fun <T : Any> serialize(obj: T, context: AMQPSerializationContext): SerializedBytes<T>
 
 
     /**
@@ -165,46 +165,25 @@ interface AMQPSerializationFactory : AMQPSerializationContextManager {
             _currentFactory.set(priorContext)
         }
     }
-}
 
-interface AMQPSerializationContextManager {
     /**
      * If there is a need to nest serialization/deserialization with a modified context during serialization or deserialization,
      * this will return the current context used to start serialization/deserialization.
      */
-    val currentContext: AMQPSerializationContext?
+    val currentContext: AMQPSerializationContext? get() = _currentContext.get()
 
     /**
      * A context to use as a default if you do not require a specially configured context.  It will be the current context
      * if the use is somehow nested (see [currentContext]).
      */
-    val defaultContext: AMQPSerializationContext
-
-    /**
-     * Change the current context inside the block to that supplied.
-     */
-    fun <T> withCurrentContext(context: AMQPSerializationContext?, block: () -> T): T
-}
-
-class AMQPSerializationContextManagerImpl: AMQPSerializationContextManager {
-    /**
-     * If there is a need to nest serialization/deserialization with a modified context during serialization or deserialization,
-     * this will return the current context used to start serialization/deserialization.
-     */
-    override val currentContext: AMQPSerializationContext? get() = _currentContext.get()
-
-    /**
-     * A context to use as a default if you do not require a specially configured context.  It will be the current context
-     * if the use is somehow nested (see [currentContext]).
-     */
-    override val defaultContext: AMQPSerializationContext get() = currentContext ?: effectiveAMQPSerializationEnv.p2pContext
+    val defaultContext: AMQPSerializationContext get() = currentContext ?: effectiveAMQPSerializationEnv.p2pContext
 
     private val _currentContext = ThreadLocal<AMQPSerializationContext?>()
 
     /**
      * Change the current context inside the block to that supplied.
      */
-    override fun <T> withCurrentContext(context: AMQPSerializationContext?, block: () -> T): T {
+    fun <T> withCurrentContext(context: AMQPSerializationContext?, block: () -> T): T {
         val priorContext = _currentContext.get()
         if (context != null) _currentContext.set(context)
         try {
@@ -435,10 +414,11 @@ enum class ContextPropertyKeys {
 @KeepForDJVM
 object SerializationDefaults {
     val SERIALIZATION_FACTORY get() = effectiveSerializationEnv.serializationFactory
-    val P2P_CONTEXT get() = effectiveSerializationEnv.p2pContext
-    @DeleteForDJVM val RPC_SERVER_CONTEXT get() = effectiveSerializationEnv.rpcServerContext
-    @DeleteForDJVM val RPC_CLIENT_CONTEXT get() = effectiveSerializationEnv.rpcClientContext
-    @DeleteForDJVM val STORAGE_CONTEXT get() = effectiveSerializationEnv.storageContext
+
+    @Deprecated("Checkpoint serialization does not support P2P context") val P2P_CONTEXT: SerializationContext get() = throw UnsupportedOperationException("Checkpoint serialisation does not provide P2P serialization context")
+    @Deprecated("Checkpoint serialization does not support RPC server context") @DeleteForDJVM val RPC_SERVER_CONTEXT: SerializationContext get() = throw UnsupportedOperationException("Checkpoint serialisation does not provide RPC server serialization context")
+    @Deprecated("Checkpoint serialization does not support RPC client context") @DeleteForDJVM val RPC_CLIENT_CONTEXT: SerializationContext get() = throw UnsupportedOperationException("Checkpoint serialisation does not provide RPC client serialization context")
+    @Deprecated("Checkpoint serialization does not support storage context") @DeleteForDJVM val STORAGE_CONTEXT: SerializationContext get() = throw UnsupportedOperationException("Checkpoint serialisation does not provide storage serialization context")
     @DeleteForDJVM val CHECKPOINT_CONTEXT get() = effectiveSerializationEnv.checkpointContext
 }
 

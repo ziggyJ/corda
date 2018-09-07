@@ -6,18 +6,14 @@ import net.corda.core.crypto.Crypto.generateKeyPair
 import net.corda.core.crypto.newSecureRandom
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.internal.div
-import net.corda.core.serialization.SerializationContext
-import net.corda.core.serialization.deserialize
-import net.corda.core.serialization.serialize
+import net.corda.core.serialization.*
 import net.corda.node.serialization.amqp.AMQPServerSerializationScheme
 import net.corda.nodeapi.internal.config.MutualSslConfiguration
 import net.corda.nodeapi.internal.createDevNodeCa
 import net.corda.nodeapi.internal.protonwrapper.netty.init
 import net.corda.nodeapi.internal.registerDevP2pCertificates
 import net.corda.nodeapi.internal.registerDevSigningCertificates
-import net.corda.serialization.internal.AllWhitelist
-import net.corda.serialization.internal.SerializationContextImpl
-import net.corda.serialization.internal.SerializationFactoryImpl
+import net.corda.serialization.internal.*
 import net.corda.serialization.internal.amqp.amqpMagic
 import net.corda.testing.core.ALICE_NAME
 import net.corda.testing.core.BOB_NAME
@@ -331,38 +327,37 @@ class X509UtilitiesTest {
 
     @Test
     fun `serialize - deserialize X509Certififcate`() {
-        val factory = SerializationFactoryImpl().apply { registerScheme(AMQPServerSerializationScheme()) }
-        val context = SerializationContextImpl(amqpMagic,
+        val factory = AMQPSerializationFactoryImpl().apply { registerScheme(AMQPServerSerializationScheme()) }
+        val context = AMQPSerializationContextImpl(
                 javaClass.classLoader,
                 AllWhitelist,
                 emptyMap(),
                 true,
-                SerializationContext.UseCase.P2P,
+                AMQPSerializationContext.UseCase.P2P,
                 null)
         val expected = X509Utilities.createSelfSignedCACertificate(ALICE.name.x500Principal, Crypto.generateKeyPair(X509Utilities.DEFAULT_TLS_SIGNATURE_SCHEME))
-        val serialized = expected.serialize(factory, context).bytes
-        val actual = serialized.deserialize<X509Certificate>(factory, context)
+        val serialized = expected.amqpSerialize(factory, context).bytes
+        val actual = serialized.amqpDeserialize<X509Certificate>(factory, context)
         assertEquals(expected, actual)
     }
 
     @Test
     fun `serialize - deserialize X509CertPath`() {
-        val factory = SerializationFactoryImpl().apply { registerScheme(AMQPServerSerializationScheme()) }
-        val context = SerializationContextImpl(
-                amqpMagic,
+        val factory = AMQPSerializationFactoryImpl().apply { registerScheme(AMQPServerSerializationScheme()) }
+        val context = AMQPSerializationContextImpl(
                 javaClass.classLoader,
                 AllWhitelist,
                 emptyMap(),
                 true,
-                SerializationContext.UseCase.P2P,
+                AMQPSerializationContext.UseCase.P2P,
                 null
         )
         val rootCAKey = Crypto.generateKeyPair(X509Utilities.DEFAULT_TLS_SIGNATURE_SCHEME)
         val rootCACert = X509Utilities.createSelfSignedCACertificate(ALICE_NAME.x500Principal, rootCAKey)
         val certificate = X509Utilities.createCertificate(CertificateType.TLS, rootCACert, rootCAKey, BOB_NAME.x500Principal, BOB.publicKey)
         val expected = X509Utilities.buildCertPath(certificate, rootCACert)
-        val serialized = expected.serialize(factory, context).bytes
-        val actual: CertPath = serialized.deserialize(factory, context)
+        val serialized = expected.amqpSerialize(factory, context).bytes
+        val actual: CertPath = serialized.amqpDeserialize(factory, context)
         assertEquals(expected, actual)
     }
 }

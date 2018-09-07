@@ -486,8 +486,8 @@ fun <T> Iterable<T>.sumByLong(selector: (T) -> Long): Long = this.map { selector
 
 fun <T : Any> SerializedBytes<Any>.checkPayloadIs(type: Class<T>): UntrustworthyData<T> {
     val payloadData: T = try {
-        val serializer = SerializationDefaults.SERIALIZATION_FACTORY
-        serializer.deserialize(this, type, SerializationDefaults.P2P_CONTEXT)
+        val serializer = AMQPSerializationDefaults.SERIALIZATION_FACTORY
+        serializer.deserialize(this, type, AMQPSerializationDefaults.P2P_CONTEXT)
     } catch (ex: Exception) {
         throw IllegalArgumentException("Payload invalid", ex)
     }
