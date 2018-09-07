@@ -13,8 +13,8 @@ import net.corda.finance.`issued by`
 import net.corda.finance.contracts.asset.Cash
 import net.corda.node.services.api.IdentityServiceInternal
 import net.corda.testing.common.internal.testNetworkParameters
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.DUMMY_NOTARY_NAME
-import net.corda.testing.core.SerializationEnvironmentRule
 import net.corda.testing.core.TestIdentity
 import net.corda.testing.internal.rigorousMock
 import net.corda.testing.node.MockServices
@@ -39,7 +39,7 @@ class ReferenceStateTests {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
     val defaultIssuer = ISSUER.ref(1)
     val bobCash = Cash.State(amount = 1000.DOLLARS `issued by` defaultIssuer, owner = BOB_PARTY)
     private val ledgerServices = MockServices(

@@ -7,7 +7,7 @@ import com.google.common.collect.testing.features.CollectionSize
 import junit.framework.TestSuite
 import net.corda.core.serialization.deserialize
 import net.corda.core.serialization.serialize
-import net.corda.testing.core.SerializationEnvironmentRule
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.Rule
@@ -39,7 +39,7 @@ class NonEmptySetTest {
     class General {
         @Rule
         @JvmField
-        val testSerialization = SerializationEnvironmentRule()
+        val testSerialization = AMQPSerializationEnvironmentRule()
 
         @Test
         fun `copyOf - empty source`() {

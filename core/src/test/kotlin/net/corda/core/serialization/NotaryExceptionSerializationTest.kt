@@ -6,7 +6,7 @@ import net.corda.core.crypto.sha256
 import net.corda.core.flows.NotaryError
 import net.corda.core.flows.NotaryException
 import net.corda.core.flows.StateConsumptionDetails
-import net.corda.testing.core.SerializationEnvironmentRule
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import org.junit.Rule
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
 class NotaryExceptionSerializationTest {
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
 
     @Test
     fun testSerializationRoundTrip() {

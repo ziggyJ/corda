@@ -13,7 +13,7 @@ import net.corda.core.identity.Party
 import net.corda.core.serialization.serialize
 import net.corda.core.transactions.CoreTransaction
 import net.corda.core.transactions.SignedTransaction
-import net.corda.testing.core.SerializationEnvironmentRule
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.TestIdentity
 import org.junit.Rule
 import org.junit.Test
@@ -39,7 +39,7 @@ class TopologicalSortTest {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
 
     @Test
     fun topologicalObservableSort() {

@@ -24,7 +24,7 @@ class CompatibleTransactionTests {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
     private val dummyOutState = TransactionState(DummyState(0), DummyContract.PROGRAM_ID, DUMMY_NOTARY)
     private val stateRef1 = StateRef(SecureHash.randomSHA256(), 0)
     private val stateRef2 = StateRef(SecureHash.randomSHA256(), 1)

@@ -4,11 +4,11 @@ import net.corda.core.serialization.AMQPSerializationDefaults;
 import net.corda.core.serialization.AMQPSerializationFactory;
 import net.corda.core.serialization.SerializationDefaults;
 import net.corda.core.serialization.SerializationFactory;
+import net.corda.testing.core.AMQPSerializationEnvironmentRule;
 import net.corda.testing.core.SerializationEnvironmentRule;
 import org.junit.Rule;
 import org.junit.Test;
 
-import static net.corda.core.serialization.SerializationAPIKt.serialize;
 import static net.corda.core.serialization.SerializationAPIKt.serialize;
 import static org.junit.Assert.assertNull;
 
@@ -16,8 +16,12 @@ import static org.junit.Assert.assertNull;
  * Enforce parts of the serialization API that aren't obvious from looking at the {@link net.corda.core.serialization.SerializationAPIKt} code.
  */
 public class SerializationApiInJavaTest {
+
     @Rule
     public final SerializationEnvironmentRule testSerialization = new SerializationEnvironmentRule();
+
+    @Rule
+    public final AMQPSerializationEnvironmentRule testAMQPSerialization = new AMQPSerializationEnvironmentRule();
 
     @Test
     public void enforceSerializationFactoryApi() {

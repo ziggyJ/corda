@@ -1,6 +1,6 @@
 package net.corda.core.crypto
 
-import net.corda.testing.core.SerializationEnvironmentRule
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import org.junit.Rule
 import org.junit.Test
 import java.math.BigInteger
@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 class TransactionSignatureTest {
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
     private val testBytes = "12345678901234567890123456789012".toByteArray()
 
     /** Valid sign and verify. */

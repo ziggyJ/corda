@@ -11,8 +11,8 @@ import net.corda.finance.DOLLARS
 import net.corda.finance.`issued by`
 import net.corda.finance.contracts.asset.Cash
 import net.corda.node.services.api.IdentityServiceInternal
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.DUMMY_NOTARY_NAME
-import net.corda.testing.core.SerializationEnvironmentRule
 import net.corda.testing.core.TestIdentity
 import net.corda.testing.internal.rigorousMock
 import net.corda.testing.node.MockServices
@@ -35,7 +35,7 @@ class TransactionEncumbranceTests {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
     val defaultIssuer = MEGA_CORP.ref(1)
 
     val state = Cash.State(

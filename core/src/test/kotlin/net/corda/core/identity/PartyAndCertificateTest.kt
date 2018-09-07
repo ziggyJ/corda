@@ -3,10 +3,11 @@ package net.corda.core.identity
 import com.google.common.jimfs.Configuration.unix
 import com.google.common.jimfs.Jimfs
 import net.corda.core.crypto.entropyToKeyPair
-import net.corda.core.serialization.deserialize
-import net.corda.core.serialization.serialize
+import net.corda.core.serialization.deserializeKryo
+import net.corda.core.serialization.serializeKryo
 import net.corda.nodeapi.internal.crypto.X509KeyStore
 import net.corda.nodeapi.internal.crypto.X509Utilities
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.SerializationEnvironmentRule
 import net.corda.testing.core.getTestPartyAndCertificate
 import net.corda.testing.internal.DEV_ROOT_CA
@@ -21,6 +22,10 @@ class PartyAndCertificateTest {
     @JvmField
     val testSerialization = SerializationEnvironmentRule()
 
+    @Rule
+    @JvmField
+    val testAMQPSerialization = AMQPSerializationEnvironmentRule()
+
     @Test
     fun `reject a path with no roles`() {
         val path = X509Utilities.buildCertPath(DEV_ROOT_CA.certificate)
@@ -32,7 +37,7 @@ class PartyAndCertificateTest {
         val original = getTestPartyAndCertificate(Party(
                 CordaX500Name(organisation = "Test Corp", locality = "Madrid", country = "ES"),
                 entropyToKeyPair(BigInteger.valueOf(83)).public))
-        val copy = original.serialize().deserialize()
+        val copy = original.serializeKryo().deserializeKryo()
         assertThat(copy).isEqualTo(original).isNotSameAs(original)
         assertThat(copy.certPath).isEqualTo(original.certPath)
         assertThat(copy.certificate).isEqualTo(original.certificate)

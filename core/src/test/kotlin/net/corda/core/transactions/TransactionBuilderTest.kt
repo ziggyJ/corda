@@ -27,7 +27,7 @@ import org.junit.Test
 class TransactionBuilderTest {
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
 
     private val notary = TestIdentity(DUMMY_NOTARY_NAME).party
     private val services = rigorousMock<ServicesForResolution>()

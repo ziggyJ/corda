@@ -10,7 +10,7 @@ import net.corda.nodeapi.internal.crypto.CertificateType
 import net.corda.nodeapi.internal.crypto.X509KeyStore
 import net.corda.nodeapi.internal.crypto.X509Utilities
 import net.corda.nodeapi.internal.crypto.loadKeyStore
-import net.corda.testing.core.SerializationEnvironmentRule
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.internal.kryoSpecific
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
@@ -26,7 +26,7 @@ import kotlin.test.assertTrue
 class CompositeKeyTests {
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
 
     @Rule
     @JvmField

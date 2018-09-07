@@ -27,7 +27,7 @@ class LedgerTransactionQueryTests {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
     private val keyPair = generateKeyPair()
     private val services = MockServices(listOf("net.corda.testing.contracts"), CordaX500Name("MegaCorp", "London", "GB"),
             rigorousMock<IdentityServiceInternal>().also {
