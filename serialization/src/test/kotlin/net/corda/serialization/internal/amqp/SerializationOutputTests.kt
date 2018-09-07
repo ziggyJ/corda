@@ -531,8 +531,12 @@ class SerializationOutputTests(private val compression: CordaSerializationEncodi
     }
 
     private fun serdesThrowableWithInternalInfo(t: Throwable, factory: SerializerFactory, factory2: SerializerFactory, expectedEqual: Boolean = true): Throwable {
-        val newContext = SerializationFactory.defaultFactory.defaultContext.withProperty(CommonPropertyNames.IncludeInternalInfo, true)
-        return SerializationFactory.defaultFactory.asCurrent { withCurrentContext(newContext) { serdes(t, factory, factory2, expectedEqual) } }
+        val newContext = AMQPSerializationFactory.defaultFactory.defaultContext.withProperty(CommonPropertyNames.IncludeInternalInfo, true)
+        return AMQPSerializationFactory.defaultFactory.asCurrent {
+            withCurrentContext(newContext) {
+                serdes(t, factory, factory2, expectedEqual)
+            }
+        }
     }
 
     @Test
@@ -559,8 +563,8 @@ class SerializationOutputTests(private val compression: CordaSerializationEncodi
         assertTrue(desThrowable is CordaRuntimeException) // Since we don't handle the other case(s) yet
         if (desThrowable is CordaRuntimeException) {
             assertEquals("${t.javaClass.name}: ${t.message}", desThrowable.message)
-            assertTrue(Objects.deepEquals(t.stackTrace, desThrowable.stackTrace))
             assertEquals(t.suppressed.size, desThrowable.suppressed.size)
+            t.stackTrace.zip(desThrowable.stackTrace).forEach { (before, after) -> assertEquals(before, after) }
             t.suppressed.zip(desThrowable.suppressed).forEach { (before, after) -> assertSerializedThrowableEquivalent(before, after) }
         }
     }
@@ -659,10 +663,11 @@ class SerializationOutputTests(private val compression: CordaSerializationEncodi
     fun `test transaction state`() {
         val state = TransactionState(FooState(), FOO_PROGRAM_ID, MEGA_CORP)
 
-        val scheme = AMQPServerSerializationScheme(emptyList())
+        val scheme: AbstractAMQPSerializationScheme = AMQPServerSerializationScheme(emptyList())
+
         val func = scheme::class.superclasses.single { it.simpleName == "AbstractAMQPSerializationScheme" }
                 .java.getDeclaredMethod("registerCustomSerializers",
-                SerializationContext::class.java,
+                AMQPSerializationContext::class.java,
                 SerializerFactory::class.java)
         func.isAccessible = true
 

@@ -32,7 +32,7 @@ class DBTransactionStorageTests {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
 
     private lateinit var database: CordaPersistence
     private lateinit var transactionStorage: DBTransactionStorage

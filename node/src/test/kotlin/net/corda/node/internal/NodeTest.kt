@@ -17,7 +17,7 @@ import net.corda.nodeapi.internal.network.NodeInfoFilesCopier.Companion.NODE_INF
 import net.corda.nodeapi.internal.persistence.CordaPersistence
 import net.corda.nodeapi.internal.persistence.DatabaseConfig
 import net.corda.testing.core.ALICE_NAME
-import net.corda.testing.core.SerializationEnvironmentRule
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.internal.createNodeInfoAndSigned
 import net.corda.testing.internal.rigorousMock
 import net.corda.testing.node.MockServices.Companion.makeTestDataSourceProperties
@@ -36,7 +36,7 @@ class NodeTest {
     val temporaryFolder = TemporaryFolder()
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
 
     private fun nodeInfoFile(): Path? {
         return temporaryFolder.root.toPath().list { paths ->

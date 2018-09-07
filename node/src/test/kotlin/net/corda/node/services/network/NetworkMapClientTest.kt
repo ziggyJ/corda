@@ -8,8 +8,8 @@ import net.corda.core.utilities.seconds
 import net.corda.node.VersionInfo
 import net.corda.testing.common.internal.testNetworkParameters
 import net.corda.testing.core.ALICE_NAME
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.BOB_NAME
-import net.corda.testing.core.SerializationEnvironmentRule
 import net.corda.testing.internal.DEV_ROOT_CA
 import net.corda.testing.internal.TestNodeInfoBuilder
 import net.corda.testing.internal.createNodeInfoAndSigned
@@ -30,7 +30,7 @@ import kotlin.test.assertEquals
 class NetworkMapClientTest {
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule(true)
+    val testSerialization = AMQPSerializationEnvironmentRule(true)
 
     private val cacheTimeout = 100000.seconds
 

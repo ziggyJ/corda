@@ -69,7 +69,7 @@ abstract class TraversableTransaction(open val componentGroups: List<ComponentGr
     private fun <T : Any> deserialiseComponentGroup(clazz: KClass<T>,
                                                     groupEnum: ComponentGroupEnum,
                                                     attachmentsContext: Boolean = false): List<T> {
-        val factory = SerializationFactory.defaultFactory
+        val factory = AMQPSerializationFactory.defaultFactory
         val context = factory.defaultContext.let { if (attachmentsContext) it.withAttachmentsClassLoader(attachments) else it }
         val group = componentGroups.firstOrNull { it.groupIndex == groupEnum.ordinal }
         return if (group != null && group.components.isNotEmpty()) {

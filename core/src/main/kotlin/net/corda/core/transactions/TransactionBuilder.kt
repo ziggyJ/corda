@@ -15,6 +15,8 @@ import net.corda.core.node.ServicesForResolution
 import net.corda.core.node.ZoneVersionTooLowException
 import net.corda.core.node.services.AttachmentId
 import net.corda.core.node.services.KeyManagementService
+import net.corda.core.serialization.AMQPSerializationContext
+import net.corda.core.serialization.AMQPSerializationFactory
 import net.corda.core.serialization.SerializationContext
 import net.corda.core.serialization.SerializationFactory
 import java.security.PublicKey
@@ -103,7 +105,7 @@ open class TransactionBuilder @JvmOverloads constructor(
     fun toWireTransaction(services: ServicesForResolution): WireTransaction = toWireTransactionWithContext(services)
 
     @CordaInternal
-    internal fun toWireTransactionWithContext(services: ServicesForResolution, serializationContext: SerializationContext? = null): WireTransaction {
+    internal fun toWireTransactionWithContext(services: ServicesForResolution, serializationContext: AMQPSerializationContext? = null): WireTransaction {
         val referenceStates = referenceStates()
         if (referenceStates.isNotEmpty()) {
             services.ensureMinimumPlatformVersion(4, "Reference states")
@@ -126,7 +128,7 @@ open class TransactionBuilder @JvmOverloads constructor(
             })
         }
 
-        return SerializationFactory.defaultFactory.withCurrentContext(serializationContext) {
+        return AMQPSerializationFactory.defaultFactory.withCurrentContext(serializationContext) {
             WireTransaction(
                     WireTransaction.createComponentGroups(
                             inputStates(),
@@ -180,7 +182,7 @@ open class TransactionBuilder @JvmOverloads constructor(
     @Throws(AttachmentResolutionException::class, TransactionResolutionException::class)
     fun toLedgerTransaction(services: ServiceHub) = toWireTransaction(services).toLedgerTransaction(services)
 
-    internal fun toLedgerTransactionWithContext(services: ServicesForResolution, serializationContext: SerializationContext): LedgerTransaction {
+    internal fun toLedgerTransactionWithContext(services: ServicesForResolution, serializationContext: AMQPSerializationContext): LedgerTransaction {
         return toWireTransactionWithContext(services, serializationContext).toLedgerTransaction(services)
     }
 

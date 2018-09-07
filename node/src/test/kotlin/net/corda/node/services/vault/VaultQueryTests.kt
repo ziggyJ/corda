@@ -176,7 +176,7 @@ abstract class VaultQueryTestsBase : VaultQueryParties {
 
     companion object {
         @ClassRule @JvmField
-        val testSerialization = SerializationEnvironmentRule()
+        val testSerialization = AMQPSerializationEnvironmentRule()
     }
 
     /**

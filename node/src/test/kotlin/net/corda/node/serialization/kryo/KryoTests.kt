@@ -38,12 +38,8 @@ import kotlin.test.*
 
 class TestScheme : AbstractKryoSerializationScheme() {
     override fun canDeserializeVersion(magic: CordaSerializationMagic, target: SerializationContext.UseCase): Boolean {
-        return magic == kryoMagic && target != SerializationContext.UseCase.RPCClient
+        return magic == kryoMagic
     }
-
-    override fun rpcClientKryoPool(context: SerializationContext): KryoPool = throw UnsupportedOperationException()
-
-    override fun rpcServerKryoPool(context: SerializationContext): KryoPool = throw UnsupportedOperationException()
 }
 
 @RunWith(Parameterized::class)
@@ -60,13 +56,13 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
 
     @Before
     fun setup() {
-        factory = CheckpointSerializationFactory().apply { registerScheme(TestScheme()) }
+        factory = CheckpointSerializationFactory(TestScheme())
         context = SerializationContextImpl(kryoMagic,
                 javaClass.classLoader,
                 AllWhitelist,
                 emptyMap(),
                 true,
-                SerializationContext.UseCase.Storage,
+                SerializationContext.UseCase.Checkpoint,
                 compression,
                 rigorousMock<EncodingWhitelist>().also {
                     if (compression != null) doReturn(true).whenever(it).acceptEncoding(compression)
@@ -286,13 +282,13 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
             }
         }
         Tmp()
-        val factory = CheckpointSerializationFactory().apply { registerScheme(TestScheme()) }
+        val factory = CheckpointSerializationFactory(TestScheme())
         val context = SerializationContextImpl(kryoMagic,
                 javaClass.classLoader,
                 AllWhitelist,
                 emptyMap(),
                 true,
-                SerializationContext.UseCase.P2P,
+                SerializationContext.UseCase.Checkpoint,
                 null)
         pt.serialize(factory, context)
     }

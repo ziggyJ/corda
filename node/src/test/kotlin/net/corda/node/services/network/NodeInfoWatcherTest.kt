@@ -10,7 +10,7 @@ import net.corda.nodeapi.internal.NODE_INFO_DIRECTORY
 import net.corda.nodeapi.internal.NodeInfoAndSigned
 import net.corda.nodeapi.internal.network.NodeInfoFilesCopier
 import net.corda.testing.core.ALICE_NAME
-import net.corda.testing.core.SerializationEnvironmentRule
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.internal.createNodeInfoAndSigned
 import net.corda.testing.node.internal.MockKeyManagementService
 import net.corda.testing.node.makeTestIdentityService
@@ -29,7 +29,7 @@ import kotlin.test.assertTrue
 class NodeInfoWatcherTest {
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
 
     @Rule
     @JvmField

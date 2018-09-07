@@ -23,7 +23,7 @@ import net.corda.finance.schemas.SampleCashSchemaV2;
 import net.corda.node.services.api.IdentityServiceInternal;
 import net.corda.nodeapi.internal.persistence.CordaPersistence;
 import net.corda.nodeapi.internal.persistence.DatabaseTransaction;
-import net.corda.testing.core.SerializationEnvironmentRule;
+import net.corda.testing.core.AMQPSerializationEnvironmentRule;
 import net.corda.testing.core.TestIdentity;
 import net.corda.testing.internal.vault.DummyLinearContract;
 import net.corda.testing.internal.vault.VaultFiller;
@@ -58,7 +58,7 @@ public class VaultQueryJavaTests {
     private static final TestIdentity DUMMY_NOTARY = new TestIdentity(DUMMY_NOTARY_NAME, 20L);
     private static final TestIdentity MEGA_CORP = new TestIdentity(new CordaX500Name("MegaCorp", "London", "GB"));
     @Rule
-    public final SerializationEnvironmentRule testSerialization = new SerializationEnvironmentRule();
+    public final AMQPSerializationEnvironmentRule testSerialization = new AMQPSerializationEnvironmentRule();
     private VaultFiller vaultFiller;
     private MockServices issuerServices;
     private VaultService vaultService;

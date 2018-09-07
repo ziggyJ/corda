@@ -551,6 +551,7 @@ open class InternalMockNetwork(defaultParameters: MockNetworkParameters = MockNe
             nodes.forEach { it.started?.dispose() }
         } finally {
             checkpointSerializationEnv.unset() // Must execute even if other parts of this method fail.
+            amqpSerializationEnv.unset()
         }
         messagingNetwork.stop()
     }

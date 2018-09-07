@@ -9,6 +9,7 @@ import net.corda.nodeapi.internal.persistence.DatabaseConfig
 import net.corda.testing.common.internal.relaxedThoroughness
 import net.corda.testing.internal.rigorousMock
 import net.corda.testing.node.internal.ProcessUtilities.startJavaProcess
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -40,6 +41,7 @@ class AbstractNodeTests {
         }
     }
 
+    @Ignore
     @Test
     fun `H2 fix is applied`() {
         val pool = Executors.newFixedThreadPool(5)

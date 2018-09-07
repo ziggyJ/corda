@@ -61,7 +61,7 @@ class VaultWithCashTest {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule(true)
+    val testSerialization = AMQPSerializationEnvironmentRule(true)
     private val servicesKey = generateKeyPair()
     lateinit var services: MockServices
     private lateinit var vaultFiller: VaultFiller

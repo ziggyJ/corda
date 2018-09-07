@@ -16,7 +16,7 @@ import net.corda.serialization.internal.*
 import java.lang.reflect.Modifier
 import java.util.*
 
-val AMQP_ENABLED get() = true
+const val AMQP_ENABLED = true
 
 fun SerializerFactory.addToWhitelist(vararg types: Class<*>) {
     require(types.toSet().size == types.size) {
@@ -160,11 +160,9 @@ abstract class AbstractAMQPSerializationScheme(
         return synchronized(serializerFactoriesForContexts) {
             serializerFactoriesForContexts.computeIfAbsent(Pair(context.whitelist, context.deserializationClassLoader)) {
                 when (context.useCase) {
-                    SerializationContext.UseCase.Checkpoint ->
-                        throw IllegalStateException("AMQP should not be used for checkpoint serialization.")
-                    SerializationContext.UseCase.RPCClient ->
+                    AMQPSerializationContext.UseCase.RPCClient ->
                         rpcClientSerializerFactory(context)
-                    SerializationContext.UseCase.RPCServer ->
+                    AMQPSerializationContext.UseCase.RPCServer ->
                         rpcServerSerializerFactory(context)
                     else -> sff.make(context)
                 }.also {
@@ -185,7 +183,7 @@ abstract class AbstractAMQPSerializationScheme(
 
     override fun <T : Any> serialize(obj: T, context: AMQPSerializationContext): SerializedBytes<T> {
         var contextToUse = context
-        if (context.useCase == SerializationContext.UseCase.RPCClient) {
+        if (context.useCase == AMQPSerializationContext.UseCase.RPCClient) {
             contextToUse = context.withClassLoader(getContextClassLoader())
         }
         val serializerFactory = getSerializerFactory(contextToUse)

@@ -22,7 +22,6 @@ import java.util.concurrent.Executors
  *
  * @param inheritable whether new threads inherit the environment, use sparingly.
  */
-// TODO: check whether this is still needed after everything that really needs an AMQP serialization environment is using that instead
 class SerializationEnvironmentRule(private val inheritable: Boolean = false) : TestRule {
     companion object {
         init {

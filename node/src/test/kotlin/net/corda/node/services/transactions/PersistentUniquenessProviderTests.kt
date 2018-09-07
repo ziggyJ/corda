@@ -12,7 +12,7 @@ import net.corda.node.internal.configureDatabase
 import net.corda.node.services.schema.NodeSchemaService
 import net.corda.nodeapi.internal.persistence.CordaPersistence
 import net.corda.nodeapi.internal.persistence.DatabaseConfig
-import net.corda.testing.core.SerializationEnvironmentRule
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.TestIdentity
 import net.corda.testing.core.generateStateRef
 import net.corda.testing.internal.LogHelper
@@ -28,7 +28,7 @@ import kotlin.test.assertFailsWith
 class PersistentUniquenessProviderTests {
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
     private val identity = TestIdentity(CordaX500Name("MegaCorp", "London", "GB")).party
     private val txID = SecureHash.randomSHA256()
     private val requestSignature = NotarisationRequestSignature(DigitalSignature.WithKey(NullKeys.NullPublicKey, ByteArray(32)), 0)

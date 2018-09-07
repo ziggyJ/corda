@@ -3,14 +3,12 @@ package net.corda.serialization.internal
 
 import net.corda.core.DeleteForDJVM
 import net.corda.core.node.ServiceHub
-import net.corda.core.serialization.SerializationContext
-import net.corda.core.serialization.SerializationFactory
-import net.corda.core.serialization.SerializeAsToken
-import net.corda.core.serialization.SerializeAsTokenContext
+import net.corda.core.serialization.*
 
 val serializationContextKey = SerializeAsTokenContext::class.java
 
 fun SerializationContext.withTokenContext(serializationContext: SerializeAsTokenContext): SerializationContext = this.withProperty(serializationContextKey, serializationContext)
+fun AMQPSerializationContext.withTokenContext(serializationContext: SerializeAsTokenContext): AMQPSerializationContext = this.withProperty(serializationContextKey, serializationContext)
 
 /**
  * A context for mapping SerializationTokens to/from SerializeAsTokens.

@@ -9,7 +9,6 @@ import net.corda.core.identity.CordaX500Name
 import net.corda.core.internal.declaredField
 import net.corda.core.internal.toWireTransaction
 import net.corda.core.node.ServiceHub
-import net.corda.core.node.services.AttachmentStorage
 import net.corda.core.serialization.*
 import net.corda.core.utilities.ByteSequence
 import net.corda.core.utilities.OpaqueBytes
@@ -17,11 +16,11 @@ import net.corda.node.internal.cordapp.JarScanningCordappLoader
 import net.corda.node.internal.cordapp.CordappProviderImpl
 import net.corda.nodeapi.DummyContractBackdoor
 import net.corda.testing.common.internal.testNetworkParameters
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.DUMMY_NOTARY_NAME
 import net.corda.testing.core.SerializationEnvironmentRule
 import net.corda.testing.core.TestIdentity
 import net.corda.testing.internal.MockCordappConfigProvider
-import net.corda.testing.internal.kryoSpecific
 import net.corda.testing.internal.rigorousMock
 import net.corda.testing.services.MockAttachmentStorage
 import org.apache.commons.io.IOUtils
@@ -41,13 +40,8 @@ class AttachmentsClassLoaderTests {
         private const val ISOLATED_CONTRACT_CLASS_NAME = "net.corda.finance.contracts.isolated.AnotherDummyContract"
         private val DUMMY_NOTARY = TestIdentity(DUMMY_NOTARY_NAME, 20).party
         private val MEGA_CORP = TestIdentity(CordaX500Name("MegaCorp", "London", "GB")).party
-        private fun SerializationContext.withAttachmentStorage(attachmentStorage: AttachmentStorage): SerializationContext {
-            val serviceHub = rigorousMock<ServiceHub>()
-            doReturn(attachmentStorage).whenever(serviceHub).attachments
-            return this.withServiceHub(serviceHub)
-        }
 
-        private fun SerializationContext.withServiceHub(serviceHub: ServiceHub): SerializationContext {
+        private fun AMQPSerializationContext.withServiceHub(serviceHub: ServiceHub): AMQPSerializationContext {
             return this.withTokenContext(SerializeAsTokenContextImpl(serviceHub) {}).withProperty(attachmentsClassLoaderEnabledPropertyName, true)
         }
     }
@@ -55,6 +49,11 @@ class AttachmentsClassLoaderTests {
     @Rule
     @JvmField
     val testSerialization = SerializationEnvironmentRule()
+
+    @Rule
+    @JvmField
+    val testAMQPSerialization = AMQPSerializationEnvironmentRule()
+
     private val attachments = MockAttachmentStorage()
     private val networkParameters = testNetworkParameters()
     private val cordappProvider = CordappProviderImpl(JarScanningCordappLoader.fromJarUrls(listOf(ISOLATED_CONTRACTS_JAR_PATH)), MockCordappConfigProvider(), attachments).apply {
@@ -196,15 +195,14 @@ class AttachmentsClassLoaderTests {
     fun `testing Kryo with ClassLoader (with top level class name)`() {
         val contract = createContract2Cash()
 
-        val bytes = contract.serialize()
+        val bytes = contract.serialize(context = SerializationFactory.defaultFactory.defaultContext)
         val storage = attachments
         val att0 = attachmentId
         val att1 = storage.importAttachment(fakeAttachment("file1.txt", "some data").inputStream())
         val att2 = storage.importAttachment(fakeAttachment("file2.txt", "some other data").inputStream())
-
         val cl = AttachmentsClassLoader(arrayOf(att0, att1, att2).map { storage.openAttachment(it)!! }, FilteringClassLoader)
-
         val context = SerializationFactory.defaultFactory.defaultContext.withClassLoader(cl).withWhitelisted(contract.javaClass)
+
         val state2 = bytes.deserialize(context = context)
         assertTrue(state2.javaClass.classLoader is AttachmentsClassLoader)
         assertNotNull(state2)
@@ -280,7 +278,7 @@ class AttachmentsClassLoaderTests {
         val contractClass = Class.forName(ISOLATED_CONTRACT_CLASS_NAME, true, child)
         val contract = contractClass.newInstance() as DummyContractBackdoor
         val tx = contract.generateInitial(MEGA_CORP.ref(0), 42, DUMMY_NOTARY)
-        val context = SerializationFactory.defaultFactory.defaultContext
+        val context = AMQPSerializationFactory.defaultFactory.defaultContext
                 .withWhitelisted(contract.javaClass)
                 .withWhitelisted(Class.forName("$ISOLATED_CONTRACT_CLASS_NAME\$State", true, child))
                 .withWhitelisted(Class.forName("$ISOLATED_CONTRACT_CLASS_NAME\$Commands\$Create", true, child))
@@ -301,47 +299,14 @@ class AttachmentsClassLoaderTests {
     }
 
     @Test
-    fun `test deserialize of WireTransaction where contract cannot be found`() {
-        kryoSpecific("Kryo verifies/loads attachments on deserialization, whereas AMQP currently does not") {
-            ClassLoaderForTests().use { child ->
-                val contractClass = Class.forName(ISOLATED_CONTRACT_CLASS_NAME, true, child)
-                val contract = contractClass.newInstance() as DummyContractBackdoor
-                val tx = contract.generateInitial(MEGA_CORP.ref(0), 42, DUMMY_NOTARY)
-                val attachmentRef = attachmentId
-                val bytes = run {
-                    val outboundContext = SerializationFactory.defaultFactory.defaultContext
-                            .withServiceHub(serviceHub)
-                            .withClassLoader(child)
-                    val wireTransaction = tx.toWireTransaction(serviceHub, outboundContext)
-                    wireTransaction.serialize(context = outboundContext)
-                }
-                // use empty attachmentStorage
-
-                val e = assertFailsWith(MissingAttachmentsException::class) {
-                    val mockAttStorage = MockAttachmentStorage()
-                    val inboundContext = SerializationFactory.defaultFactory.defaultContext
-                            .withAttachmentStorage(mockAttStorage)
-                            .withAttachmentsClassLoader(listOf(attachmentRef))
-                    bytes.deserialize(context = inboundContext)
-
-                    if (mockAttStorage.openAttachment(attachmentRef) == null) {
-                        throw MissingAttachmentsException(listOf(attachmentRef))
-                    }
-                }
-                assertEquals(attachmentRef, e.ids.single())
-            }
-        }
-    }
-
-    @Test
     fun `test loading a class from attachment during deserialization`() {
         ClassLoaderForTests().use { child ->
             val contractClass = Class.forName(ISOLATED_CONTRACT_CLASS_NAME, true, child)
             val contract = contractClass.newInstance() as DummyContractBackdoor
-            val outboundContext = SerializationFactory.defaultFactory.defaultContext.withClassLoader(child)
+            val outboundContext = AMQPSerializationFactory.defaultFactory.defaultContext.withClassLoader(child)
             val attachmentRef = attachmentId
             // We currently ignore annotations in attachments, so manually whitelist.
-            val inboundContext = SerializationFactory
+            val inboundContext = AMQPSerializationFactory
                     .defaultFactory
                     .defaultContext
                     .withWhitelisted(contract.javaClass)
@@ -361,14 +326,14 @@ class AttachmentsClassLoaderTests {
             val contractClass = Class.forName(ISOLATED_CONTRACT_CLASS_NAME, true, child)
             val contract = contractClass.newInstance() as DummyContractBackdoor
             val attachmentRef = SecureHash.randomSHA256()
-            val outboundContext = SerializationFactory.defaultFactory.defaultContext.withClassLoader(child)
+            val outboundContext = AMQPSerializationFactory.defaultFactory.defaultContext.withClassLoader(child)
             // Serialize with custom context to avoid populating the default context with the specially loaded class
             val serialized = contract.serialize(context = outboundContext)
 
             // Then deserialize with the attachment class loader associated with the attachment
             val e = assertFailsWith(MissingAttachmentsException::class) {
                 // We currently ignore annotations in attachments, so manually whitelist.
-                val inboundContext = SerializationFactory
+                val inboundContext = AMQPSerializationFactory
                         .defaultFactory
                         .defaultContext
                         .withWhitelisted(contract.javaClass)

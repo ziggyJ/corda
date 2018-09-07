@@ -33,11 +33,12 @@ class ListsSerializationTest {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testAMQPSerialization = AMQPSerializationEnvironmentRule()
+
 
     @Rule
     @JvmField
-    val testAMQPSerialization = AMQPSerializationEnvironmentRule()
+    val testKryoSerialization = SerializationEnvironmentRule()
 
     @Test
     fun `check list can be serialized as root of serialization graph`() {
@@ -68,7 +69,7 @@ class ListsSerializationTest {
     @Test
     fun `check empty list serialises as Java emptyList`() {
         val nameID = 0
-        val serializedForm = emptyList<Int>().serialize()
+        val serializedForm = emptyList<Int>().serializeKryo()
         val output = ByteArrayOutputStream().apply {
             kryoMagic.writeTo(this)
             SectionId.ALT_DATA_AND_STOP.writeTo(this)

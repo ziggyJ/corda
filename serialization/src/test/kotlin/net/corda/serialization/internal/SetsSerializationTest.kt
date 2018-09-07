@@ -4,10 +4,11 @@ import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.util.DefaultClassResolver
 import net.corda.core.serialization.deserialize
 import net.corda.core.serialization.serialize
+import net.corda.core.serialization.serializeKryo
 import net.corda.node.serialization.kryo.kryoMagic
 import net.corda.node.services.statemachine.DataSessionMessage
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.SerializationEnvironmentRule
-import net.corda.testing.internal.kryoSpecific
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -23,6 +24,10 @@ class SetsSerializationTest {
     @Rule
     @JvmField
     val testSerialization = SerializationEnvironmentRule()
+
+    @Rule
+    @JvmField
+    val testAMQPSerialization = AMQPSerializationEnvironmentRule()
 
     @Test
     fun `check set can be serialized as root of serialization graph`() {
@@ -51,9 +56,9 @@ class SetsSerializationTest {
     }
 
     @Test
-    fun `check empty set serialises as Java emptySet`() = kryoSpecific("Checks Kryo header properties") {
+    fun `check empty set serialises as Java emptySet`() {
         val nameID = 0
-        val serializedForm = emptySet<Int>().serialize()
+        val serializedForm = emptySet<Int>().serializeKryo()
         val output = ByteArrayOutputStream().apply {
             kryoMagic.writeTo(this)
             SectionId.ALT_DATA_AND_STOP.writeTo(this)

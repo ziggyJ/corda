@@ -73,7 +73,8 @@ class HibernateConfigurationTest {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
+
     lateinit var services: MockServices
     private lateinit var vaultFiller: VaultFiller
     private lateinit var bankServices: MockServices

@@ -2,9 +2,10 @@ package net.corda.serialization.internal
 
 import net.corda.core.crypto.Crypto
 import net.corda.core.serialization.AMQPSerializationDefaults
-import net.corda.core.serialization.SerializationContext.UseCase.*
+import net.corda.core.serialization.AMQPSerializationContext.UseCase.*
 import net.corda.core.serialization.SerializationDefaults
 import net.corda.core.serialization.serialize
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.SerializationEnvironmentRule
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.Rule
@@ -30,6 +31,10 @@ class PrivateKeySerializationTest(private val privateKey: PrivateKey, private va
     @Rule
     @JvmField
     val testSerialization = SerializationEnvironmentRule()
+
+    @Rule
+    @JvmField
+    val testAMQPSerialization = AMQPSerializationEnvironmentRule()
 
     @Test
     fun `passed with expected UseCases`() {

@@ -46,7 +46,7 @@ import kotlin.test.assertEquals
 class NetworkMapUpdaterTest {
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule(true)
+    val testSerialization = AMQPSerializationEnvironmentRule(true)
 
     private val cacheExpiryMs = 1000
     private val privateNetUUID = UUID.randomUUID()

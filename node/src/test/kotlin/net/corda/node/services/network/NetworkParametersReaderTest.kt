@@ -13,7 +13,7 @@ import net.corda.node.VersionInfo
 import net.corda.node.internal.NetworkParametersReader
 import net.corda.nodeapi.internal.network.*
 import net.corda.testing.common.internal.testNetworkParameters
-import net.corda.testing.core.SerializationEnvironmentRule
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.internal.DEV_ROOT_CA
 import net.corda.testing.node.internal.network.NetworkMapServer
 import org.assertj.core.api.Assertions.assertThat
@@ -30,7 +30,7 @@ import kotlin.test.assertNotNull
 class NetworkParametersReaderTest {
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule(true)
+    val testSerialization = AMQPSerializationEnvironmentRule(true)
 
     private val fs: FileSystem = Jimfs.newFileSystem(Configuration.unix())
     private val cacheTimeout = 100000.seconds

@@ -301,7 +301,13 @@ interface SerializationContext {
      * The use case that we are serializing for, since it influences the implementations chosen.
      */
     @KeepForDJVM
-    enum class UseCase { P2P, RPCServer, RPCClient, Storage, Checkpoint, Testing }
+    enum class UseCase {
+        @Deprecated("Checkpoint serialization context does not support P2P use case") P2P,
+        @Deprecated("Checkpoint serialization context does not support RPC server use case") RPCServer,
+        @Deprecated("Checkpoint serialization context does not support RPC client case") RPCClient,
+        @Deprecated("Checkpoint serialization context does not support storage use case") Storage,
+        Checkpoint,
+        @Deprecated("Checkpoint serialization context does not support testing use case") Testing }
 }
 
 /**
@@ -395,7 +401,7 @@ interface AMQPSerializationContext {
      * The use case that we are serializing for, since it influences the implementations chosen.
      */
     @KeepForDJVM
-    enum class UseCase { P2P, RPCServer, RPCClient, Storage, Checkpoint, Testing }
+    enum class UseCase { P2P, RPCServer, RPCClient, Storage, Testing }
 }
 
 /**
@@ -517,7 +523,7 @@ inline fun <reified T : Any> ByteSequence.deserializeWithCompatibleContext(seria
 }
 
 /**
- * Convenience extension method for deserializing SerializedBytes with type matching, utilising the defaults.
+ * Convenience extension method for deserializing SerializedBytes with type matching, utilising the default factory.
  *
  * Special case for checkpoint deserialization using Kryo.
  */
@@ -527,7 +533,15 @@ inline fun <reified T : Any> SerializedBytes<T>.deserialize(serializationFactory
 }
 
 /**
- * Convenience extension method for deserializing a ByteArray, utilising the defaults.
+ * Convenience extension method for deserializing SerializedBytes with type matching, utilising the defaults.
+ *
+ * Special case for checkpoint deserialization using Kryo.
+ */
+inline fun <reified T : Any> SerializedBytes<T>.deserializeKryo() =
+        deserialize(context = SerializationFactory.defaultFactory.defaultContext)
+
+/**
+ * Convenience extension method for deserializing a ByteArray, utilising the default factory.
  *
  * Special case for checkpoint deserialization using Kryo.
  */
@@ -538,7 +552,7 @@ inline fun <reified T : Any> ByteArray.deserialize(serializationFactory: Seriali
 }
 
 /**
- * Convenience extension method for deserializing a JDBC Blob, utilising the defaults.
+ * Convenience extension method for deserializing a JDBC Blob, utilising the default factory.
  *
  * Special case for checkpoint serialization using Kryo.
  */
@@ -549,7 +563,7 @@ inline fun <reified T : Any> Blob.deserialize(serializationFactory: Serializatio
 }
 
 /**
- * Convenience extension method for serializing an object of type T, utilising the defaults.
+ * Convenience extension method for serializing an object of type T, utilising the default factory.
  *
  * Special case for checkpoint serialization using Kryo.
  */
@@ -557,6 +571,13 @@ fun <T : Any> T.serialize(serializationFactory: SerializationFactory = Serializa
                           context: SerializationContext): SerializedBytes<T> {
     return serializationFactory.serialize(this, context)
 }
+
+/**
+ * Convenience extension method for serializing an object of type T, utilising the defaults.
+ *
+ * Special case for checkpoint serialization using Kryo.
+ */
+fun <T : Any> T.serializeKryo() = serialize(context = SerializationFactory.defaultFactory.defaultContext)
 
 /**
  * A type safe wrapper around a byte array that contains a serialised object. You can call [SerializedBytes.deserialize]

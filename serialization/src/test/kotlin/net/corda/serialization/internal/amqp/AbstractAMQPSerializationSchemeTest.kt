@@ -50,7 +50,6 @@ class AbstractAMQPSerializationSchemeTest {
 
         }
 
-
         IntStream.range(0, 2048).parallel().forEach {
             val context = if (ThreadLocalRandom.current().nextBoolean()) {
                 genesisContext.withClassLoader(URLClassLoader(emptyArray()))

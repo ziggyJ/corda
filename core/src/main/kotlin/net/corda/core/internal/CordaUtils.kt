@@ -8,6 +8,7 @@ import net.corda.core.crypto.SecureHash
 import net.corda.core.flows.FlowLogic
 import net.corda.core.node.ServicesForResolution
 import net.corda.core.node.ZoneVersionTooLowException
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.serialization.SerializationContext
 import net.corda.core.transactions.LedgerTransaction
 import net.corda.core.transactions.SignedTransaction
@@ -30,13 +31,13 @@ fun ServicesForResolution.ensureMinimumPlatformVersion(requiredMinPlatformVersio
 
 /** Provide access to internal method for AttachmentClassLoaderTests */
 @DeleteForDJVM
-fun TransactionBuilder.toWireTransaction(services: ServicesForResolution, serializationContext: SerializationContext): WireTransaction {
+fun TransactionBuilder.toWireTransaction(services: ServicesForResolution, serializationContext: AMQPSerializationContext): WireTransaction {
     return toWireTransactionWithContext(services, serializationContext)
 }
 
 /** Provide access to internal method for AttachmentClassLoaderTests */
 @DeleteForDJVM
-fun TransactionBuilder.toLedgerTransaction(services: ServicesForResolution, serializationContext: SerializationContext): LedgerTransaction {
+fun TransactionBuilder.toLedgerTransaction(services: ServicesForResolution, serializationContext: AMQPSerializationContext): LedgerTransaction {
     return toLedgerTransactionWithContext(services, serializationContext)
 }
 

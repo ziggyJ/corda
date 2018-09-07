@@ -12,6 +12,7 @@ import org.apache.qpid.proton.amqp.Binary
 import org.apache.qpid.proton.amqp.DescribedType
 import org.apache.qpid.proton.amqp.UnsignedInteger
 import org.apache.qpid.proton.codec.Data
+import org.bouncycastle.util.Arrays
 import java.io.InputStream
 import java.io.NotSerializableException
 import java.lang.reflect.ParameterizedType
@@ -97,6 +98,7 @@ class DeserializationInput constructor(
             return generator()
         } catch (amqp : AMQPNotSerializableException) {
             amqp.log("Deserialize", logger)
+            amqp.printStackTrace()
             throw NotSerializableException(amqp.mitigation)
         } catch (nse: NotSerializableException) {
             throw nse
