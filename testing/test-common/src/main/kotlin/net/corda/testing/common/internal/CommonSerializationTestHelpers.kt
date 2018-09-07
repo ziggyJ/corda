@@ -1,9 +1,18 @@
 package net.corda.testing.common.internal
 
-import net.corda.core.serialization.internal.SerializationEnvironment
-import net.corda.core.serialization.internal._contextSerializationEnv
-import net.corda.core.serialization.internal._inheritableContextSerializationEnv
+import net.corda.core.serialization.internal.*
 
+fun <T> AMQPSerializationEnvironment.asContextEnv(inheritable: Boolean = false, callable: (AMQPSerializationEnvironment) -> T): T {
+    val property = if (inheritable) _inheritableContextAMQPSerializationEnv else _contextAMQPSerializationEnv
+    property.set(this)
+    try {
+        return callable(this)
+    } finally {
+        property.set(null)
+    }
+}
+
+// TODO: eliminate this if it's no longer needed
 fun <T> SerializationEnvironment.asContextEnv(inheritable: Boolean = false, callable: (SerializationEnvironment) -> T): T {
     val property = if (inheritable) _inheritableContextSerializationEnv else _contextSerializationEnv
     property.set(this)

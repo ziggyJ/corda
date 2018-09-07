@@ -1,6 +1,6 @@
 package net.corda.serialization.internal.amqp.custom
 
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.serialization.internal.amqp.*
 import org.apache.qpid.proton.codec.Data
 import java.lang.reflect.Type
@@ -18,12 +18,12 @@ object X509CRLSerializer : CustomSerializer.Implements<X509CRL>(X509CRL::class.j
     )))
 
     override fun writeDescribedObject(obj: X509CRL, data: Data, type: Type, output: SerializationOutput,
-                                      context: SerializationContext) {
+                                      context: AMQPSerializationContext) {
         output.writeObject(obj.encoded, data, clazz, context)
     }
 
     override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
-                            context: SerializationContext): X509CRL {
+                            context: AMQPSerializationContext): X509CRL {
         val bytes = input.readObject(obj, schemas, ByteArray::class.java, context) as ByteArray
         return CertificateFactory.getInstance("X.509").generateCRL(bytes.inputStream()) as X509CRL
     }

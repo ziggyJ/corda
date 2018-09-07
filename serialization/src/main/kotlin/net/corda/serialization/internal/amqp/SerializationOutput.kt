@@ -1,7 +1,7 @@
 package net.corda.serialization.internal.amqp
 
 import net.corda.core.KeepForDJVM
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.serialization.SerializedBytes
 import net.corda.core.utilities.contextLogger
 import net.corda.serialization.internal.CordaSerializationEncoding
@@ -44,7 +44,7 @@ open class SerializationOutput constructor(
      * of AMQP serialization constructed the serialized form.
      */
     @Throws(NotSerializableException::class)
-    fun <T : Any> serialize(obj: T, context: SerializationContext): SerializedBytes<T> {
+    fun <T : Any> serialize(obj: T, context: AMQPSerializationContext): SerializedBytes<T> {
         try {
             return _serialize(obj, context)
         } catch (amqp: AMQPNotSerializableException) {
@@ -58,7 +58,7 @@ open class SerializationOutput constructor(
     // NOTE: No need to handle AMQPNotSerializableExceptions here as this is an internal
     // only / testing function and it doesn't matter if they escape
     @Throws(NotSerializableException::class)
-    fun <T : Any> serializeAndReturnSchema(obj: T, context: SerializationContext): BytesAndSchemas<T> {
+    fun <T : Any> serializeAndReturnSchema(obj: T, context: AMQPSerializationContext): BytesAndSchemas<T> {
         try {
             val blob = _serialize(obj, context)
             val schema = Schema(schemaHistory.toList())
@@ -74,7 +74,7 @@ open class SerializationOutput constructor(
         schemaHistory.clear()
     }
 
-    internal fun <T : Any> _serialize(obj: T, context: SerializationContext): SerializedBytes<T> {
+    internal fun <T : Any> _serialize(obj: T, context: AMQPSerializationContext): SerializedBytes<T> {
         val data = Data.Factory.create()
         data.withDescribed(Envelope.DESCRIPTOR_OBJECT) {
             withList {
@@ -102,7 +102,7 @@ open class SerializationOutput constructor(
         })
     }
 
-    internal fun writeObject(obj: Any, data: Data, context: SerializationContext) {
+    internal fun writeObject(obj: Any, data: Data, context: AMQPSerializationContext) {
         writeObject(obj, data, obj.javaClass, context)
     }
 
@@ -114,7 +114,7 @@ open class SerializationOutput constructor(
         data.putObject(transformsSchema)
     }
 
-    internal fun writeObjectOrNull(obj: Any?, data: Data, type: Type, context: SerializationContext, debugIndent: Int) {
+    internal fun writeObjectOrNull(obj: Any?, data: Data, type: Type, context: AMQPSerializationContext, debugIndent: Int) {
         if (obj == null) {
             data.putNull()
         } else {
@@ -122,7 +122,7 @@ open class SerializationOutput constructor(
         }
     }
 
-    internal fun writeObject(obj: Any, data: Data, type: Type, context: SerializationContext, debugIndent: Int = 0) {
+    internal fun writeObject(obj: Any, data: Data, type: Type, context: AMQPSerializationContext, debugIndent: Int = 0) {
         val serializer = serializerFactory.get(obj.javaClass, type)
         if (serializer !in serializerHistory) {
             serializerHistory.add(serializer)

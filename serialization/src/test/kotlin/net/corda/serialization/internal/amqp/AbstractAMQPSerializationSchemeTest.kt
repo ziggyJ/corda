@@ -1,14 +1,10 @@
 package net.corda.serialization.internal.amqp
 
-import net.corda.core.serialization.ClassWhitelist
-import net.corda.core.serialization.SerializationContext
-import net.corda.core.serialization.deserialize
-import net.corda.core.utilities.ByteSequence
+import net.corda.core.serialization.*
 import net.corda.serialization.internal.AllWhitelist
-import net.corda.serialization.internal.CordaSerializationMagic
-import net.corda.serialization.internal.SerializationContextImpl
+import net.corda.serialization.internal.AMQPSerializationContextImpl
 import net.corda.serialization.internal.amqp.testutils.serializationProperties
-import net.corda.testing.core.SerializationEnvironmentRule
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import org.hamcrest.CoreMatchers
 import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.Matchers
@@ -23,17 +19,16 @@ class AbstractAMQPSerializationSchemeTest {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
 
     @Test
     fun `number of cached factories must be bounded by maxFactories`() {
-        val genesisContext = SerializationContextImpl(
-                ByteSequence.of(byteArrayOf('c'.toByte(), 'o'.toByte(), 'r'.toByte(), 'd'.toByte(), 'a'.toByte(), 0.toByte(), 0.toByte(), 1.toByte())),
+        val genesisContext = AMQPSerializationContextImpl(
                 ClassLoader.getSystemClassLoader(),
                 AllWhitelist,
                 serializationProperties,
                 false,
-                SerializationContext.UseCase.RPCClient,
+                AMQPSerializationContext.UseCase.RPCClient,
                 null)
 
 
@@ -41,15 +36,15 @@ class AbstractAMQPSerializationSchemeTest {
         val maxFactories = 512
         val backingMap = AccessOrderLinkedHashMap<Pair<ClassWhitelist, ClassLoader>, SerializerFactory>({ maxFactories })
         val scheme = object : AbstractAMQPSerializationScheme(emptySet(), backingMap, createSerializerFactoryFactory()) {
-            override fun rpcClientSerializerFactory(context: SerializationContext): SerializerFactory {
+            override fun rpcClientSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
                 return factory
             }
 
-            override fun rpcServerSerializerFactory(context: SerializationContext): SerializerFactory {
+            override fun rpcServerSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
                 return factory
             }
 
-            override fun canDeserializeVersion(magic: CordaSerializationMagic, target: SerializationContext.UseCase): Boolean {
+            override fun canDeserializeVersion(target: AMQPSerializationContext.UseCase): Boolean {
                 return true
             }
 
@@ -64,7 +59,7 @@ class AbstractAMQPSerializationSchemeTest {
             }
             val testString = "TEST${ThreadLocalRandom.current().nextInt()}"
             val serialized = scheme.serialize(testString, context)
-            val deserialized = serialized.deserialize(context = context, serializationFactory = testSerialization.serializationFactory)
+            val deserialized = serialized.amqpDeserialize(context = context, serializationFactory = testSerialization.serializationFactory)
             Assert.assertThat(testString, `is`(deserialized))
             Assert.assertThat(backingMap.size, `is`(Matchers.lessThanOrEqualTo(maxFactories)))
         }

@@ -21,7 +21,9 @@ import net.corda.core.messaging.RPCOps
 import net.corda.core.node.NetworkParameters
 import net.corda.core.node.NodeInfo
 import net.corda.core.node.ServiceHub
+import net.corda.core.serialization.internal.AMQPSerializationEnvironmentImpl
 import net.corda.core.serialization.internal.SerializationEnvironmentImpl
+import net.corda.core.serialization.internal.nodeAMQPSerializationEnv
 import net.corda.core.serialization.internal.nodeSerializationEnv
 import net.corda.core.utilities.NetworkHostAndPort
 import net.corda.core.utilities.contextLogger
@@ -443,17 +445,22 @@ open class Node(configuration: NodeConfiguration,
     private fun initialiseSerialization() {
         if (!initialiseSerialization) return
         val classloader = cordappLoader.appClassLoader
+
         nodeSerializationEnv = SerializationEnvironmentImpl(
                 SerializationFactoryImpl().apply {
-                    registerScheme(AMQPServerSerializationScheme(cordappLoader.cordapps))
-                    registerScheme(AMQPClientSerializationScheme(cordappLoader.cordapps))
                     registerScheme(KryoServerSerializationScheme())
                 },
+                checkpointContext = KRYO_CHECKPOINT_CONTEXT.withClassLoader(classloader))
+
+        nodeAMQPSerializationEnv = AMQPSerializationEnvironmentImpl(
+                AMQPSerializationFactoryImpl().apply {
+                    registerScheme(AMQPServerSerializationScheme(cordappLoader.cordapps))
+                    registerScheme(AMQPClientSerializationScheme(cordappLoader.cordapps))
+                },
                 p2pContext = AMQP_P2P_CONTEXT.withClassLoader(classloader),
-                rpcServerContext = AMQP_RPC_SERVER_CONTEXT.withClassLoader(classloader),
-                storageContext = AMQP_STORAGE_CONTEXT.withClassLoader(classloader),
-                checkpointContext = KRYO_CHECKPOINT_CONTEXT.withClassLoader(classloader),
-                rpcClientContext = if (configuration.shouldInitCrashShell()) AMQP_RPC_CLIENT_CONTEXT.withClassLoader(classloader) else null) //even Shell embeded in the node connects via RPC to the node
+                _rpcServerContext = AMQP_RPC_SERVER_CONTEXT.withClassLoader(classloader),
+                _storageContext = AMQP_STORAGE_CONTEXT.withClassLoader(classloader),
+                _rpcClientContext = if (configuration.shouldInitCrashShell()) AMQP_RPC_CLIENT_CONTEXT.withClassLoader(classloader) else null) //even Shell embeded in the node connects via RPC to the node
     }
 
     /** Starts a blocking event loop for message dispatch. */

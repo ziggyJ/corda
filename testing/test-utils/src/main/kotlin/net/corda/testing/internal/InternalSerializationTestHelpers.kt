@@ -13,7 +13,7 @@ import net.corda.testing.core.SerializationEnvironmentRule
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 
-val inVMExecutors = ConcurrentHashMap<SerializationEnvironment, ExecutorService>()
+val inVMExecutors = ConcurrentHashMap<Any, ExecutorService>()
 
 /**
  * For example your test class uses [SerializationEnvironmentRule] but you want to turn it off for one method.
@@ -29,32 +29,40 @@ fun <T> withoutTestSerialization(callable: () -> T): T { // TODO: Delete this, s
     }
 }
 
-internal fun createTestSerializationEnv(label: String): SerializationEnvironmentImpl {
+internal fun createTestKryoSerializationEnv(label: String): SerializationEnvironmentImpl {
     val factory = SerializationFactoryImpl().apply {
-        registerScheme(AMQPClientSerializationScheme(emptyList()))
-        registerScheme(AMQPServerSerializationScheme(emptyList()))
-        // needed for checkpointing
         registerScheme(KryoServerSerializationScheme())
     }
     return object : SerializationEnvironmentImpl(
             factory,
-            AMQP_P2P_CONTEXT,
-            AMQP_RPC_SERVER_CONTEXT,
-            AMQP_RPC_CLIENT_CONTEXT,
-            AMQP_STORAGE_CONTEXT,
             KRYO_CHECKPOINT_CONTEXT
     ) {
         override fun toString() = "testSerializationEnv($label)"
     }
 }
 
+internal fun createTestAMQPSerializationEnv(label: String): AMQPSerializationEnvironmentImpl {
+    val factory = AMQPSerializationFactoryImpl().apply {
+        registerScheme(AMQPClientSerializationScheme(emptyList()))
+        registerScheme(AMQPServerSerializationScheme(emptyList()))
+    }
+    return AMQPSerializationEnvironmentImpl(
+            factory,
+            AMQP_P2P_CONTEXT,
+            AMQP_RPC_SERVER_CONTEXT,
+            AMQP_RPC_CLIENT_CONTEXT,
+            AMQP_STORAGE_CONTEXT
+    )
+}
+
 /**
  * Should only be used by Driver and MockNode.
  * @param armed true to install, false to do nothing and return a dummy env.
  */
-fun setGlobalSerialization(armed: Boolean): GlobalSerializationEnvironment {
+fun setGlobalCheckpointSerialization(armed: Boolean): GlobalSerializationEnvironment {
     return if (armed) {
-        object : GlobalSerializationEnvironment, SerializationEnvironment by createTestSerializationEnv("<global>") {
+        object : GlobalSerializationEnvironment,
+                SerializationEnvironment by createTestKryoSerializationEnv("<global>") {
             override fun unset() {
                 _globalSerializationEnv.set(null)
                 inVMExecutors.remove(this)
@@ -69,8 +77,36 @@ fun setGlobalSerialization(armed: Boolean): GlobalSerializationEnvironment {
     }
 }
 
+/**
+ * Should only be used by Driver and MockNode.
+ * @param armed true to install, false to do nothing and return a dummy env.
+ */
+fun setGlobalAMQPSerialization(armed: Boolean): GlobalAMQPSerializationEnvironment {
+    return if (armed) {
+        object : GlobalAMQPSerializationEnvironment,
+                AMQPSerializationEnvironment by createTestAMQPSerializationEnv("<global>") {
+            override fun unset() {
+                _globalAMQPSerializationEnv.set(null)
+                inVMExecutors.remove(this)
+            }
+        }.also {
+            _globalAMQPSerializationEnv.set(it)
+        }
+    } else {
+        rigorousMock<GlobalAMQPSerializationEnvironment>().also {
+            doNothing().whenever(it).unset()
+        }
+    }
+}
+
 @DoNotImplement
 interface GlobalSerializationEnvironment : SerializationEnvironment {
+    /** Unset this environment. */
+    fun unset()
+}
+
+@DoNotImplement
+interface GlobalAMQPSerializationEnvironment : AMQPSerializationEnvironment {
     /** Unset this environment. */
     fun unset()
 }

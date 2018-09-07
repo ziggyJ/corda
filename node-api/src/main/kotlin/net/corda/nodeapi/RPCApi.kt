@@ -6,9 +6,7 @@ import net.corda.core.context.Trace
 import net.corda.core.context.Trace.InvocationId
 import net.corda.core.context.Trace.SessionId
 import net.corda.core.identity.CordaX500Name
-import net.corda.core.serialization.SerializationContext
-import net.corda.core.serialization.deserialize
-import net.corda.core.serialization.serialize
+import net.corda.core.serialization.*
 import net.corda.core.utilities.Id
 import net.corda.core.utilities.OpaqueBytes
 import net.corda.core.utilities.Try
@@ -178,7 +176,7 @@ object RPCApi {
             OBSERVATION
         }
 
-        abstract fun writeToClientMessage(context: SerializationContext, message: ClientMessage)
+        abstract fun writeToClientMessage(context: AMQPSerializationContext, message: ClientMessage)
 
         /** The identity used to identify the deduplication ID sequence. This should be unique per server JVM run */
         abstract val deduplicationIdentity: String
@@ -191,7 +189,7 @@ object RPCApi {
                 val result: Try<Any?>,
                 override val deduplicationIdentity: String
         ) : ServerToClient() {
-            override fun writeToClientMessage(context: SerializationContext, message: ClientMessage) {
+            override fun writeToClientMessage(context: AMQPSerializationContext, message: ClientMessage) {
                 message.putIntProperty(TAG_FIELD_NAME, Tag.RPC_REPLY.ordinal)
                 message.putStringProperty(DEDUPLICATION_IDENTITY_FIELD_NAME, deduplicationIdentity)
                 id.mapTo(message, RPC_ID_FIELD_NAME, RPC_ID_TIMESTAMP_FIELD_NAME)
@@ -204,7 +202,7 @@ object RPCApi {
                 val content: Notification<*>,
                 override val deduplicationIdentity: String
         ) : ServerToClient() {
-            override fun writeToClientMessage(context: SerializationContext, message: ClientMessage) {
+            override fun writeToClientMessage(context: AMQPSerializationContext, message: ClientMessage) {
                 message.putIntProperty(TAG_FIELD_NAME, Tag.OBSERVATION.ordinal)
                 message.putStringProperty(DEDUPLICATION_IDENTITY_FIELD_NAME, deduplicationIdentity)
                 id.mapTo(message, OBSERVABLE_ID_FIELD_NAME, OBSERVABLE_ID_TIMESTAMP_FIELD_NAME)
@@ -218,13 +216,13 @@ object RPCApi {
         class FailedToDeserializeReply(val id: InvocationId, cause: Throwable) : RuntimeException("Failed to deserialize RPC reply: ${cause.message}", cause)
 
         companion object {
-            private fun Any.safeSerialize(context: SerializationContext, wrap: (Throwable) -> Any) = try {
-                serialize(context = context)
+            private fun Any.safeSerialize(context: AMQPSerializationContext, wrap: (Throwable) -> Any) = try {
+                amqpSerialize(context = context)
             } catch (t: Throwable) {
-                wrap(t).serialize(context = context)
+                wrap(t).amqpSerialize(context = context)
             }
 
-            fun fromClientMessage(context: SerializationContext, message: ClientMessage): ServerToClient {
+            fun fromClientMessage(context: AMQPSerializationContext, message: ClientMessage): ServerToClient {
                 val tag = Tag.values()[message.getIntProperty(TAG_FIELD_NAME)]
                 val deduplicationIdentity = message.getStringProperty(DEDUPLICATION_IDENTITY_FIELD_NAME)
                 return when (tag) {
@@ -235,7 +233,7 @@ object RPCApi {
                         // If anything goes wrong with deserialisation of the response, we propagate it differently because
                         // we also need to pass through the invocation and dedupe IDs.
                         val result: Try<Any?> = try {
-                            message.getBodyAsByteArray().deserialize(context = poolWithIdContext)
+                            message.getBodyAsByteArray().amqpDeserialize(context = poolWithIdContext)
                         } catch (e: Exception) {
                             throw FailedToDeserializeReply(id, e)
                         }
@@ -248,7 +246,7 @@ object RPCApi {
                     RPCApi.ServerToClient.Tag.OBSERVATION -> {
                         val observableId = message.invocationId(OBSERVABLE_ID_FIELD_NAME, OBSERVABLE_ID_TIMESTAMP_FIELD_NAME) ?: throw IllegalStateException("Cannot parse invocation id from client message.")
                         val poolWithIdContext = context.withProperty(RpcRequestOrObservableIdKey, observableId)
-                        val payload = message.getBodyAsByteArray().deserialize<Notification<*>>(context = poolWithIdContext)
+                        val payload = message.getBodyAsByteArray().amqpDeserialize<Notification<*>>(context = poolWithIdContext)
                         Observation(
                                 id = observableId,
                                 deduplicationIdentity = deduplicationIdentity,

@@ -3,10 +3,9 @@ package net.corda.serialization.internal.amqp
 import net.corda.core.KeepForDJVM
 import net.corda.core.StubOutForDJVM
 import net.corda.core.internal.uncheckedCast
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.codec.Data
-import java.io.NotSerializableException
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.util.*
@@ -88,7 +87,7 @@ class MapSerializer(private val declaredType: ParameterizedType, factory: Serial
             data: Data,
             type: Type,
             output: SerializationOutput,
-            context: SerializationContext,
+            context: AMQPSerializationContext,
             debugIndent: Int
     ) = ifThrowsAppend({ declaredType.typeName }) {
         obj.javaClass.checkSupportedMapType()
@@ -106,7 +105,7 @@ class MapSerializer(private val declaredType: ParameterizedType, factory: Serial
     }
 
     override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
-                            context: SerializationContext
+                            context: AMQPSerializationContext
     ): Any = ifThrowsAppend({ declaredType.typeName }) {
         // TODO: General generics question. Do we need to validate that entries in Maps and Collections match the generic type?  Is it a security hole?
         val entries: Iterable<Pair<Any?, Any?>> = (obj as Map<*, *>).map { readEntry(schemas, input, it, context) }
@@ -114,7 +113,7 @@ class MapSerializer(private val declaredType: ParameterizedType, factory: Serial
     }
 
     private fun readEntry(schemas: SerializationSchemas, input: DeserializationInput, entry: Map.Entry<Any?, Any?>,
-                          context: SerializationContext
+                          context: AMQPSerializationContext
     ) = input.readObjectOrNull(entry.key, schemas, inboundKeyType, context) to
             input.readObjectOrNull(entry.value, schemas, inboundValueType, context)
 

@@ -1,7 +1,6 @@
 package net.corda.serialization.internal.amqp
 
-import net.corda.core.serialization.SerializationContext
-import net.corda.serialization.internal.CordaSerializationMagic
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.serialization.internal.AMQP_P2P_CONTEXT
 import org.apache.qpid.proton.codec.Data
 import org.assertj.core.api.Assertions
@@ -14,13 +13,13 @@ class OverridePKSerializerTest {
 
     class TestPublicKeySerializer : CustomSerializer.Implements<PublicKey>(PublicKey::class.java) {
         override fun writeDescribedObject(obj: PublicKey, data: Data, type: Type, output: SerializationOutput,
-                                          context: SerializationContext
+                                          context: AMQPSerializationContext
         ) {
             throw SerializerTestException("Custom write call")
         }
 
         override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
-                                context: SerializationContext
+                                context: AMQPSerializationContext
         ): PublicKey {
             throw SerializerTestException("Custom read call")
         }
@@ -30,12 +29,12 @@ class OverridePKSerializerTest {
     }
 
     class AMQPTestSerializationScheme : AbstractAMQPSerializationScheme(emptyList()) {
-        override fun rpcServerSerializerFactory(context: SerializationContext): SerializerFactory {
+        override fun rpcServerSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
             TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
         }
 
-        override fun canDeserializeVersion(magic: CordaSerializationMagic, target: SerializationContext.UseCase) = true
-        override fun rpcClientSerializerFactory(context: SerializationContext): SerializerFactory {
+        override fun canDeserializeVersion(target: AMQPSerializationContext.UseCase) = true
+        override fun rpcClientSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
             TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
         }
 

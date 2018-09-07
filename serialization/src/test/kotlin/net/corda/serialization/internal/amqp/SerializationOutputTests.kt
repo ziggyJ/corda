@@ -24,8 +24,8 @@ import net.corda.serialization.internal.*
 import net.corda.serialization.internal.amqp.SerializerFactory.Companion.isPrimitive
 import net.corda.serialization.internal.amqp.testutils.*
 import net.corda.testing.contracts.DummyContract
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.BOB_NAME
-import net.corda.testing.core.SerializationEnvironmentRule
 import net.corda.testing.core.TestIdentity
 import net.corda.testing.internal.rigorousMock
 import org.apache.activemq.artemis.api.core.SimpleString
@@ -92,7 +92,7 @@ class SerializationOutputTests(private val compression: CordaSerializationEncodi
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
 
     data class Foo(val bar: String, val pub: Int)
 

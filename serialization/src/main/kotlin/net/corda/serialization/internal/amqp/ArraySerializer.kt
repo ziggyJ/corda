@@ -1,7 +1,7 @@
 package net.corda.serialization.internal.amqp
 
 import net.corda.core.KeepForDJVM
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.utilities.contextLogger
 import net.corda.core.utilities.debug
 import net.corda.core.utilities.loggerFor
@@ -72,7 +72,7 @@ open class ArraySerializer(override val type: Type, factory: SerializerFactory) 
     }
 
     override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                             context: SerializationContext, debugIndent: Int
+                             context: AMQPSerializationContext, debugIndent: Int
     ) {
         // Write described
         data.withDescribed(typeNotation.descriptor) {
@@ -85,7 +85,7 @@ open class ArraySerializer(override val type: Type, factory: SerializerFactory) 
     }
 
     override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
-                            context: SerializationContext
+                            context: AMQPSerializationContext
     ): Any {
         if (obj is List<*>) {
             return obj.map { input.readObjectOrNull(it, schemas, elementType, context) }.toArrayOfType(elementType)
@@ -139,7 +139,7 @@ abstract class PrimArraySerializer(type: Type, factory: SerializerFactory) : Arr
 
 class PrimIntArraySerializer(factory: SerializerFactory) : PrimArraySerializer(IntArray::class.java, factory) {
     override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                             context: SerializationContext, debugIndent: Int
+                             context: AMQPSerializationContext, debugIndent: Int
     ) {
         localWriteObject(data) {
             (obj as IntArray).forEach { output.writeObjectOrNull(it, data, elementType, context, debugIndent + 1) }
@@ -149,7 +149,7 @@ class PrimIntArraySerializer(factory: SerializerFactory) : PrimArraySerializer(I
 
 class PrimCharArraySerializer(factory: SerializerFactory) : PrimArraySerializer(CharArray::class.java, factory) {
     override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                             context: SerializationContext, debugIndent: Int
+                             context: AMQPSerializationContext, debugIndent: Int
     ) {
         localWriteObject(data) {
             (obj as CharArray).forEach {
@@ -170,7 +170,7 @@ class PrimCharArraySerializer(factory: SerializerFactory) : PrimArraySerializer(
 
 class PrimBooleanArraySerializer(factory: SerializerFactory) : PrimArraySerializer(BooleanArray::class.java, factory) {
     override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                             context: SerializationContext, debugIndent: Int
+                             context: AMQPSerializationContext, debugIndent: Int
     ) {
         localWriteObject(data) {
             (obj as BooleanArray).forEach { output.writeObjectOrNull(it, data, elementType, context, debugIndent + 1) }
@@ -181,7 +181,7 @@ class PrimBooleanArraySerializer(factory: SerializerFactory) : PrimArraySerializ
 class PrimDoubleArraySerializer(factory: SerializerFactory) :
         PrimArraySerializer(DoubleArray::class.java, factory) {
     override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                             context: SerializationContext, debugIndent: Int
+                             context: AMQPSerializationContext, debugIndent: Int
     ) {
         localWriteObject(data) {
             (obj as DoubleArray).forEach { output.writeObjectOrNull(it, data, elementType, context, debugIndent + 1) }
@@ -192,7 +192,7 @@ class PrimDoubleArraySerializer(factory: SerializerFactory) :
 class PrimFloatArraySerializer(factory: SerializerFactory) :
         PrimArraySerializer(FloatArray::class.java, factory) {
     override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                             context: SerializationContext, debugIndent: Int) {
+                             context: AMQPSerializationContext, debugIndent: Int) {
         localWriteObject(data) {
             (obj as FloatArray).forEach { output.writeObjectOrNull(it, data, elementType, context, debugIndent + 1) }
         }
@@ -202,7 +202,7 @@ class PrimFloatArraySerializer(factory: SerializerFactory) :
 class PrimShortArraySerializer(factory: SerializerFactory) :
         PrimArraySerializer(ShortArray::class.java, factory) {
     override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                             context: SerializationContext, debugIndent: Int
+                             context: AMQPSerializationContext, debugIndent: Int
     ) {
         localWriteObject(data) {
             (obj as ShortArray).forEach { output.writeObjectOrNull(it, data, elementType, context, debugIndent + 1) }
@@ -213,7 +213,7 @@ class PrimShortArraySerializer(factory: SerializerFactory) :
 class PrimLongArraySerializer(factory: SerializerFactory) :
         PrimArraySerializer(LongArray::class.java, factory) {
     override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                             context: SerializationContext, debugIndent: Int
+                             context: AMQPSerializationContext, debugIndent: Int
     ) {
         localWriteObject(data) {
             (obj as LongArray).forEach { output.writeObjectOrNull(it, data, elementType, context, debugIndent + 1) }

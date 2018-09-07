@@ -10,7 +10,8 @@ import net.corda.core.internal.logElapsedTime
 import net.corda.core.internal.uncheckedCast
 import net.corda.core.messaging.ClientRpcSslOptions
 import net.corda.core.messaging.RPCOps
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
+import net.corda.core.serialization.AMQPSerializationDefaults
 import net.corda.core.serialization.SerializationDefaults
 import net.corda.core.serialization.internal.nodeSerializationEnv
 import net.corda.core.utilities.NetworkHostAndPort
@@ -31,28 +32,28 @@ import java.lang.reflect.Proxy
 class RPCClient<I : RPCOps>(
         val transport: TransportConfiguration,
         val rpcConfiguration: CordaRPCClientConfiguration = CordaRPCClientConfiguration.DEFAULT,
-        val serializationContext: SerializationContext = SerializationDefaults.RPC_CLIENT_CONTEXT,
+        val serializationContext: AMQPSerializationContext = AMQPSerializationDefaults.RPC_CLIENT_CONTEXT,
         val haPoolTransportConfigurations: List<TransportConfiguration> = emptyList()
 ) {
     constructor(
             hostAndPort: NetworkHostAndPort,
             sslConfiguration: ClientRpcSslOptions? = null,
             configuration: CordaRPCClientConfiguration = CordaRPCClientConfiguration.DEFAULT,
-            serializationContext: SerializationContext = SerializationDefaults.RPC_CLIENT_CONTEXT
+            serializationContext: AMQPSerializationContext = AMQPSerializationDefaults.RPC_CLIENT_CONTEXT
     ) : this(rpcConnectorTcpTransport(hostAndPort, sslConfiguration), configuration, serializationContext)
 
     constructor(
             hostAndPort: NetworkHostAndPort,
             sslConfiguration: SslConfiguration,
             configuration: CordaRPCClientConfiguration = CordaRPCClientConfiguration.DEFAULT,
-            serializationContext: SerializationContext = SerializationDefaults.RPC_CLIENT_CONTEXT
+            serializationContext: AMQPSerializationContext = AMQPSerializationDefaults.RPC_CLIENT_CONTEXT
     ) : this(rpcInternalClientTcpTransport(hostAndPort, sslConfiguration), configuration, serializationContext)
 
     constructor(
             haAddressPool: List<NetworkHostAndPort>,
             sslConfiguration: ClientRpcSslOptions? = null,
             configuration: CordaRPCClientConfiguration = CordaRPCClientConfiguration.DEFAULT,
-            serializationContext: SerializationContext = SerializationDefaults.RPC_CLIENT_CONTEXT
+            serializationContext: AMQPSerializationContext = AMQPSerializationDefaults.RPC_CLIENT_CONTEXT
     ) : this(rpcConnectorTcpTransport(haAddressPool.first(), sslConfiguration),
             configuration, serializationContext, rpcConnectorTcpTransportsFromList(haAddressPool, sslConfiguration))
 

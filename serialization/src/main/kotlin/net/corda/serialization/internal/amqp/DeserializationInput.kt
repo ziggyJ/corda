@@ -2,8 +2,8 @@ package net.corda.serialization.internal.amqp
 
 import net.corda.core.KeepForDJVM
 import net.corda.core.internal.VisibleForTesting
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.serialization.EncodingWhitelist
-import net.corda.core.serialization.SerializationContext
 import net.corda.core.serialization.SerializedBytes
 import net.corda.core.utilities.ByteSequence
 import net.corda.core.utilities.loggerFor
@@ -81,12 +81,12 @@ class DeserializationInput constructor(
 
     @VisibleForTesting
     @Throws(AMQPNoTypeNotSerializableException::class)
-    fun getEnvelope(byteSequence: ByteSequence, context: SerializationContext) = getEnvelope(byteSequence, context.encodingWhitelist)
+    fun getEnvelope(byteSequence: ByteSequence, context: AMQPSerializationContext) = getEnvelope(byteSequence, context.encodingWhitelist)
 
     @Throws(
             AMQPNotSerializableException::class,
             AMQPNoTypeNotSerializableException::class)
-    inline fun <reified T : Any> deserialize(bytes: SerializedBytes<T>, context: SerializationContext): T =
+    inline fun <reified T : Any> deserialize(bytes: SerializedBytes<T>, context: AMQPSerializationContext): T =
             deserialize(bytes, T::class.java, context)
 
     @Throws(
@@ -113,7 +113,7 @@ class DeserializationInput constructor(
      * be deserialized and a schema describing the types of the objects.
      */
     @Throws(NotSerializableException::class)
-    fun <T : Any> deserialize(bytes: ByteSequence, clazz: Class<T>, context: SerializationContext): T =
+    fun <T : Any> deserialize(bytes: ByteSequence, clazz: Class<T>, context: AMQPSerializationContext): T =
             des {
                 val envelope = getEnvelope(bytes, context.encodingWhitelist)
 
@@ -127,7 +127,7 @@ class DeserializationInput constructor(
     fun <T : Any> deserializeAndReturnEnvelope(
             bytes: SerializedBytes<T>,
             clazz: Class<T>,
-            context: SerializationContext
+            context: AMQPSerializationContext
     ): ObjectAndEnvelope<T> = des {
         val envelope = getEnvelope(bytes, context.encodingWhitelist)
         // Now pick out the obj and schema from the envelope.
@@ -140,12 +140,12 @@ class DeserializationInput constructor(
                 envelope)
     }
 
-    internal fun readObjectOrNull(obj: Any?, schema: SerializationSchemas, type: Type, context: SerializationContext
+    internal fun readObjectOrNull(obj: Any?, schema: SerializationSchemas, type: Type, context: AMQPSerializationContext
     ): Any? {
         return if (obj == null) null else readObject(obj, schema, type, context)
     }
 
-    internal fun readObject(obj: Any, schemas: SerializationSchemas, type: Type, context: SerializationContext): Any =
+    internal fun readObject(obj: Any, schemas: SerializationSchemas, type: Type, context: AMQPSerializationContext): Any =
             if (obj is DescribedType && ReferencedObject.DESCRIPTOR == obj.descriptor) {
                 // It must be a reference to an instance that has already been read, cheaply and quickly returning it by reference.
                 val objectIndex = (obj.described as UnsignedInteger).toInt()

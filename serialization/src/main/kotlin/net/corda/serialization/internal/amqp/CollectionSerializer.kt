@@ -2,7 +2,7 @@ package net.corda.serialization.internal.amqp
 
 import net.corda.core.KeepForDJVM
 import net.corda.core.internal.uncheckedCast
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.utilities.NonEmptySet
 import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.codec.Data
@@ -83,7 +83,7 @@ class CollectionSerializer(private val declaredType: ParameterizedType, factory:
             data: Data,
             type: Type,
             output: SerializationOutput,
-            context: SerializationContext,
+            context: AMQPSerializationContext,
             debugIndent: Int) = ifThrowsAppend({ declaredType.typeName }) {
         // Write described
         data.withDescribed(typeNotation.descriptor) {
@@ -100,7 +100,7 @@ class CollectionSerializer(private val declaredType: ParameterizedType, factory:
             obj: Any,
             schemas: SerializationSchemas,
             input: DeserializationInput,
-            context: SerializationContext): Any = ifThrowsAppend({ declaredType.typeName }) {
+            context: AMQPSerializationContext): Any = ifThrowsAppend({ declaredType.typeName }) {
         // TODO: Can we verify the entries in the list?
         concreteBuilder((obj as List<*>).map {
             input.readObjectOrNull(it, schemas, inboundType, context)

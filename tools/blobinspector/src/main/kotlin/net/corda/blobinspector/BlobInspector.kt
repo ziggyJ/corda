@@ -6,18 +6,18 @@ import com.jcabi.manifests.Manifests
 import net.corda.client.jackson.JacksonSupport
 import net.corda.core.internal.isRegularFile
 import net.corda.core.internal.rootMessage
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.serialization.SerializationContext
 import net.corda.core.serialization.SerializationDefaults
 import net.corda.core.serialization.deserialize
+import net.corda.core.serialization.internal.AMQPSerializationEnvironmentImpl
 import net.corda.core.serialization.internal.SerializationEnvironmentImpl
+import net.corda.core.serialization.internal._contextAMQPSerializationEnv
 import net.corda.core.serialization.internal._contextSerializationEnv
 import net.corda.core.utilities.base64ToByteArray
 import net.corda.core.utilities.hexToByteArray
 import net.corda.core.utilities.sequence
-import net.corda.serialization.internal.AMQP_P2P_CONTEXT
-import net.corda.serialization.internal.AMQP_STORAGE_CONTEXT
-import net.corda.serialization.internal.CordaSerializationMagic
-import net.corda.serialization.internal.SerializationFactoryImpl
+import net.corda.serialization.internal.*
 import net.corda.serialization.internal.amqp.AbstractAMQPSerializationScheme
 import net.corda.serialization.internal.amqp.DeserializationInput
 import net.corda.serialization.internal.amqp.amqpMagic
@@ -139,23 +139,23 @@ class BlobInspector : Runnable {
 
     private fun initialiseSerialization() {
         // Deserialise with the lenient carpenter as we only care for the AMQP field getters
-        _contextSerializationEnv.set(SerializationEnvironmentImpl(
-                SerializationFactoryImpl().apply {
+        _contextAMQPSerializationEnv.set(AMQPSerializationEnvironmentImpl(
+                AMQPSerializationFactoryImpl().apply {
                     registerScheme(AMQPInspectorSerializationScheme)
                 },
                 p2pContext = AMQP_P2P_CONTEXT.withLenientCarpenter(),
-                storageContext = AMQP_STORAGE_CONTEXT.withLenientCarpenter()
+                _storageContext = AMQP_STORAGE_CONTEXT.withLenientCarpenter()
         ))
     }
 }
 
 private object AMQPInspectorSerializationScheme : AbstractAMQPSerializationScheme(emptyList()) {
-    override fun canDeserializeVersion(magic: CordaSerializationMagic, target: SerializationContext.UseCase): Boolean {
-        return magic == amqpMagic
+    override fun canDeserializeVersion(target: AMQPSerializationContext.UseCase): Boolean {
+        return true
     }
 
-    override fun rpcClientSerializerFactory(context: SerializationContext) = throw UnsupportedOperationException()
-    override fun rpcServerSerializerFactory(context: SerializationContext) = throw UnsupportedOperationException()
+    override fun rpcClientSerializerFactory(context: AMQPSerializationContext) = throw UnsupportedOperationException()
+    override fun rpcServerSerializerFactory(context: AMQPSerializationContext) = throw UnsupportedOperationException()
 }
 
 private class SourceConverter : ITypeConverter<URL> {

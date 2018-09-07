@@ -46,7 +46,8 @@ import net.corda.testing.driver.VerifierType
 import net.corda.testing.driver.internal.InProcessImpl
 import net.corda.testing.driver.internal.NodeHandleInternal
 import net.corda.testing.driver.internal.OutOfProcessImpl
-import net.corda.testing.internal.setGlobalSerialization
+import net.corda.testing.internal.setGlobalAMQPSerialization
+import net.corda.testing.internal.setGlobalCheckpointSerialization
 import net.corda.testing.node.ClusterSpec
 import net.corda.testing.node.NotarySpec
 import net.corda.testing.node.User
@@ -957,7 +958,8 @@ fun <DI : DriverDSL, D : InternalDriverDSL, A> genericDriver(
         coerce: (D) -> DI,
         dsl: DI.() -> A
 ): A {
-    val serializationEnv = setGlobalSerialization(initialiseSerialization)
+    val checkpointSerializationEnv = setGlobalCheckpointSerialization(initialiseSerialization)
+    val amqpSerializationEnv = setGlobalAMQPSerialization(initialiseSerialization)
     val shutdownHook = addShutdownHook(driverDsl::shutdown)
     try {
         driverDsl.start()
@@ -968,7 +970,8 @@ fun <DI : DriverDSL, D : InternalDriverDSL, A> genericDriver(
     } finally {
         driverDsl.shutdown()
         shutdownHook.cancel()
-        serializationEnv.unset()
+        checkpointSerializationEnv.unset()
+        amqpSerializationEnv.unset()
     }
 }
 
@@ -985,7 +988,8 @@ fun <DI : DriverDSL, D : InternalDriverDSL, A> genericDriver(
         driverDslWrapper: (DriverDSLImpl) -> D,
         coerce: (D) -> DI, dsl: DI.() -> A
 ): A {
-    val serializationEnv = setGlobalSerialization(true)
+    val checkpointSerializationEnv = setGlobalCheckpointSerialization(true)
+    val amqpSerializationEnv = setGlobalAMQPSerialization(true)
     val driverDsl = driverDslWrapper(
             DriverDSLImpl(
                     portAllocation = defaultParameters.portAllocation,
@@ -1015,7 +1019,8 @@ fun <DI : DriverDSL, D : InternalDriverDSL, A> genericDriver(
     } finally {
         driverDsl.shutdown()
         shutdownHook.cancel()
-        serializationEnv.unset()
+        checkpointSerializationEnv.unset()
+        amqpSerializationEnv.unset()
     }
 }
 

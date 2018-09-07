@@ -3,8 +3,8 @@ package net.corda.serialization.internal.amqp.testutils
 import net.corda.core.internal.copyTo
 import net.corda.core.internal.div
 import net.corda.core.internal.packageName
-import net.corda.core.serialization.SerializationContext
-import net.corda.core.serialization.SerializationEncoding
+import net.corda.core.serialization.AMQPSerializationContext
+import net.corda.core.serialization.AMQPSerializationEncoding
 import net.corda.core.serialization.SerializedBytes
 import net.corda.core.utilities.OpaqueBytes
 import net.corda.serialization.internal.AllWhitelist
@@ -79,7 +79,7 @@ fun Any.readTestResource(): ByteArray = javaClass.getResourceAsStream(testResour
 @Throws(NotSerializableException::class)
 inline fun <reified T : Any> DeserializationInput.deserializeAndReturnEnvelope(
         bytes: SerializedBytes<T>,
-        context: SerializationContext? = null
+        context: AMQPSerializationContext? = null
 ) : ObjectAndEnvelope<T> {
     return deserializeAndReturnEnvelope(bytes, T::class.java,
             context ?: testSerializationContext)
@@ -88,18 +88,18 @@ inline fun <reified T : Any> DeserializationInput.deserializeAndReturnEnvelope(
 @Throws(NotSerializableException::class)
 inline fun <reified T : Any> DeserializationInput.deserialize(
         bytes: SerializedBytes<T>,
-        context: SerializationContext? = null
+        context: AMQPSerializationContext? = null
 )  : T = deserialize(bytes, T::class.java, context ?: testSerializationContext)
 
 
 @Throws(NotSerializableException::class)
 fun <T : Any> SerializationOutput.serializeAndReturnSchema(
-        obj: T, context: SerializationContext? = null
+        obj: T, context: AMQPSerializationContext? = null
 ): BytesAndSchemas<T> = serializeAndReturnSchema(obj, context ?: testSerializationContext)
 
 
 @Throws(NotSerializableException::class)
-fun <T : Any> SerializationOutput.serialize(obj: T, encoding: SerializationEncoding? = null): SerializedBytes<T> {
+fun <T : Any> SerializationOutput.serialize(obj: T, encoding: AMQPSerializationEncoding? = null): SerializedBytes<T> {
     try {
         return _serialize(obj, testSerializationContext.withEncoding(encoding))
     } finally {

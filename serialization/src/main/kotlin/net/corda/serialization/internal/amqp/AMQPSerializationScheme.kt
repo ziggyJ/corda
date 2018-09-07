@@ -12,14 +12,11 @@ import net.corda.core.internal.uncheckedCast
 import net.corda.core.serialization.*
 import net.corda.core.utilities.ByteSequence
 import net.corda.core.utilities.contextLogger
-import net.corda.serialization.internal.CordaSerializationMagic
-import net.corda.serialization.internal.DefaultWhitelist
-import net.corda.serialization.internal.MutableClassWhitelist
-import net.corda.serialization.internal.SerializationScheme
+import net.corda.serialization.internal.*
 import java.lang.reflect.Modifier
 import java.util.*
 
-val AMQP_ENABLED get() = SerializationDefaults.P2P_CONTEXT.preferredSerializationVersion == amqpMagic
+val AMQP_ENABLED get() = true
 
 fun SerializerFactory.addToWhitelist(vararg types: Class<*>) {
     require(types.toSet().size == types.size) {
@@ -34,7 +31,7 @@ fun SerializerFactory.addToWhitelist(vararg types: Class<*>) {
 
 // Allow us to create a SerializerFactory with a different ClassCarpenter implementation.
 interface SerializerFactoryFactory {
-    fun make(context: SerializationContext): SerializerFactory
+    fun make(context: AMQPSerializationContext): SerializerFactory
 }
 
 @KeepForDJVM
@@ -42,7 +39,7 @@ abstract class AbstractAMQPSerializationScheme(
         private val cordappCustomSerializers: Set<SerializationCustomSerializer<*, *>>,
         private val serializerFactoriesForContexts: AccessOrderLinkedHashMap<Pair<ClassWhitelist, ClassLoader>, SerializerFactory>,
         val sff: SerializerFactoryFactory = createSerializerFactoryFactory()
-) : SerializationScheme {
+) : AMQPSerializationScheme {
     @DeleteForDJVM
     constructor(cordapps: List<Cordapp>) : this(cordapps.customSerializers, AccessOrderLinkedHashMap(128))
 
@@ -85,7 +82,7 @@ abstract class AbstractAMQPSerializationScheme(
     }
 
     // Parameter "context" is unused directly but passed in by reflection. Removing it will cause failures.
-    private fun registerCustomSerializers(context: SerializationContext, factory: SerializerFactory) {
+    private fun registerCustomSerializers(context: AMQPSerializationContext, factory: SerializerFactory) {
         with(factory) {
             register(publicKeySerializer)
             register(net.corda.serialization.internal.amqp.custom.PrivateKeySerializer)
@@ -153,13 +150,13 @@ abstract class AbstractAMQPSerializationScheme(
         }
     }
 
-    protected abstract fun rpcClientSerializerFactory(context: SerializationContext): SerializerFactory
-    protected abstract fun rpcServerSerializerFactory(context: SerializationContext): SerializerFactory
+    protected abstract fun rpcClientSerializerFactory(context: AMQPSerializationContext): SerializerFactory
+    protected abstract fun rpcServerSerializerFactory(context: AMQPSerializationContext): SerializerFactory
 
     // Not used as a simple direct import to facilitate testing
     open val publicKeySerializer: CustomSerializer<*> = net.corda.serialization.internal.amqp.custom.PublicKeySerializer
 
-    private fun getSerializerFactory(context: SerializationContext): SerializerFactory {
+    private fun getSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
         return synchronized(serializerFactoriesForContexts) {
             serializerFactoriesForContexts.computeIfAbsent(Pair(context.whitelist, context.deserializationClassLoader)) {
                 when (context.useCase) {
@@ -177,16 +174,16 @@ abstract class AbstractAMQPSerializationScheme(
         }
     }
 
-    override fun <T : Any> deserialize(byteSequence: ByteSequence, clazz: Class<T>, context: SerializationContext): T {
+    override fun <T : Any> deserialize(byteSequence: ByteSequence, clazz: Class<T>, context: AMQPSerializationContext): T {
         var contextToUse = context
-        if (context.useCase == SerializationContext.UseCase.RPCClient) {
+        if (context.useCase == AMQPSerializationContext.UseCase.RPCClient) {
             contextToUse = context.withClassLoader(getContextClassLoader())
         }
         val serializerFactory = getSerializerFactory(contextToUse)
         return DeserializationInput(serializerFactory).deserialize(byteSequence, clazz, context)
     }
 
-    override fun <T : Any> serialize(obj: T, context: SerializationContext): SerializedBytes<T> {
+    override fun <T : Any> serialize(obj: T, context: AMQPSerializationContext): SerializedBytes<T> {
         var contextToUse = context
         if (context.useCase == SerializationContext.UseCase.RPCClient) {
             contextToUse = context.withClassLoader(getContextClassLoader())

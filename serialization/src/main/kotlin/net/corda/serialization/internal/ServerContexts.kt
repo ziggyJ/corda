@@ -3,6 +3,7 @@
 package net.corda.serialization.internal
 
 import net.corda.core.DeleteForDJVM
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.serialization.SerializationContext
 import net.corda.core.serialization.SerializationDefaults
 import net.corda.serialization.internal.amqp.amqpMagic
@@ -18,23 +19,21 @@ import net.corda.serialization.internal.amqp.amqpMagic
  */
 
 
-val AMQP_STORAGE_CONTEXT = SerializationContextImpl(
-        amqpMagic,
+val AMQP_STORAGE_CONTEXT = AMQPSerializationContextImpl(
         SerializationDefaults.javaClass.classLoader,
         AllButBlacklisted,
         emptyMap(),
         true,
-        SerializationContext.UseCase.Storage,
+        AMQPSerializationContext.UseCase.Storage,
         null,
         AlwaysAcceptEncodingWhitelist
 )
 
-val AMQP_RPC_SERVER_CONTEXT = SerializationContextImpl(
-        amqpMagic,
+val AMQP_RPC_SERVER_CONTEXT = AMQPSerializationContextImpl(
         SerializationDefaults.javaClass.classLoader,
         GlobalTransientClassWhiteList(BuiltInExceptionsWhitelist()),
         emptyMap(),
         true,
-        SerializationContext.UseCase.RPCServer,
+        AMQPSerializationContext.UseCase.RPCServer,
         null
 )

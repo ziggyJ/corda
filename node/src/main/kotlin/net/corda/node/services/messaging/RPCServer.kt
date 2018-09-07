@@ -15,10 +15,8 @@ import net.corda.core.identity.CordaX500Name
 import net.corda.core.internal.LifeCycle
 import net.corda.core.internal.buildNamed
 import net.corda.core.messaging.RPCOps
-import net.corda.core.serialization.SerializationContext
-import net.corda.core.serialization.SerializationDefaults
+import net.corda.core.serialization.*
 import net.corda.core.serialization.SerializationDefaults.RPC_SERVER_CONTEXT
-import net.corda.core.serialization.deserialize
 import net.corda.core.utilities.*
 import net.corda.node.internal.security.AuthorizingSubject
 import net.corda.node.internal.security.RPCSecurityManager
@@ -446,7 +444,7 @@ class RPCServer(
     ) : ObservableContextInterface {
         private val serializationContextWithObservableContext = RpcServerObservableSerializer.createContext(
                 observableContext = this,
-                serializationContext = SerializationDefaults.RPC_SERVER_CONTEXT)
+                serializationContext = AMQPSerializationDefaults.RPC_SERVER_CONTEXT)
 
         override fun sendMessage(serverToClient: RPCApi.ServerToClient) {
             sendJobQueue.put(RpcSendJob.Send(contextDatabaseOrNull, clientAddress,
@@ -460,7 +458,7 @@ class RPCServer(
                 // DatabaseTransactionWrappingSubscriber which tries to access the current database,
                 val database: CordaPersistence?,
                 val clientAddress: SimpleString,
-                val serializationContext: SerializationContext,
+                val serializationContext: AMQPSerializationContext,
                 val message: RPCApi.ServerToClient
         ) : RpcSendJob()
         object Stop : RpcSendJob()

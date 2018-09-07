@@ -3,7 +3,9 @@ package net.corda.node.services.network
 import net.corda.core.crypto.SecureHash
 import net.corda.core.internal.*
 import net.corda.core.node.NodeInfo
+import net.corda.core.serialization.internal.AMQPSerializationEnvironmentImpl
 import net.corda.core.serialization.internal.SerializationEnvironmentImpl
+import net.corda.core.serialization.internal._contextAMQPSerializationEnv
 import net.corda.core.serialization.internal._contextSerializationEnv
 import net.corda.core.serialization.serialize
 import net.corda.core.utilities.contextLogger
@@ -14,6 +16,7 @@ import net.corda.nodeapi.internal.NODE_INFO_DIRECTORY
 import net.corda.nodeapi.internal.NodeInfoAndSigned
 import net.corda.nodeapi.internal.SignedNodeInfo
 import net.corda.nodeapi.internal.network.NodeInfoFilesCopier
+import net.corda.serialization.internal.AMQPSerializationFactoryImpl
 import net.corda.serialization.internal.AMQP_P2P_CONTEXT
 import net.corda.serialization.internal.SerializationFactoryImpl
 import rx.Observable
@@ -125,8 +128,8 @@ class NodeInfoWatcher(private val nodePath: Path,
 
 // TODO Remove this once we have a tool that can read AMQP serialised files
 fun main(args: Array<String>) {
-    _contextSerializationEnv.set(SerializationEnvironmentImpl(
-            SerializationFactoryImpl().apply {
+    _contextAMQPSerializationEnv.set(AMQPSerializationEnvironmentImpl(
+            AMQPSerializationFactoryImpl().apply {
                 registerScheme(AMQPServerSerializationScheme())
             },
             AMQP_P2P_CONTEXT)

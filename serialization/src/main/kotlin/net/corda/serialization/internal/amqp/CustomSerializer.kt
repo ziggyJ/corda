@@ -2,7 +2,7 @@ package net.corda.serialization.internal.amqp
 
 import net.corda.core.KeepForDJVM
 import net.corda.core.internal.uncheckedCast
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.serialization.internal.amqp.SerializerFactory.Companion.nameForType
 import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.codec.Data
@@ -43,7 +43,7 @@ abstract class CustomSerializer<T : Any> : AMQPSerializer<T>, SerializerFor {
     override val revealSubclassesInSchema: Boolean get() = false
 
     override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                             context: SerializationContext, debugIndent: Int
+                             context: AMQPSerializationContext, debugIndent: Int
     ) {
         data.withDescribed(descriptor) {
             writeDescribedObject(uncheckedCast(obj), data, type, output, context)
@@ -51,7 +51,7 @@ abstract class CustomSerializer<T : Any> : AMQPSerializer<T>, SerializerFor {
     }
 
     abstract fun writeDescribedObject(obj: T, data: Data, type: Type, output: SerializationOutput,
-                                      context: SerializationContext)
+                                      context: AMQPSerializationContext)
 
     /**
      * This custom serializer represents a sort of symbolic link from a subclass to a super class, where the super
@@ -84,13 +84,13 @@ abstract class CustomSerializer<T : Any> : AMQPSerializer<T>, SerializerFor {
         override val descriptor: Descriptor = Descriptor(typeDescriptor)
 
         override fun writeDescribedObject(obj: T, data: Data, type: Type, output: SerializationOutput,
-                                          context: SerializationContext
+                                          context: AMQPSerializationContext
         ) {
             superClassSerializer.writeDescribedObject(obj, data, type, output, context)
         }
 
         override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
-                                context: SerializationContext
+                                context: AMQPSerializationContext
         ): T {
             return superClassSerializer.readObject(obj, schemas, input, context)
         }
@@ -154,7 +154,7 @@ abstract class CustomSerializer<T : Any> : AMQPSerializer<T>, SerializerFor {
         protected abstract fun fromProxy(proxy: P): T
 
         override fun writeDescribedObject(obj: T, data: Data, type: Type, output: SerializationOutput,
-                                          context: SerializationContext
+                                          context: AMQPSerializationContext
         ) {
             val proxy = toProxy(obj)
             data.withList {
@@ -165,7 +165,7 @@ abstract class CustomSerializer<T : Any> : AMQPSerializer<T>, SerializerFor {
         }
 
         override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
-                                context: SerializationContext
+                                context: AMQPSerializationContext
         ): T {
             val proxy: P = uncheckedCast(proxySerializer.readObject(obj, schemas, input, context))
             return fromProxy(proxy)
@@ -196,13 +196,13 @@ abstract class CustomSerializer<T : Any> : AMQPSerializer<T>, SerializerFor {
                         descriptor, emptyList())))
 
         override fun writeDescribedObject(obj: T, data: Data, type: Type, output: SerializationOutput,
-                                          context: SerializationContext
+                                          context: AMQPSerializationContext
         ) {
             data.putString(unmaker(obj))
         }
 
         override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
-                                context: SerializationContext
+                                context: AMQPSerializationContext
         ): T {
             val proxy = obj as String
             return maker(proxy)

@@ -1,8 +1,8 @@
 @file:JvmName("AMQPSerializerFactories")
 package net.corda.serialization.internal.amqp
 
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.serialization.ClassWhitelist
-import net.corda.core.serialization.SerializationContext
 import net.corda.serialization.internal.carpenter.ClassCarpenter
 import net.corda.serialization.internal.carpenter.Schema
 
@@ -14,7 +14,7 @@ import net.corda.serialization.internal.carpenter.Schema
 fun createSerializerFactoryFactory(): SerializerFactoryFactory = DeterministicSerializerFactoryFactory()
 
 private class DeterministicSerializerFactoryFactory : SerializerFactoryFactory {
-    override fun make(context: SerializationContext) =
+    override fun make(context: AMQPSerializationContext) =
         SerializerFactory(
             whitelist = context.whitelist,
             classCarpenter = DummyClassCarpenter(context.whitelist, context.deserializationClassLoader),

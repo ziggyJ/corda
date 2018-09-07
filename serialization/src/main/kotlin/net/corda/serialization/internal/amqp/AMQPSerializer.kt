@@ -1,7 +1,7 @@
 package net.corda.serialization.internal.amqp
 
 import net.corda.core.KeepForDJVM
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.codec.Data
 import java.lang.reflect.Type
@@ -35,10 +35,10 @@ interface AMQPSerializer<out T> {
      */
     @JvmDefault
     fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                    context: SerializationContext, debugIndent: Int = 0)
+                    context: AMQPSerializationContext, debugIndent: Int = 0)
 
     /**
      * Read the given object from the input. The envelope is provided in case the schema is required.
      */
-    fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput, context: SerializationContext): T
+    fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput, context: AMQPSerializationContext): T
 }

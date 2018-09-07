@@ -71,6 +71,54 @@ data class SerializationContextImpl @JvmOverloads constructor(override val prefe
     override fun withEncodingWhitelist(encodingWhitelist: EncodingWhitelist) = copy(encodingWhitelist = encodingWhitelist)
 }
 
+@KeepForDJVM
+data class AMQPSerializationContextImpl @JvmOverloads constructor(
+                                                              override val deserializationClassLoader: ClassLoader,
+                                                              override val whitelist: ClassWhitelist,
+                                                              override val properties: Map<Any, Any>,
+                                                              override val objectReferencesEnabled: Boolean,
+                                                              override val useCase: AMQPSerializationContext.UseCase,
+                                                              override val encoding: AMQPSerializationEncoding?,
+                                                              override val encodingWhitelist: EncodingWhitelist = NullEncodingWhitelist,
+                                                              override val lenientCarpenterEnabled: Boolean = false) : AMQPSerializationContext {
+
+    private val builder = AttachmentsClassLoaderBuilder(properties, deserializationClassLoader)
+
+    /**
+     * {@inheritDoc}
+     *
+     * We need to cache the AttachmentClassLoaders to avoid too many contexts, since the class loader is part of cache key for the context.
+     */
+    override fun withAttachmentsClassLoader(attachmentHashes: List<SecureHash>): AMQPSerializationContext {
+        properties[attachmentsClassLoaderEnabledPropertyName] as? Boolean == true || return this
+        val classLoader = builder.build(attachmentHashes) ?: return this
+        return withClassLoader(classLoader)
+    }
+
+    override fun withProperty(property: Any, value: Any): AMQPSerializationContext {
+        return copy(properties = properties + (property to value))
+    }
+
+    override fun withoutReferences(): AMQPSerializationContext {
+        return copy(objectReferencesEnabled = false)
+    }
+
+    override fun withLenientCarpenter(): AMQPSerializationContext = copy(lenientCarpenterEnabled = true)
+
+    override fun withClassLoader(classLoader: ClassLoader): AMQPSerializationContext {
+        return copy(deserializationClassLoader = classLoader)
+    }
+
+    override fun withWhitelisted(clazz: Class<*>): AMQPSerializationContext {
+        return copy(whitelist = object : ClassWhitelist {
+            override fun hasListed(type: Class<*>): Boolean = whitelist.hasListed(type) || type.name == clazz.name
+        })
+    }
+
+    override fun withEncoding(encoding: AMQPSerializationEncoding?) = copy(encoding = encoding)
+    override fun withEncodingWhitelist(encodingWhitelist: EncodingWhitelist) = copy(encodingWhitelist = encodingWhitelist)
+}
+
 /*
  * This class is internal rather than private so that serialization-deterministic
  * can replace it with an alternative version.
@@ -165,6 +213,61 @@ open class SerializationFactoryImpl(
     override fun hashCode(): Int = registeredSchemes.hashCode()
 }
 
+@KeepForDJVM
+class AMQPSerializationFactoryImpl(
+        // TODO: This is read-mostly. Probably a faster implementation to be found.
+        private val schemes: MutableMap<AMQPSerializationContext.UseCase, AMQPSerializationScheme>,
+        private val contextManager: AMQPSerializationContextManager = AMQPSerializationContextManagerImpl()
+) : AMQPSerializationFactory, AMQPSerializationContextManager by contextManager {
+    @DeleteForDJVM
+    constructor() : this(ConcurrentHashMap())
+
+    companion object {
+        val magicSize = amqpMagic.size
+    }
+
+    private val creator: List<StackTraceElement> = Exception().stackTrace.asList()
+
+    private val registeredSchemes: MutableCollection<AMQPSerializationScheme> = Collections.synchronizedCollection(mutableListOf())
+
+    private val logger = LoggerFactory.getLogger(javaClass)
+
+    @Suppress("UNUSED_PARAMETER") // TODO: eliminate parameter
+    private fun schemeFor(byteSequence: ByteSequence, target: AMQPSerializationContext.UseCase): AMQPSerializationScheme {
+        // truncate sequence to at most magicSize, and make sure it's a copy to avoid holding onto large ByteArrays
+        val lookupKey = target
+        return schemes.computeIfAbsent(lookupKey) {
+            registeredSchemes.filter { it.canDeserializeVersion(target) }.forEach { return@computeIfAbsent it } // XXX: Not single?
+            logger.warn("Cannot find serialization scheme for: $lookupKey, registeredSchemes are: $registeredSchemes")
+            throw UnsupportedOperationException("Serialization scheme $lookupKey not supported.")
+        }
+    }
+
+    @Throws(NotSerializableException::class)
+    override fun <T : Any> deserialize(byteSequence: ByteSequence, clazz: Class<T>, context: AMQPSerializationContext): T {
+        return asCurrent { withCurrentContext(context) { schemeFor(byteSequence, context.useCase).deserialize(byteSequence, clazz, context) } }
+    }
+
+    override fun <T : Any> serialize(obj: T, context: AMQPSerializationContext): SerializedBytes<T> {
+        return asCurrent { withCurrentContext(context) { schemeFor(amqpMagic, context.useCase).serialize(obj, context) } }
+    }
+
+    fun registerScheme(scheme: AMQPSerializationScheme) {
+        check(schemes.isEmpty()) { "All serialization schemes must be registered before any scheme is used." }
+        registeredSchemes += scheme
+    }
+
+    override fun toString(): String {
+        return "${this.javaClass.name} registeredSchemes=$registeredSchemes ${creator.joinToString("\n")}"
+    }
+
+    override fun equals(other: Any?): Boolean {
+        return other is AMQPSerializationFactoryImpl && other.registeredSchemes == this.registeredSchemes
+    }
+
+    override fun hashCode(): Int = registeredSchemes.hashCode()
+}
+
 
 @KeepForDJVM
 interface SerializationScheme {
@@ -174,4 +277,15 @@ interface SerializationScheme {
 
     @Throws(NotSerializableException::class)
     fun <T : Any> serialize(obj: T, context: SerializationContext): SerializedBytes<T>
+}
+
+@KeepForDJVM
+interface AMQPSerializationScheme {
+    fun canDeserializeVersion(target: AMQPSerializationContext.UseCase): Boolean
+
+    @Throws(NotSerializableException::class)
+    fun <T : Any> deserialize(byteSequence: ByteSequence, clazz: Class<T>, context: AMQPSerializationContext): T
+
+    @Throws(NotSerializableException::class)
+    fun <T : Any> serialize(obj: T, context: AMQPSerializationContext): SerializedBytes<T>
 }

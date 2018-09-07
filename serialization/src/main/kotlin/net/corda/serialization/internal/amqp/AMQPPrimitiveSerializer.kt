@@ -1,6 +1,6 @@
 package net.corda.serialization.internal.amqp
 
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import org.apache.qpid.proton.amqp.Binary
 import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.codec.Data
@@ -24,7 +24,7 @@ class AMQPPrimitiveSerializer(clazz: Class<*>) : AMQPSerializer<Any> {
             data: Data,
             type: Type,
             output: SerializationOutput,
-            context: SerializationContext,
+            context: AMQPSerializationContext,
             debugIndent: Int
     ) {
         if (obj is ByteArray) {
@@ -38,5 +38,5 @@ class AMQPPrimitiveSerializer(clazz: Class<*>) : AMQPSerializer<Any> {
             obj: Any,
             schemas: SerializationSchemas,
             input: DeserializationInput,
-            context: SerializationContext): Any = (obj as? Binary)?.array ?: obj
+            context: AMQPSerializationContext): Any = (obj as? Binary)?.array ?: obj
 }

@@ -7,13 +7,12 @@ import net.corda.core.KeepForDJVM
 import net.corda.core.serialization.*
 import net.corda.serialization.internal.amqp.amqpMagic
 
-val AMQP_P2P_CONTEXT = SerializationContextImpl(
-        amqpMagic,
+val AMQP_P2P_CONTEXT = AMQPSerializationContextImpl(
         SerializationDefaults.javaClass.classLoader,
         GlobalTransientClassWhiteList(BuiltInExceptionsWhitelist()),
         emptyMap(),
         true,
-        SerializationContext.UseCase.P2P,
+        AMQPSerializationContext.UseCase.P2P,
         null
 )
 

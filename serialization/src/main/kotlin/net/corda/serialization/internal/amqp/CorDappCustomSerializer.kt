@@ -2,7 +2,7 @@ package net.corda.serialization.internal.amqp
 
 import com.google.common.reflect.TypeToken
 import net.corda.core.internal.uncheckedCast
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.serialization.SerializationCustomSerializer
 import net.corda.serialization.internal.amqp.SerializerFactory.Companion.nameForType
 import org.apache.qpid.proton.amqp.Symbol
@@ -70,7 +70,7 @@ class CorDappCustomSerializer(
     override fun writeClassInfo(output: SerializationOutput) {}
 
     override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                             context: SerializationContext, debugIndent: Int
+                             context: AMQPSerializationContext, debugIndent: Int
     ) {
         val proxy = uncheckedCast<SerializationCustomSerializer<*, *>,
                 SerializationCustomSerializer<Any?, Any?>>(serializer).toProxy(obj)
@@ -85,7 +85,7 @@ class CorDappCustomSerializer(
     }
 
     override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
-                            context: SerializationContext
+                            context: AMQPSerializationContext
     ) = uncheckedCast<SerializationCustomSerializer<*, *>, SerializationCustomSerializer<Any?, Any?>>(
             serializer).fromProxy(uncheckedCast(proxySerializer.readObject(obj, schemas, input, context)))!!
 

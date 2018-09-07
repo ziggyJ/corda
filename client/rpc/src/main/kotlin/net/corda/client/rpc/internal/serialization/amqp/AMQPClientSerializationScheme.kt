@@ -2,17 +2,14 @@ package net.corda.client.rpc.internal.serialization.amqp
 
 import net.corda.core.cordapp.Cordapp
 import net.corda.core.serialization.ClassWhitelist
-import net.corda.core.serialization.SerializationContext
-import net.corda.core.serialization.SerializationContext.*
+import net.corda.core.serialization.AMQPSerializationContext
+import net.corda.core.serialization.AMQPSerializationContext.*
 import net.corda.core.serialization.SerializationCustomSerializer
-import net.corda.core.serialization.internal.SerializationEnvironment
-import net.corda.core.serialization.internal.SerializationEnvironmentImpl
-import net.corda.core.serialization.internal.nodeSerializationEnv
+import net.corda.core.serialization.internal.*
 import net.corda.serialization.internal.*
 import net.corda.serialization.internal.amqp.AbstractAMQPSerializationScheme
 import net.corda.serialization.internal.amqp.AccessOrderLinkedHashMap
 import net.corda.serialization.internal.amqp.SerializerFactory
-import net.corda.serialization.internal.amqp.amqpMagic
 import net.corda.serialization.internal.amqp.custom.RxNotificationSerializer
 
 /**
@@ -31,27 +28,27 @@ class AMQPClientSerializationScheme(
     companion object {
         /** Call from main only. */
         fun initialiseSerialization(classLoader: ClassLoader? = null) {
-            nodeSerializationEnv = createSerializationEnv(classLoader)
+            nodeAMQPSerializationEnv = createSerializationEnv(classLoader)
         }
 
-        fun createSerializationEnv(classLoader: ClassLoader? = null): SerializationEnvironment {
-            return SerializationEnvironmentImpl(
-                    SerializationFactoryImpl().apply {
+        fun createSerializationEnv(classLoader: ClassLoader? = null): AMQPSerializationEnvironment {
+            return AMQPSerializationEnvironmentImpl(
+                    AMQPSerializationFactoryImpl().apply {
                         registerScheme(AMQPClientSerializationScheme(emptyList()))
                     },
-                    storageContext = AMQP_STORAGE_CONTEXT,
+                    _storageContext = AMQP_STORAGE_CONTEXT,
                     p2pContext = if (classLoader != null) AMQP_P2P_CONTEXT.withClassLoader(classLoader) else AMQP_P2P_CONTEXT,
-                    rpcClientContext = AMQP_RPC_CLIENT_CONTEXT,
-                    rpcServerContext = AMQP_RPC_SERVER_CONTEXT
+                    _rpcClientContext = AMQP_RPC_CLIENT_CONTEXT,
+                    _rpcServerContext = AMQP_RPC_SERVER_CONTEXT
             )
         }
     }
 
-    override fun canDeserializeVersion(magic: CordaSerializationMagic, target: SerializationContext.UseCase): Boolean {
-        return magic == amqpMagic && (target == UseCase.RPCClient || target == UseCase.P2P)
+    override fun canDeserializeVersion(target: AMQPSerializationContext.UseCase): Boolean {
+        return target == UseCase.RPCClient || target == UseCase.P2P
     }
 
-    override fun rpcClientSerializerFactory(context: SerializationContext): SerializerFactory {
+    override fun rpcClientSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
         return SerializerFactory(context.whitelist, context.deserializationClassLoader, context.lenientCarpenterEnabled).apply {
             register(RpcClientObservableDeSerializer)
             register(RpcClientCordaFutureSerializer(this))
@@ -59,7 +56,7 @@ class AMQPClientSerializationScheme(
         }
     }
 
-    override fun rpcServerSerializerFactory(context: SerializationContext): SerializerFactory {
+    override fun rpcServerSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
         throw UnsupportedOperationException()
     }
 }

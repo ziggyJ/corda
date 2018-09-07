@@ -1,6 +1,6 @@
 package net.corda.serialization.internal.amqp
 
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.codec.Data
 import java.lang.reflect.Type
@@ -25,14 +25,14 @@ class SingletonSerializer(override val type: Class<*>, val singleton: Any, facto
     }
 
     override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                             context: SerializationContext, debugIndent: Int
+                             context: AMQPSerializationContext, debugIndent: Int
     ) {
         data.withDescribed(typeNotation.descriptor) {
             data.putBoolean(false)
         }
     }
 
-    override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput, context: SerializationContext
+    override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput, context: AMQPSerializationContext
     ): Any {
         return singleton
     }

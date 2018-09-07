@@ -2,14 +2,12 @@ package net.corda.node.serialization.amqp
 
 import net.corda.core.cordapp.Cordapp
 import net.corda.core.serialization.ClassWhitelist
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.serialization.SerializationCustomSerializer
-import net.corda.serialization.internal.CordaSerializationMagic
 import net.corda.serialization.internal.amqp.AbstractAMQPSerializationScheme
 import net.corda.serialization.internal.amqp.AccessOrderLinkedHashMap
 import net.corda.serialization.internal.amqp.SerializerFactory
 import net.corda.serialization.internal.amqp.custom.RxNotificationSerializer
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * When set as the serialization scheme, defines the RPC Server serialization scheme as using the Corda
@@ -23,11 +21,11 @@ class AMQPServerSerializationScheme(
 
     constructor() : this(emptySet(), AccessOrderLinkedHashMap { 128 })
 
-    override fun rpcClientSerializerFactory(context: SerializationContext): SerializerFactory {
+    override fun rpcClientSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
         throw UnsupportedOperationException()
     }
 
-    override fun rpcServerSerializerFactory(context: SerializationContext): SerializerFactory {
+    override fun rpcServerSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
         return SerializerFactory(context.whitelist, context.deserializationClassLoader, context.lenientCarpenterEnabled).apply {
             register(RpcServerObservableSerializer())
             register(RpcServerCordaFutureSerializer(this))
@@ -35,10 +33,9 @@ class AMQPServerSerializationScheme(
         }
     }
 
-    override fun canDeserializeVersion(magic: CordaSerializationMagic, target: SerializationContext.UseCase): Boolean {
-        return canDeserializeVersion(magic) &&
-                (   target == SerializationContext.UseCase.P2P
-                 || target == SerializationContext.UseCase.Storage
-                 || target == SerializationContext.UseCase.RPCServer)
+    override fun canDeserializeVersion(target: AMQPSerializationContext.UseCase): Boolean {
+        return target == AMQPSerializationContext.UseCase.P2P
+                 || target == AMQPSerializationContext.UseCase.Storage
+                 || target == AMQPSerializationContext.UseCase.RPCServer
     }
 }

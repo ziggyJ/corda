@@ -4,7 +4,7 @@ package net.corda.client.rpc.internal.serialization.amqp
 import net.corda.client.rpc.internal.ObservableContext
 import net.corda.client.rpc.internal.RPCClientProxyHandler
 import net.corda.core.context.Trace
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.utilities.loggerFor
 import net.corda.nodeapi.RPCApi
 import net.corda.serialization.internal.amqp.*
@@ -28,7 +28,7 @@ object RpcClientObservableDeSerializer : CustomSerializer.Implements<Observable<
     private object RpcObservableContextKey
 
     fun createContext(
-            serializationContext: SerializationContext,
+            serializationContext: AMQPSerializationContext,
             observableContext: ObservableContext
     ) = serializationContext.withProperty(RpcObservableContextKey, observableContext)
 
@@ -79,7 +79,7 @@ object RpcClientObservableDeSerializer : CustomSerializer.Implements<Observable<
      * Converts the serialized form, a blob, back into an Observable
      */
     override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
-                            context: SerializationContext
+                            context: AMQPSerializationContext
     ): Observable<*> {
         if (RpcObservableContextKey !in context.properties) {
             throw NotSerializableException("Missing Observable Context Key on Client Context")
@@ -113,7 +113,7 @@ object RpcClientObservableDeSerializer : CustomSerializer.Implements<Observable<
         }.dematerialize<Any>()
     }
 
-    private fun getRpcCallSite(context: SerializationContext, observableContext: ObservableContext): RPCClientProxyHandler.CallSite? {
+    private fun getRpcCallSite(context: AMQPSerializationContext, observableContext: ObservableContext): RPCClientProxyHandler.CallSite? {
         val rpcRequestOrObservableId = context.properties[RPCApi.RpcRequestOrObservableIdKey] as Trace.InvocationId
         // Will only return non-null if the trackRpcCallSites option in the RPC configuration has been specified.
         return observableContext.callSiteMap?.get(rpcRequestOrObservableId)
@@ -124,7 +124,7 @@ object RpcClientObservableDeSerializer : CustomSerializer.Implements<Observable<
             data: Data,
             type: Type,
             output: SerializationOutput,
-            context: SerializationContext
+            context: AMQPSerializationContext
     ) {
         throw NotSupportedException()
     }

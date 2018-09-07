@@ -2,20 +2,17 @@ package net.corda.serialization.internal.amqp
 
 import net.corda.core.serialization.*
 import net.corda.core.utilities.ByteSequence
-import net.corda.serialization.internal.BuiltInExceptionsWhitelist
-import net.corda.serialization.internal.CordaSerializationMagic
-import net.corda.serialization.internal.GlobalTransientClassWhiteList
-import net.corda.serialization.internal.SerializationContextImpl
+import net.corda.serialization.internal.*
 import org.junit.Test
 import kotlin.test.assertEquals
 
 // Make sure all serialization calls in this test don't get stomped on by anything else
-val TESTING_CONTEXT = SerializationContextImpl(amqpMagic,
+val TESTING_CONTEXT = AMQPSerializationContextImpl(
         SerializationDefaults.javaClass.classLoader,
         GlobalTransientClassWhiteList(BuiltInExceptionsWhitelist()),
         emptyMap(),
         true,
-        SerializationContext.UseCase.Testing,
+        AMQPSerializationContext.UseCase.Testing,
         null)
 
 // Test factory that lets us count the number of serializer registration attempts
@@ -39,7 +36,7 @@ val testFactory = TestSerializerFactory(TESTING_CONTEXT.whitelist, TESTING_CONTE
 // we make for each use case. For our tests we need to make sure if its the Testing use case we return
 // the global factory object created above that counts registrations.
 class TestSerializerFactoryFactory : SerializerFactoryFactoryImpl() {
-    override fun make(context: SerializationContext) =
+    override fun make(context: AMQPSerializationContext) =
             when (context.useCase) {
                 SerializationContext.UseCase.Testing -> testFactory
                 else -> super.make(context)
@@ -47,26 +44,27 @@ class TestSerializerFactoryFactory : SerializerFactoryFactoryImpl() {
 }
 
 class AMQPTestSerializationScheme : AbstractAMQPSerializationScheme(emptySet(), AccessOrderLinkedHashMap { 128 }, TestSerializerFactoryFactory()) {
-    override fun rpcClientSerializerFactory(context: SerializationContext): SerializerFactory {
+    override fun rpcClientSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
         throw UnsupportedOperationException()
     }
 
-    override fun rpcServerSerializerFactory(context: SerializationContext): SerializerFactory {
+    override fun rpcServerSerializerFactory(context: AMQPSerializationContext): SerializerFactory {
         throw UnsupportedOperationException()
     }
 
-    override fun canDeserializeVersion(magic: CordaSerializationMagic, target: SerializationContext.UseCase) = true
+    override fun canDeserializeVersion(target: AMQPSerializationContext.UseCase) = true
 }
 
 // Test SerializationFactory that wraps a serialization scheme that just allows us to call <OBJ>.serialize.
 // Returns the testing scheme we created above that wraps the testing factory.
-class TestSerializationFactory : SerializationFactory() {
+class TestSerializationFactory(manager: AMQPSerializationContextManager = AMQPSerializationContextManagerImpl()) : AMQPSerializationFactory,
+    AMQPSerializationContextManager by manager {
     private val scheme = AMQPTestSerializationScheme()
 
     override fun <T : Any> deserialize(
             byteSequence: ByteSequence,
             clazz: Class<T>, context:
-            SerializationContext
+            AMQPSerializationContext
     ): T {
         throw UnsupportedOperationException()
     }
@@ -74,12 +72,12 @@ class TestSerializationFactory : SerializationFactory() {
     override fun <T : Any> deserializeWithCompatibleContext(
             byteSequence: ByteSequence,
             clazz: Class<T>,
-            context: SerializationContext
-    ): ObjectWithCompatibleContext<T> {
+            context: AMQPSerializationContext
+    ): ObjectWithCompatibleAMQPContext<T> {
         throw UnsupportedOperationException()
     }
 
-    override fun <T : Any> serialize(obj: T, context: SerializationContext) = scheme.serialize(obj, context)
+    override fun <T : Any> serialize(obj: T, context: AMQPSerializationContext) = scheme.serialize(obj, context)
 }
 
 // The actual test
@@ -94,9 +92,9 @@ class SerializationSchemaTests {
         val expectedCustomSerializerCount = 41
 
         assertEquals(0, testFactory.registerCount)
-        c.serialize(testSerializationFactory, TESTING_CONTEXT)
+        c.amqpSerialize(testSerializationFactory, TESTING_CONTEXT)
         assertEquals(expectedCustomSerializerCount, testFactory.registerCount)
-        c.serialize(testSerializationFactory, TESTING_CONTEXT)
+        c.amqpSerialize(testSerializationFactory, TESTING_CONTEXT)
         assertEquals(expectedCustomSerializerCount, testFactory.registerCount)
     }
 }

@@ -55,7 +55,8 @@ import net.corda.testing.common.internal.testNetworkParameters
 import net.corda.testing.driver.TestCorDapp
 import net.corda.testing.internal.stubs.CertificateStoreStubs
 import net.corda.testing.internal.rigorousMock
-import net.corda.testing.internal.setGlobalSerialization
+import net.corda.testing.internal.setGlobalAMQPSerialization
+import net.corda.testing.internal.setGlobalCheckpointSerialization
 import net.corda.testing.internal.testThreadFactory
 import net.corda.testing.node.*
 import net.corda.testing.node.MockServices.Companion.makeTestDataSourceProperties
@@ -168,11 +169,19 @@ open class InternalMockNetwork(defaultParameters: MockNetworkParameters = MockNe
     private val networkId = random63BitValue()
     private val networkParametersCopier: NetworkParametersCopier
     private val _nodes = mutableListOf<MockNode>()
-    private val serializationEnv = try {
-        setGlobalSerialization(true)
+
+    private val checkpointSerializationEnv = try {
+        setGlobalCheckpointSerialization(true)
     } catch (e: IllegalStateException) {
         throw IllegalStateException("Using more than one InternalMockNetwork simultaneously is not supported.", e)
     }
+
+    private val amqpSerializationEnv = try {
+        setGlobalAMQPSerialization(true)
+    } catch (e: IllegalStateException) {
+        throw IllegalStateException("Using more than one InternalMockNetwork simultaneously is not supported.", e)
+    }
+
     private val sharedUserCount = AtomicInteger(0)
 
     private val sharedCorDappsDirectories: Iterable<Path> by lazy {
@@ -541,7 +550,7 @@ open class InternalMockNetwork(defaultParameters: MockNetworkParameters = MockNe
         try {
             nodes.forEach { it.started?.dispose() }
         } finally {
-            serializationEnv.unset() // Must execute even if other parts of this method fail.
+            checkpointSerializationEnv.unset() // Must execute even if other parts of this method fail.
         }
         messagingNetwork.stop()
     }

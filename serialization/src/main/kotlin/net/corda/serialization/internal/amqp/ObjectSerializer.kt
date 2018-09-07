@@ -1,13 +1,12 @@
 package net.corda.serialization.internal.amqp
 
 import net.corda.core.internal.isConcreteClass
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.utilities.contextLogger
 import net.corda.core.utilities.trace
 import net.corda.serialization.internal.amqp.SerializerFactory.Companion.nameForType
 import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.codec.Data
-import java.io.NotSerializableException
 import java.lang.reflect.Constructor
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Type
@@ -58,7 +57,7 @@ open class ObjectSerializer(val clazz: Type, factory: SerializerFactory) : AMQPS
             data: Data,
             type: Type,
             output: SerializationOutput,
-            context: SerializationContext,
+            context: AMQPSerializationContext,
             debugIndent: Int) = ifThrowsAppend({ clazz.typeName }
     ) {
         if (propertySerializers.size != javaConstructor?.parameterCount &&
@@ -84,7 +83,7 @@ open class ObjectSerializer(val clazz: Type, factory: SerializerFactory) : AMQPS
             obj: Any,
             schemas: SerializationSchemas,
             input: DeserializationInput,
-            context: SerializationContext): Any = ifThrowsAppend({ clazz.typeName }) {
+            context: AMQPSerializationContext): Any = ifThrowsAppend({ clazz.typeName }) {
         if (obj is List<*>) {
             if (obj.size > propertySerializers.size) {
                 throw AMQPNotSerializableException(type, "Too many properties in described type $typeName")
@@ -104,7 +103,7 @@ open class ObjectSerializer(val clazz: Type, factory: SerializerFactory) : AMQPS
             obj: List<*>,
             schemas: SerializationSchemas,
             input: DeserializationInput,
-            context: SerializationContext): Any = ifThrowsAppend({ clazz.typeName }) {
+            context: AMQPSerializationContext): Any = ifThrowsAppend({ clazz.typeName }) {
         logger.trace { "Calling construction based construction for ${clazz.typeName}" }
 
         return construct(propertySerializers.serializationOrder
@@ -118,7 +117,7 @@ open class ObjectSerializer(val clazz: Type, factory: SerializerFactory) : AMQPS
             obj: List<*>,
             schemas: SerializationSchemas,
             input: DeserializationInput,
-            context: SerializationContext): Any = ifThrowsAppend({ clazz.typeName }) {
+            context: AMQPSerializationContext): Any = ifThrowsAppend({ clazz.typeName }) {
         logger.trace { "Calling setter based construction for ${clazz.typeName}" }
 
         val instance: Any = javaConstructor?.newInstanceUnwrapped() ?: throw AMQPNotSerializableException(

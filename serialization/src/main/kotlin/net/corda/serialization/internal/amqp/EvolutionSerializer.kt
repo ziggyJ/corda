@@ -3,7 +3,7 @@ package net.corda.serialization.internal.amqp
 import net.corda.core.KeepForDJVM
 import net.corda.core.internal.isConcreteClass
 import net.corda.core.serialization.DeprecatedConstructorForDeserialization
-import net.corda.core.serialization.SerializationContext
+import net.corda.core.serialization.AMQPSerializationContext
 import net.corda.core.utilities.contextLogger
 import net.corda.core.utilities.debug
 import net.corda.core.utilities.loggerFor
@@ -48,7 +48,7 @@ abstract class EvolutionSerializer(
     @KeepForDJVM
     data class OldParam(var resultsIndex: Int, val property: PropertySerializer) {
         fun readProperty(obj: Any?, schemas: SerializationSchemas, input: DeserializationInput,
-                         new: Array<Any?>, context: SerializationContext
+                         new: Array<Any?>, context: AMQPSerializationContext
         ) = property.readProperty(obj, schemas, input, context).apply {
             if (resultsIndex >= 0) {
                 new[resultsIndex] = this
@@ -200,7 +200,7 @@ abstract class EvolutionSerializer(
     }
 
     override fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
-                             context: SerializationContext, debugIndent: Int
+                             context: AMQPSerializationContext, debugIndent: Int
     ) {
         throw UnsupportedOperationException("It should be impossible to write an evolution serializer")
     }
@@ -222,7 +222,7 @@ class EvolutionSerializerViaConstructor(
      * TODO: Object references
      */
     override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
-                            context: SerializationContext
+                            context: AMQPSerializationContext
     ): Any {
         if (obj !is List<*>) throw NotSerializableException("Body of described type is unexpected $obj")
 
@@ -246,7 +246,7 @@ class EvolutionSerializerViaSetters(
         private val setters: Map<String, PropertyAccessor>) : EvolutionSerializer(clazz, factory, oldReaders, kotlinConstructor) {
 
     override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
-                            context: SerializationContext
+                            context: AMQPSerializationContext
     ): Any {
         if (obj !is List<*>) throw NotSerializableException("Body of described type is unexpected $obj")
 
