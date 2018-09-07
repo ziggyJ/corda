@@ -8,7 +8,7 @@ import net.corda.core.context.InvocationContext
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
 import net.corda.core.node.ServiceHub
-import net.corda.core.serialization.internal.effectiveSerializationEnv
+import net.corda.core.serialization.internal.effectiveCheckpointSerializationEnv
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.testing.core.SerializationEnvironmentRule
 import net.corda.testing.core.TestIdentity
@@ -29,7 +29,7 @@ fun ServiceHub.ledger(
         script: LedgerDSL<TestTransactionDSLInterpreter, TestLedgerDSLInterpreter>.() -> Unit
 ): LedgerDSL<TestTransactionDSLInterpreter, TestLedgerDSLInterpreter> {
     val serializationExists = try {
-        effectiveSerializationEnv
+        effectiveCheckpointSerializationEnv
         true
     } catch (e: IllegalStateException) {
         false

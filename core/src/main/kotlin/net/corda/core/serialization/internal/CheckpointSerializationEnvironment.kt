@@ -12,46 +12,23 @@ import net.corda.core.serialization.SerializationContext
 import net.corda.core.serialization.SerializationFactory
 
 @KeepForDJVM
-interface SerializationEnvironment {
+interface CheckpointSerializationEnvironment {
     val serializationFactory: SerializationFactory
-    val p2pContext: SerializationContext
-    val rpcServerContext: SerializationContext
-    val rpcClientContext: SerializationContext
-    val storageContext: SerializationContext
     val checkpointContext: SerializationContext
 }
 
 @KeepForDJVM
-open class SerializationEnvironmentImpl(
+open class CheckpointSerializationEnvironmentImpl(
         override val serializationFactory: SerializationFactory,
-        p2pContext: SerializationContext? = null,
-        rpcServerContext: SerializationContext? = null,
-        rpcClientContext: SerializationContext? = null,
-        storageContext: SerializationContext? = null,
-        checkpointContext: SerializationContext? = null) : SerializationEnvironment {
-    // Those that are passed in as null are never inited:
-    override lateinit var p2pContext: SerializationContext
-    override lateinit var rpcServerContext: SerializationContext
-    override lateinit var rpcClientContext: SerializationContext
-    override lateinit var storageContext: SerializationContext
-    override lateinit var checkpointContext: SerializationContext
+        override val checkpointContext: SerializationContext) : CheckpointSerializationEnvironment
 
-    init {
-        p2pContext?.let { this.p2pContext = it }
-        rpcServerContext?.let { this.rpcServerContext = it }
-        rpcClientContext?.let { this.rpcClientContext = it }
-        storageContext?.let { this.storageContext = it }
-        checkpointContext?.let { this.checkpointContext = it }
-    }
-}
-
-private val _nodeSerializationEnv = SimpleToggleField<SerializationEnvironment>("nodeSerializationEnv", true)
+private val _nodeSerializationEnv = SimpleToggleField<CheckpointSerializationEnvironment>("nodeSerializationEnv", true)
 @VisibleForTesting
-val _globalSerializationEnv = SimpleToggleField<SerializationEnvironment>("globalSerializationEnv")
+val _globalSerializationEnv = SimpleToggleField<CheckpointSerializationEnvironment>("globalSerializationEnv")
 @VisibleForTesting
-val _contextSerializationEnv = ThreadLocalToggleField<SerializationEnvironment>("contextSerializationEnv")
+val _contextSerializationEnv = ThreadLocalToggleField<CheckpointSerializationEnvironment>("contextSerializationEnv")
 @VisibleForTesting
-val _inheritableContextSerializationEnv = InheritableThreadLocalToggleField<SerializationEnvironment>("inheritableContextSerializationEnv") { stack ->
+val _inheritableContextSerializationEnv = InheritableThreadLocalToggleField<CheckpointSerializationEnvironment>("inheritableContextSerializationEnv") { stack ->
     stack.fold(false) { isAGlobalThreadBeingCreated, e ->
         isAGlobalThreadBeingCreated ||
                 (e.className == "io.netty.util.concurrent.GlobalEventExecutor" && e.methodName == "startThread") ||
@@ -59,7 +36,7 @@ val _inheritableContextSerializationEnv = InheritableThreadLocalToggleField<Seri
     }
 }
 private val serializationEnvProperties = listOf(_nodeSerializationEnv, _globalSerializationEnv, _contextSerializationEnv, _inheritableContextSerializationEnv)
-val effectiveSerializationEnv: SerializationEnvironment
+val effectiveCheckpointSerializationEnv: CheckpointSerializationEnvironment
     get() = serializationEnvProperties.map { Pair(it, it.get()) }.filter { it.second != null }.run {
         singleOrNull()?.run {
             second!!

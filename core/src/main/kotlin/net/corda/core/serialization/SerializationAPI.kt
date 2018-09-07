@@ -8,7 +8,7 @@ import net.corda.core.KeepForDJVM
 import net.corda.core.crypto.SecureHash
 import net.corda.core.crypto.sha256
 import net.corda.core.serialization.internal.effectiveAMQPSerializationEnv
-import net.corda.core.serialization.internal.effectiveSerializationEnv
+import net.corda.core.serialization.internal.effectiveCheckpointSerializationEnv
 import net.corda.core.utilities.ByteSequence
 import net.corda.core.utilities.OpaqueBytes
 import net.corda.core.utilities.sequence
@@ -59,7 +59,7 @@ abstract class SerializationFactory {
      * A context to use as a default if you do not require a specially configured context.  It will be the current context
      * if the use is somehow nested (see [currentContext]).
      */
-    val defaultContext: SerializationContext get() = currentContext ?: effectiveSerializationEnv.p2pContext
+    val defaultContext: SerializationContext get() = currentContext ?: effectiveCheckpointSerializationEnv.checkpointContext
 
     private val _currentContext = ThreadLocal<SerializationContext?>()
 
@@ -96,7 +96,7 @@ abstract class SerializationFactory {
         /**
          * A default factory for serialization/deserialization, taking into account the [currentFactory] if set.
          */
-        val defaultFactory: SerializationFactory get() = currentFactory ?: effectiveSerializationEnv.serializationFactory
+        val defaultFactory: SerializationFactory get() = currentFactory ?: effectiveCheckpointSerializationEnv.serializationFactory
 
         /**
          * If there is a need to nest serialization/deserialization with a modified context during serialization or deserialization,
@@ -140,7 +140,7 @@ abstract class AMQPSerializationFactory {
      * @param context A context that configures various parameters to deserialization.
      * @return deserialized object along with [SerializationContext] to identify encoding used.
      */
-     fun <T : Any> deserializeWithCompatibleContext(byteSequence: ByteSequence, clazz: Class<T>, context: AMQPSerializationContext) =
+    fun <T : Any> deserializeWithCompatibleContext(byteSequence: ByteSequence, clazz: Class<T>, context: AMQPSerializationContext) =
             ObjectWithCompatibleAMQPContext(deserialize(byteSequence, clazz, context), context)
 
     /**
@@ -413,13 +413,13 @@ enum class ContextPropertyKeys {
  */
 @KeepForDJVM
 object SerializationDefaults {
-    val SERIALIZATION_FACTORY get() = effectiveSerializationEnv.serializationFactory
+    val SERIALIZATION_FACTORY get() = effectiveCheckpointSerializationEnv.serializationFactory
 
     @Deprecated("Checkpoint serialization does not support P2P context") val P2P_CONTEXT: SerializationContext get() = throw UnsupportedOperationException("Checkpoint serialisation does not provide P2P serialization context")
     @Deprecated("Checkpoint serialization does not support RPC server context") @DeleteForDJVM val RPC_SERVER_CONTEXT: SerializationContext get() = throw UnsupportedOperationException("Checkpoint serialisation does not provide RPC server serialization context")
     @Deprecated("Checkpoint serialization does not support RPC client context") @DeleteForDJVM val RPC_CLIENT_CONTEXT: SerializationContext get() = throw UnsupportedOperationException("Checkpoint serialisation does not provide RPC client serialization context")
     @Deprecated("Checkpoint serialization does not support storage context") @DeleteForDJVM val STORAGE_CONTEXT: SerializationContext get() = throw UnsupportedOperationException("Checkpoint serialisation does not provide storage serialization context")
-    @DeleteForDJVM val CHECKPOINT_CONTEXT get() = effectiveSerializationEnv.checkpointContext
+    @DeleteForDJVM val CHECKPOINT_CONTEXT get() = effectiveCheckpointSerializationEnv.checkpointContext
 }
 
 /**
@@ -434,61 +434,41 @@ object AMQPSerializationDefaults {
     @DeleteForDJVM val STORAGE_CONTEXT get() = effectiveAMQPSerializationEnv.storageContext
 }
 
+
 /**
- * Convenience extension method for deserializing a ByteSequence, utilising the defaults.
+ * Convenience extension method for deserializing a ByteSequence, utilising the default factory.
  */
-inline fun <reified T : Any> ByteSequence.deserialize(serializationFactory: SerializationFactory = SerializationFactory.defaultFactory,
-                                                      context: SerializationContext = serializationFactory.defaultContext): T {
+inline fun <reified T : Any> ByteSequence.deserialize(serializationFactory: AMQPSerializationFactory = AMQPSerializationFactory.defaultFactory,
+                                                      context: AMQPSerializationContext): T {
     return serializationFactory.deserialize(this, T::class.java, context)
 }
 
 /**
  * Convenience extension method for deserializing a ByteSequence, utilising the defaults.
  */
-inline fun <reified T : Any> ByteSequence.amqpDeserialize(serializationFactory: AMQPSerializationFactory = AMQPSerializationFactory.defaultFactory,
-                                                      context: AMQPSerializationContext = serializationFactory.defaultContext): T {
-    return serializationFactory.deserialize(this, T::class.java, context)
-}
+inline fun <reified T : Any> ByteSequence.deserialize() =
+        deserialize<T>(context = AMQPSerializationFactory.defaultFactory.defaultContext)
 
 /**
- * Additionally returns [SerializationContext] which was used for encoding.
- * It might be helpful to know [SerializationContext] to use the same encoding in the reply.
+ * Convenience extension method for deserializing SerializedBytes with type matching, utilising the default factory.
  */
-inline fun <reified T : Any> ByteSequence.deserializeWithCompatibleContext(serializationFactory: SerializationFactory = SerializationFactory.defaultFactory,
-                                                                           context: SerializationContext = serializationFactory.defaultContext): ObjectWithCompatibleContext<T> {
-    return serializationFactory.deserializeWithCompatibleContext(this, T::class.java, context)
-}
-
-/**
- * Additionally returns [SerializationContext] which was used for encoding.
- * It might be helpful to know [SerializationContext] to use the same encoding in the reply.
- */
-inline fun <reified T : Any> ByteSequence.amqpDeserializeWithCompatibleContext(serializationFactory: AMQPSerializationFactory = AMQPSerializationFactory.defaultFactory,
-                                                                           context: AMQPSerializationContext = serializationFactory.defaultContext): ObjectWithCompatibleAMQPContext<T> {
-    return serializationFactory.deserializeWithCompatibleContext(this, T::class.java, context)
-}
-
-/**
- * Convenience extension method for deserializing SerializedBytes with type matching, utilising the defaults.
- */
-inline fun <reified T : Any> SerializedBytes<T>.deserialize(serializationFactory: SerializationFactory = SerializationFactory.defaultFactory,
-                                                            context: SerializationContext = serializationFactory.defaultContext): T {
+inline fun <reified T : Any> SerializedBytes<T>.deserialize(serializationFactory: AMQPSerializationFactory = AMQPSerializationFactory.defaultFactory,
+                                                            context: AMQPSerializationContext): T {
     return serializationFactory.deserialize(this, T::class.java, context)
 }
 
 /**
  * Convenience extension method for deserializing SerializedBytes with type matching, utilising the defaults.
  */
-inline fun <reified T : Any> SerializedBytes<T>.amqpDeserialize(serializationFactory: AMQPSerializationFactory = AMQPSerializationFactory.defaultFactory,
-                                                            context: AMQPSerializationContext = serializationFactory.defaultContext): T {
-    return serializationFactory.deserialize(this, T::class.java, context)
-}
+inline fun <reified T : Any> SerializedBytes<T>.deserialize(): T =
+        deserialize(context = AMQPSerializationFactory.defaultFactory.defaultContext)
+
 
 /**
- * Convenience extension method for deserializing a ByteArray, utilising the defaults.
+ * Convenience extension method for deserializing a ByteArray, utilising the default factory.
  */
-inline fun <reified T : Any> ByteArray.deserialize(serializationFactory: SerializationFactory = SerializationFactory.defaultFactory,
-                                                   context: SerializationContext = serializationFactory.defaultContext): T {
+inline fun <reified T : Any> ByteArray.deserialize(serializationFactory: AMQPSerializationFactory = AMQPSerializationFactory.defaultFactory,
+                                                   context: AMQPSerializationContext): T {
     require(isNotEmpty()) { "Empty bytes" }
     return this.sequence().deserialize(serializationFactory, context)
 }
@@ -496,34 +476,85 @@ inline fun <reified T : Any> ByteArray.deserialize(serializationFactory: Seriali
 /**
  * Convenience extension method for deserializing a ByteArray, utilising the defaults.
  */
-inline fun <reified T : Any> ByteArray.amqpDeserialize(serializationFactory: AMQPSerializationFactory = AMQPSerializationFactory.defaultFactory,
-                                                   context: AMQPSerializationContext = serializationFactory.defaultContext): T {
-    require(isNotEmpty()) { "Empty bytes" }
-    return this.sequence().amqpDeserialize(serializationFactory, context)
-}
+inline fun <reified T : Any> ByteArray.deserialize(): T =
+        deserialize(context = AMQPSerializationFactory.defaultFactory.defaultContext)
+
 
 /**
- * Convenience extension method for deserializing a JDBC Blob, utilising the defaults.
+ * Convenience extension method for serializing an object of type T, utilising the default factory.
  */
-@DeleteForDJVM
-inline fun <reified T : Any> Blob.deserialize(serializationFactory: SerializationFactory = SerializationFactory.defaultFactory,
-                                              context: SerializationContext = serializationFactory.defaultContext): T {
-    return this.getBytes(1, this.length().toInt()).deserialize(serializationFactory, context)
-}
-
-/**
- * Convenience extension method for serializing an object of type T, utilising the defaults.
- */
-fun <T : Any> T.serialize(serializationFactory: SerializationFactory = SerializationFactory.defaultFactory,
-                          context: SerializationContext = serializationFactory.defaultContext): SerializedBytes<T> {
+fun <T : Any> T.serialize(serializationFactory: AMQPSerializationFactory = AMQPSerializationFactory.defaultFactory,
+                          context: AMQPSerializationContext): SerializedBytes<T> {
     return serializationFactory.serialize(this, context)
 }
 
 /**
  * Convenience extension method for serializing an object of type T, utilising the defaults.
  */
-fun <T : Any> T.amqpSerialize(serializationFactory: AMQPSerializationFactory = AMQPSerializationFactory.defaultFactory,
-                          context: AMQPSerializationContext = serializationFactory.defaultContext): SerializedBytes<T> {
+fun <T : Any> T.serialize(): SerializedBytes<T> {
+    return serialize(context = AMQPSerializationFactory.defaultFactory.defaultContext)
+}
+
+/**
+ * Convenience extension method for deserializing a ByteSequence, utilising the defaults.
+ *
+ * Special case for checkpoint deserialization using Kryo.
+ */
+inline fun <reified T : Any> ByteSequence.deserialize(serializationFactory: SerializationFactory = SerializationFactory.defaultFactory,
+                                                      context: SerializationContext): T {
+    return serializationFactory.deserialize(this, T::class.java, context)
+}
+
+/**
+ * Additionally returns [SerializationContext] which was used for encoding.
+ * It might be helpful to know [SerializationContext] to use the same encoding in the reply.
+ *
+ * Special case for checkpoint deserialization using Kryo.
+ */
+inline fun <reified T : Any> ByteSequence.deserializeWithCompatibleContext(serializationFactory: SerializationFactory = SerializationFactory.defaultFactory,
+                                                                           context: SerializationContext = serializationFactory.defaultContext): ObjectWithCompatibleContext<T> {
+    return serializationFactory.deserializeWithCompatibleContext(this, T::class.java, context)
+}
+
+/**
+ * Convenience extension method for deserializing SerializedBytes with type matching, utilising the defaults.
+ *
+ * Special case for checkpoint deserialization using Kryo.
+ */
+inline fun <reified T : Any> SerializedBytes<T>.deserialize(serializationFactory: SerializationFactory = SerializationFactory.defaultFactory,
+                                                            context: SerializationContext): T {
+    return serializationFactory.deserialize(this, T::class.java, context)
+}
+
+/**
+ * Convenience extension method for deserializing a ByteArray, utilising the defaults.
+ *
+ * Special case for checkpoint deserialization using Kryo.
+ */
+inline fun <reified T : Any> ByteArray.deserialize(serializationFactory: SerializationFactory = SerializationFactory.defaultFactory,
+                                                   context: SerializationContext): T {
+    require(isNotEmpty()) { "Empty bytes" }
+    return this.sequence().deserialize(serializationFactory, context)
+}
+
+/**
+ * Convenience extension method for deserializing a JDBC Blob, utilising the defaults.
+ *
+ * Special case for checkpoint serialization using Kryo.
+ */
+@DeleteForDJVM
+inline fun <reified T : Any> Blob.deserialize(serializationFactory: SerializationFactory = SerializationFactory.defaultFactory,
+                                              context: SerializationContext): T {
+    return this.getBytes(1, this.length().toInt()).deserialize(serializationFactory, context)
+}
+
+/**
+ * Convenience extension method for serializing an object of type T, utilising the defaults.
+ *
+ * Special case for checkpoint serialization using Kryo.
+ */
+fun <T : Any> T.serialize(serializationFactory: SerializationFactory = SerializationFactory.defaultFactory,
+                          context: SerializationContext): SerializedBytes<T> {
     return serializationFactory.serialize(this, context)
 }
 

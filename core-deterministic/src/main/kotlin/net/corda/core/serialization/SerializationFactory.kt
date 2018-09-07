@@ -1,7 +1,7 @@
 package net.corda.core.serialization
 
 import net.corda.core.KeepForDJVM
-import net.corda.core.serialization.internal.effectiveSerializationEnv
+import net.corda.core.serialization.internal.effectiveCheckpointSerializationEnv
 import net.corda.core.utilities.ByteSequence
 
 /**
@@ -47,7 +47,7 @@ abstract class SerializationFactory {
      * A context to use as a default if you do not require a specially configured context.  It will be the current context
      * if the use is somehow nested (see [currentContext]).
      */
-    val defaultContext: SerializationContext get() = currentContext ?: effectiveSerializationEnv.p2pContext
+    val defaultContext: SerializationContext get() = currentContext ?: effectiveCheckpointSerializationEnv.checkpointContext
 
     private var _currentContext: SerializationContext? = null
 
@@ -84,7 +84,7 @@ abstract class SerializationFactory {
         /**
          * A default factory for serialization/deserialization, taking into account the [currentFactory] if set.
          */
-        val defaultFactory: SerializationFactory get() = currentFactory ?: effectiveSerializationEnv.serializationFactory
+        val defaultFactory: SerializationFactory get() = currentFactory ?: effectiveCheckpointSerializationEnv.serializationFactory
 
         /**
          * If there is a need to nest serialization/deserialization with a modified context during serialization or deserialization,

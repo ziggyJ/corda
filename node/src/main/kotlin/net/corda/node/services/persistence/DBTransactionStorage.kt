@@ -56,14 +56,14 @@ class DBTransactionStorage(cacheSizeBytes: Long, private val database: CordaPers
                     toPersistentEntityKey = { it.toString() },
                     fromPersistentEntity = {
                         Pair(SecureHash.parse(it.txId),
-                                it.transaction.amqpDeserialize<SignedTransaction>(context = AMQPSerializationDefaults.STORAGE_CONTEXT)
+                                it.transaction.deserialize<SignedTransaction>(context = AMQPSerializationDefaults.STORAGE_CONTEXT)
                                         .toTxCacheValue())
                     },
                     toPersistentEntity = { key: SecureHash, value: TxCacheValue ->
                         DBTransaction().apply {
                             txId = key.toString()
                             stateMachineRunId = FlowStateMachineImpl.currentStateMachine()?.id?.uuid?.toString()
-                            transaction = value.toSignedTx().amqpSerialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT).bytes
+                            transaction = value.toSignedTx().serialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT).bytes
                         }
                     },
                     persistentEntityClass = DBTransaction::class.java,

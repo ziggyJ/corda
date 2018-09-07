@@ -59,7 +59,7 @@ class AbstractAMQPSerializationSchemeTest {
             }
             val testString = "TEST${ThreadLocalRandom.current().nextInt()}"
             val serialized = scheme.serialize(testString, context)
-            val deserialized = serialized.amqpDeserialize(context = context, serializationFactory = testSerialization.serializationFactory)
+            val deserialized = serialized.deserialize(context = context, serializationFactory = testSerialization.serializationFactory)
             Assert.assertThat(testString, `is`(deserialized))
             Assert.assertThat(backingMap.size, `is`(Matchers.lessThanOrEqualTo(maxFactories)))
         }

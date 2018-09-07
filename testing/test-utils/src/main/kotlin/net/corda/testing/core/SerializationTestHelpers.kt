@@ -5,9 +5,9 @@ import com.nhaarman.mockito_kotlin.doAnswer
 import com.nhaarman.mockito_kotlin.whenever
 import net.corda.core.internal.staticField
 import net.corda.core.serialization.internal.AMQPSerializationEnvironment
-import net.corda.core.serialization.internal.SerializationEnvironment
+import net.corda.core.serialization.internal.CheckpointSerializationEnvironment
 import net.corda.core.serialization.internal.effectiveAMQPSerializationEnv
-import net.corda.core.serialization.internal.effectiveSerializationEnv
+import net.corda.core.serialization.internal.effectiveCheckpointSerializationEnv
 import net.corda.testing.common.internal.asContextEnv
 import net.corda.testing.internal.*
 import org.apache.activemq.artemis.core.remoting.impl.invm.InVMConnector
@@ -29,7 +29,7 @@ class SerializationEnvironmentRule(private val inheritable: Boolean = false) : T
             // Can't turn it off, and it creates threads that do serialization, so hack it:
             InVMConnector::class.staticField<ExecutorService>("threadPoolExecutor").value = rigorousMock<ExecutorService>().also {
                 doAnswer {
-                    inVMExecutors.computeIfAbsent(effectiveSerializationEnv) {
+                    inVMExecutors.computeIfAbsent(effectiveCheckpointSerializationEnv) {
                         Executors.newCachedThreadPool(testThreadFactory(true)) // Close enough to what InVMConnector makes normally.
                     }.execute(it.arguments[0] as Runnable)
                 }.whenever(it).execute(any())
@@ -37,12 +37,12 @@ class SerializationEnvironmentRule(private val inheritable: Boolean = false) : T
         }
 
         /** Do not call, instead use [SerializationEnvironmentRule] as a [org.junit.Rule]. */
-        fun <T> run(taskLabel: String, task: (SerializationEnvironment) -> T): T {
+        fun <T> run(taskLabel: String, task: (CheckpointSerializationEnvironment) -> T): T {
             return SerializationEnvironmentRule().apply { init(taskLabel) }.runTask(task)
         }
     }
 
-    private lateinit var env: SerializationEnvironment
+    private lateinit var env: CheckpointSerializationEnvironment
     val serializationFactory get() = env.serializationFactory
     val checkpointContext get() = env.checkpointContext
 
@@ -57,7 +57,7 @@ class SerializationEnvironmentRule(private val inheritable: Boolean = false) : T
         env = createTestKryoSerializationEnv(envLabel)
     }
 
-    private fun <T> runTask(task: (SerializationEnvironment) -> T): T {
+    private fun <T> runTask(task: (CheckpointSerializationEnvironment) -> T): T {
         try {
             return env.asContextEnv(inheritable, task)
         } finally {

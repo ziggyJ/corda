@@ -29,11 +29,9 @@ fun <T> withoutTestSerialization(callable: () -> T): T { // TODO: Delete this, s
     }
 }
 
-internal fun createTestKryoSerializationEnv(label: String): SerializationEnvironmentImpl {
-    val factory = SerializationFactoryImpl().apply {
-        registerScheme(KryoServerSerializationScheme())
-    }
-    return object : SerializationEnvironmentImpl(
+internal fun createTestKryoSerializationEnv(label: String): CheckpointSerializationEnvironmentImpl {
+    val factory = CheckpointSerializationFactory(KryoServerSerializationScheme())
+    return object : CheckpointSerializationEnvironmentImpl(
             factory,
             KRYO_CHECKPOINT_CONTEXT
     ) {
@@ -59,10 +57,10 @@ internal fun createTestAMQPSerializationEnv(label: String): AMQPSerializationEnv
  * Should only be used by Driver and MockNode.
  * @param armed true to install, false to do nothing and return a dummy env.
  */
-fun setGlobalCheckpointSerialization(armed: Boolean): GlobalSerializationEnvironment {
+fun setGlobalCheckpointSerialization(armed: Boolean): GlobalCheckpointSerializationEnvironment {
     return if (armed) {
-        object : GlobalSerializationEnvironment,
-                SerializationEnvironment by createTestKryoSerializationEnv("<global>") {
+        object : GlobalCheckpointSerializationEnvironment,
+                CheckpointSerializationEnvironment by createTestKryoSerializationEnv("<global>") {
             override fun unset() {
                 _globalSerializationEnv.set(null)
                 inVMExecutors.remove(this)
@@ -71,7 +69,7 @@ fun setGlobalCheckpointSerialization(armed: Boolean): GlobalSerializationEnviron
             _globalSerializationEnv.set(it)
         }
     } else {
-        rigorousMock<GlobalSerializationEnvironment>().also {
+        rigorousMock<GlobalCheckpointSerializationEnvironment>().also {
             doNothing().whenever(it).unset()
         }
     }
@@ -100,7 +98,7 @@ fun setGlobalAMQPSerialization(armed: Boolean): GlobalAMQPSerializationEnvironme
 }
 
 @DoNotImplement
-interface GlobalSerializationEnvironment : SerializationEnvironment {
+interface GlobalCheckpointSerializationEnvironment : CheckpointSerializationEnvironment {
     /** Unset this environment. */
     fun unset()
 }

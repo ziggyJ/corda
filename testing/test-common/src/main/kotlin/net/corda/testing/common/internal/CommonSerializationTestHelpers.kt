@@ -13,7 +13,7 @@ fun <T> AMQPSerializationEnvironment.asContextEnv(inheritable: Boolean = false, 
 }
 
 // TODO: eliminate this if it's no longer needed
-fun <T> SerializationEnvironment.asContextEnv(inheritable: Boolean = false, callable: (SerializationEnvironment) -> T): T {
+fun <T> CheckpointSerializationEnvironment.asContextEnv(inheritable: Boolean = false, callable: (CheckpointSerializationEnvironment) -> T): T {
     val property = if (inheritable) _inheritableContextSerializationEnv else _contextSerializationEnv
     property.set(this)
     try {

@@ -1,7 +1,7 @@
 package net.corda.testing.node.internal
 
 import net.corda.core.messaging.AllPossibleRecipients
-import net.corda.core.serialization.internal.effectiveSerializationEnv
+import net.corda.core.serialization.internal.effectiveCheckpointSerializationEnv
 import net.corda.node.services.messaging.Message
 import net.corda.testing.internal.rigorousMock
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -107,6 +107,6 @@ class InternalMockNetworkTests {
                 override fun createNotaries() = throw e
             }
         }.isSameAs(e)
-        assertThatThrownBy { effectiveSerializationEnv }.isInstanceOf(IllegalStateException::class.java)
+        assertThatThrownBy { effectiveCheckpointSerializationEnv }.isInstanceOf(IllegalStateException::class.java)
     }
 }

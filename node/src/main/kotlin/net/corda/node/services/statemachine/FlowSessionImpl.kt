@@ -46,7 +46,7 @@ class FlowSessionImpl(
     ): UntrustworthyData<R> {
         enforceNotPrimitive(receiveType)
         val request = FlowIORequest.SendAndReceive(
-                sessionToMessage = mapOf(this to payload.amqpSerialize(context = AMQPSerializationDefaults.P2P_CONTEXT)),
+                sessionToMessage = mapOf(this to payload.serialize(context = AMQPSerializationDefaults.P2P_CONTEXT)),
                 shouldRetrySend = false
         )
         val responseValues: Map<FlowSession, SerializedBytes<Any>> = getFlowStateMachine().suspend(request, maySkipCheckpoint)
@@ -71,7 +71,7 @@ class FlowSessionImpl(
     @Suspendable
     override fun send(payload: Any, maySkipCheckpoint: Boolean) {
         val request = FlowIORequest.Send(
-                sessionToMessage = mapOf(this to payload.amqpSerialize(context = AMQPSerializationDefaults.P2P_CONTEXT))
+                sessionToMessage = mapOf(this to payload.serialize(context = AMQPSerializationDefaults.P2P_CONTEXT))
         )
         return getFlowStateMachine().suspend(request, maySkipCheckpoint)
     }

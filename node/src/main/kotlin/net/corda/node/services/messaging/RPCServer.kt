@@ -328,7 +328,7 @@ class RPCServer(
                         return
                     }
                     val arguments = Try.on {
-                        clientToServer.serialisedArguments.amqpDeserialize<List<Any?>>(context = RPC_SERVER_CONTEXT)
+                        clientToServer.serialisedArguments.deserialize<List<Any?>>(context = RPC_SERVER_CONTEXT)
                     }
                     val context = artemisMessage.context(clientToServer.sessionId)
                     context.invocation.pushToLoggingContext()

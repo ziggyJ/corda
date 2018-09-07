@@ -204,7 +204,7 @@ class P2PMessagingClient(val config: NodeConfiguration,
         bridgeConsumer.setMessageHandler { msg ->
             state.locked {
                 val data: ByteArray = ByteArray(msg.bodySize).apply { msg.bodyBuffer.readBytes(this) }
-                val notifyMessage = data.amqpDeserialize<BridgeControl>(context = AMQPSerializationDefaults.P2P_CONTEXT)
+                val notifyMessage = data.deserialize<BridgeControl>(context = AMQPSerializationDefaults.P2P_CONTEXT)
                 log.info(notifyMessage.toString())
                 when (notifyMessage) {
                     is BridgeControl.BridgeToNodeSnapshotRequest -> enumerateBridges(session, inboxes)
@@ -218,7 +218,7 @@ class P2PMessagingClient(val config: NodeConfiguration,
 
     private fun sendBridgeControl(message: BridgeControl) {
         state.locked {
-            val controlPacket = message.amqpSerialize(context = AMQPSerializationDefaults.P2P_CONTEXT).bytes
+            val controlPacket = message.serialize(context = AMQPSerializationDefaults.P2P_CONTEXT).bytes
             val artemisMessage = producerSession!!.createMessage(false)
             artemisMessage.writeBodyBufferBytes(controlPacket)
             sendMessage(BRIDGE_CONTROL, artemisMessage)

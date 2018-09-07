@@ -14,7 +14,6 @@ import net.corda.nodeapi.internal.protonwrapper.netty.init
 import net.corda.nodeapi.internal.registerDevP2pCertificates
 import net.corda.nodeapi.internal.registerDevSigningCertificates
 import net.corda.serialization.internal.*
-import net.corda.serialization.internal.amqp.amqpMagic
 import net.corda.testing.core.ALICE_NAME
 import net.corda.testing.core.BOB_NAME
 import net.corda.testing.core.TestIdentity
@@ -336,8 +335,8 @@ class X509UtilitiesTest {
                 AMQPSerializationContext.UseCase.P2P,
                 null)
         val expected = X509Utilities.createSelfSignedCACertificate(ALICE.name.x500Principal, Crypto.generateKeyPair(X509Utilities.DEFAULT_TLS_SIGNATURE_SCHEME))
-        val serialized = expected.amqpSerialize(factory, context).bytes
-        val actual = serialized.amqpDeserialize<X509Certificate>(factory, context)
+        val serialized = expected.serialize(factory, context).bytes
+        val actual = serialized.deserialize<X509Certificate>(factory, context)
         assertEquals(expected, actual)
     }
 
@@ -356,8 +355,8 @@ class X509UtilitiesTest {
         val rootCACert = X509Utilities.createSelfSignedCACertificate(ALICE_NAME.x500Principal, rootCAKey)
         val certificate = X509Utilities.createCertificate(CertificateType.TLS, rootCACert, rootCAKey, BOB_NAME.x500Principal, BOB.publicKey)
         val expected = X509Utilities.buildCertPath(certificate, rootCACert)
-        val serialized = expected.amqpSerialize(factory, context).bytes
-        val actual: CertPath = serialized.amqpDeserialize(factory, context)
+        val serialized = expected.serialize(factory, context).bytes
+        val actual: CertPath = serialized.deserialize(factory, context)
         assertEquals(expected, actual)
     }
 }

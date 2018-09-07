@@ -229,7 +229,7 @@ abstract class FlowLogic<out T> {
     @Suspendable
     internal fun <R : Any> FlowSession.sendAndReceiveWithRetry(receiveType: Class<R>, payload: Any): UntrustworthyData<R> {
         val request = FlowIORequest.SendAndReceive(
-                sessionToMessage = mapOf(this to payload.amqpSerialize(context = AMQPSerializationDefaults.P2P_CONTEXT)),
+                sessionToMessage = mapOf(this to payload.serialize(context = AMQPSerializationDefaults.P2P_CONTEXT)),
                 shouldRetrySend = true
         )
         return stateMachine.suspend(request, maySkipCheckpoint = false)[this]!!.checkPayloadIs(receiveType)

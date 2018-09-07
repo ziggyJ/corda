@@ -110,7 +110,7 @@ object NodeInfoSchemaV1 : MappedSchema(
         constructor(partyAndCert: PartyAndCertificate, isMain: Boolean = false)
                 : this(partyAndCert.name.toString(),
                 partyAndCert.party.owningKey.toStringShort(),
-                partyAndCert.amqpSerialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT).bytes, isMain)
+                partyAndCert.serialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT).bytes, isMain)
 
         fun toLegalIdentityAndCert(): PartyAndCertificate {
             return partyCertBinary.deserialize()

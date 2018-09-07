@@ -35,9 +35,6 @@ private object AutoCloseableSerialisationDetector : Serializer<AutoCloseable>() 
 abstract class AbstractKryoSerializationScheme : SerializationScheme {
     private val kryoPoolsForContexts = ConcurrentHashMap<Pair<ClassWhitelist, ClassLoader>, KryoPool>()
 
-    protected abstract fun rpcClientKryoPool(context: SerializationContext): KryoPool
-    protected abstract fun rpcServerKryoPool(context: SerializationContext): KryoPool
-
     // this can be overridden in derived serialization schemes
     protected open val publicKeySerializer: Serializer<PublicKey> = PublicKeySerializer
 
@@ -59,10 +56,6 @@ abstract class AbstractKryoSerializationScheme : SerializationScheme {
                             classLoader = it.second
                         }
                     }.build()
-                SerializationContext.UseCase.RPCClient ->
-                    rpcClientKryoPool(context)
-                SerializationContext.UseCase.RPCServer ->
-                    rpcServerKryoPool(context)
                 else ->
                     KryoPool.Builder {
                         DefaultKryoCustomizer.customize(CordaKryo(CordaClassResolver(context)), publicKeySerializer).apply { classLoader = it.second }

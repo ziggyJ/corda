@@ -23,14 +23,14 @@ class CompatibilityTest {
         val inputStream = javaClass.classLoader.getResourceAsStream("compatibilityData/v3/node_transaction.dat")
         assertNotNull(inputStream)
         val inByteArray: ByteArray = inputStream.readBytes()
-        val transaction = inByteArray.amqpDeserialize<SignedTransaction>(context = AMQPSerializationDefaults.STORAGE_CONTEXT)
+        val transaction = inByteArray.deserialize<SignedTransaction>(context = AMQPSerializationDefaults.STORAGE_CONTEXT)
         assertNotNull(transaction)
         val commands = transaction.tx.commands
         assertEquals(1, commands.size)
         assertTrue(commands.first().value is Cash.Commands.Issue)
 
         // Serialize back and check that representation is byte-to-byte identical to what it was originally.
-        val serializedForm = transaction.amqpSerialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT)
+        val serializedForm = transaction.serialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT)
         assertTrue(inByteArray.contentEquals(serializedForm.bytes))
     }
 }

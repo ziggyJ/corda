@@ -60,7 +60,7 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
 
     @Before
     fun setup() {
-        factory = SerializationFactoryImpl().apply { registerScheme(TestScheme()) }
+        factory = CheckpointSerializationFactory().apply { registerScheme(TestScheme()) }
         context = SerializationContextImpl(kryoMagic,
                 javaClass.classLoader,
                 AllWhitelist,
@@ -286,7 +286,7 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
             }
         }
         Tmp()
-        val factory = SerializationFactoryImpl().apply { registerScheme(TestScheme()) }
+        val factory = CheckpointSerializationFactory().apply { registerScheme(TestScheme()) }
         val context = SerializationContextImpl(kryoMagic,
                 javaClass.classLoader,
                 AllWhitelist,

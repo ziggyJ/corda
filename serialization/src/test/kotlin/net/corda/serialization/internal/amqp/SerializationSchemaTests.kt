@@ -57,8 +57,7 @@ class AMQPTestSerializationScheme : AbstractAMQPSerializationScheme(emptySet(), 
 
 // Test SerializationFactory that wraps a serialization scheme that just allows us to call <OBJ>.serialize.
 // Returns the testing scheme we created above that wraps the testing factory.
-class TestSerializationFactory(manager: AMQPSerializationContextManager = AMQPSerializationContextManagerImpl()) : AMQPSerializationFactory,
-    AMQPSerializationContextManager by manager {
+class TestSerializationFactory : AMQPSerializationFactory() {
     private val scheme = AMQPTestSerializationScheme()
 
     override fun <T : Any> deserialize(
@@ -66,14 +65,6 @@ class TestSerializationFactory(manager: AMQPSerializationContextManager = AMQPSe
             clazz: Class<T>, context:
             AMQPSerializationContext
     ): T {
-        throw UnsupportedOperationException()
-    }
-
-    override fun <T : Any> deserializeWithCompatibleContext(
-            byteSequence: ByteSequence,
-            clazz: Class<T>,
-            context: AMQPSerializationContext
-    ): ObjectWithCompatibleAMQPContext<T> {
         throw UnsupportedOperationException()
     }
 
@@ -92,9 +83,9 @@ class SerializationSchemaTests {
         val expectedCustomSerializerCount = 41
 
         assertEquals(0, testFactory.registerCount)
-        c.amqpSerialize(testSerializationFactory, TESTING_CONTEXT)
+        c.serialize(testSerializationFactory, TESTING_CONTEXT)
         assertEquals(expectedCustomSerializerCount, testFactory.registerCount)
-        c.amqpSerialize(testSerializationFactory, TESTING_CONTEXT)
+        c.serialize(testSerializationFactory, TESTING_CONTEXT)
         assertEquals(expectedCustomSerializerCount, testFactory.registerCount)
     }
 }

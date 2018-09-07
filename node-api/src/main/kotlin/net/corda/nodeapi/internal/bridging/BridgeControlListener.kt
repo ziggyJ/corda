@@ -52,7 +52,7 @@ class BridgeControlListener(val config: MutualSslConfiguration,
                 log.error("Unable to process bridge control message", ex)
             }
         }
-        val startupMessage = BridgeControl.BridgeToNodeSnapshotRequest(bridgeId).amqpSerialize(context = AMQPSerializationDefaults.P2P_CONTEXT).bytes
+        val startupMessage = BridgeControl.BridgeToNodeSnapshotRequest(bridgeId).serialize(context = AMQPSerializationDefaults.P2P_CONTEXT).bytes
         val bridgeRequest = artemisSession.createMessage(false)
         bridgeRequest.writeBodyBufferBytes(startupMessage)
         artemisClient.producer.send(BRIDGE_NOTIFY, bridgeRequest)
@@ -83,7 +83,7 @@ class BridgeControlListener(val config: MutualSslConfiguration,
 
     private fun processControlMessage(msg: ClientMessage) {
         val data: ByteArray = ByteArray(msg.bodySize).apply { msg.bodyBuffer.readBytes(this) }
-        val controlMessage = data.amqpDeserialize<BridgeControl>(context = AMQPSerializationDefaults.P2P_CONTEXT)
+        val controlMessage = data.deserialize<BridgeControl>(context = AMQPSerializationDefaults.P2P_CONTEXT)
         log.info("Received bridge control message $controlMessage")
         when (controlMessage) {
             is BridgeControl.NodeToBridgeSnapshot -> {

@@ -17,7 +17,6 @@ import net.corda.core.context.Trace.InvocationId
 import net.corda.core.internal.*
 import net.corda.core.messaging.RPCOps
 import net.corda.core.serialization.AMQPSerializationContext
-import net.corda.core.serialization.amqpSerialize
 import net.corda.core.serialization.serialize
 import net.corda.core.utilities.Try
 import net.corda.core.utilities.contextLogger
@@ -244,7 +243,7 @@ class RPCClientProxyHandler(
         val replyId = InvocationId.newInstance()
         callSiteMap?.set(replyId, CallSite(method.name))
         try {
-            val serialisedArguments = (arguments?.toList() ?: emptyList()).amqpSerialize(context = serializationContextWithObservableContext)
+            val serialisedArguments = (arguments?.toList() ?: emptyList()).serialize(context = serializationContextWithObservableContext)
             val request = RPCApi.ClientToServer.RpcRequest(
                     clientAddress,
                     method.name,

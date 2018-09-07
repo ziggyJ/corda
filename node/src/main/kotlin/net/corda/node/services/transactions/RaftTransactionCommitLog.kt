@@ -136,7 +136,7 @@ class RaftTransactionCommitLog<E, EK>(
         db.transaction {
             writer.writeInt(map.size)
             map.allPersisted().forEach {
-                val bytes = it.amqpSerialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT).bytes
+                val bytes = it.serialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT).bytes
                 writer.writeUnsignedShort(bytes.size)
                 writer.writeObject(bytes)
             }
@@ -147,7 +147,7 @@ class RaftTransactionCommitLog<E, EK>(
 
             writer.writeInt(results.size)
             results.forEach {
-                val bytes = it.amqpSerialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT).bytes
+                val bytes = it.serialize(context = AMQPSerializationDefaults.STORAGE_CONTEXT).bytes
                 writer.writeUnsignedShort(bytes.size)
                 writer.writeObject(bytes)
             }

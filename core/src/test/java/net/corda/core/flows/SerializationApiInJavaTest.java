@@ -9,7 +9,7 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import static net.corda.core.serialization.SerializationAPIKt.serialize;
-import static net.corda.core.serialization.SerializationAPIKt.amqpSerialize;
+import static net.corda.core.serialization.SerializationAPIKt.serialize;
 import static org.junit.Assert.assertNull;
 
 /**
@@ -35,9 +35,9 @@ public class SerializationApiInJavaTest {
 
         AMQPSerializationDefaults amqpDefaults = AMQPSerializationDefaults.INSTANCE;
         AMQPSerializationFactory amqpFactory = amqpDefaults.getSERIALIZATION_FACTORY();
-        amqpSerialize("hello", amqpFactory, amqpDefaults.getP2P_CONTEXT());
-        amqpSerialize("hello", amqpFactory, amqpDefaults.getRPC_SERVER_CONTEXT());
-        amqpSerialize("hello", amqpFactory, amqpDefaults.getRPC_CLIENT_CONTEXT());
-        amqpSerialize("hello", amqpFactory, amqpDefaults.getSTORAGE_CONTEXT());
+        serialize("hello", amqpFactory, amqpDefaults.getP2P_CONTEXT());
+        serialize("hello", amqpFactory, amqpDefaults.getRPC_SERVER_CONTEXT());
+        serialize("hello", amqpFactory, amqpDefaults.getRPC_CLIENT_CONTEXT());
+        serialize("hello", amqpFactory, amqpDefaults.getSTORAGE_CONTEXT());
     }
 }

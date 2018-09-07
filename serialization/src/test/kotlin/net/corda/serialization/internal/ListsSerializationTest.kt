@@ -8,9 +8,8 @@ import net.corda.node.services.statemachine.DataSessionMessage
 import net.corda.serialization.internal.amqp.DeserializationInput
 import net.corda.serialization.internal.amqp.Envelope
 import net.corda.serialization.internal.amqp.SerializerFactory
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.SerializationEnvironmentRule
-import net.corda.testing.internal.amqpSpecific
-import net.corda.testing.internal.kryoSpecific
 import org.assertj.core.api.Assertions
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -25,17 +24,20 @@ class ListsSerializationTest {
     private companion object {
         val javaEmptyListClass = Collections.emptyList<Any>().javaClass
 
-        fun <T : Any> verifyEnvelope(serBytes: SerializedBytes<T>, envVerBody: (Envelope) -> Unit) =
-                amqpSpecific("AMQP specific envelope verification") {
-                    val context = AMQPSerializationFactory.defaultFactory.defaultContext
-                    val envelope = DeserializationInput(SerializerFactory(context.whitelist, context.deserializationClassLoader)).getEnvelope(serBytes, context)
-                    envVerBody(envelope)
-                }
+        fun <T : Any> verifyEnvelope(serBytes: SerializedBytes<T>, envVerBody: (Envelope) -> Unit) {
+            val context = AMQPSerializationFactory.defaultFactory.defaultContext
+            val envelope = DeserializationInput(SerializerFactory(context.whitelist, context.deserializationClassLoader)).getEnvelope(serBytes, context)
+            envVerBody(envelope)
+        }
     }
 
     @Rule
     @JvmField
     val testSerialization = SerializationEnvironmentRule()
+
+    @Rule
+    @JvmField
+    val testAMQPSerialization = AMQPSerializationEnvironmentRule()
 
     @Test
     fun `check list can be serialized as root of serialization graph`() {
@@ -64,7 +66,7 @@ class ListsSerializationTest {
     }
 
     @Test
-    fun `check empty list serialises as Java emptyList`() = kryoSpecific("Kryo specific test") {
+    fun `check empty list serialises as Java emptyList`() {
         val nameID = 0
         val serializedForm = emptyList<Int>().serialize()
         val output = ByteArrayOutputStream().apply {
@@ -82,7 +84,7 @@ class ListsSerializationTest {
     data class WrongPayloadType(val payload: ArrayList<Int>)
 
     @Test
-    fun `check throws for forbidden declared type`() = amqpSpecific("Such exceptions are not expected in Kryo mode.") {
+    fun `check throws for forbidden declared type`() {
         val payload = ArrayList<Int>()
         payload.add(1)
         payload.add(2)

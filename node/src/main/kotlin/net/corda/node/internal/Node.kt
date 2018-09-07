@@ -22,7 +22,7 @@ import net.corda.core.node.NetworkParameters
 import net.corda.core.node.NodeInfo
 import net.corda.core.node.ServiceHub
 import net.corda.core.serialization.internal.AMQPSerializationEnvironmentImpl
-import net.corda.core.serialization.internal.SerializationEnvironmentImpl
+import net.corda.core.serialization.internal.CheckpointSerializationEnvironmentImpl
 import net.corda.core.serialization.internal.nodeAMQPSerializationEnv
 import net.corda.core.serialization.internal.nodeSerializationEnv
 import net.corda.core.utilities.NetworkHostAndPort
@@ -446,10 +446,8 @@ open class Node(configuration: NodeConfiguration,
         if (!initialiseSerialization) return
         val classloader = cordappLoader.appClassLoader
 
-        nodeSerializationEnv = SerializationEnvironmentImpl(
-                SerializationFactoryImpl().apply {
-                    registerScheme(KryoServerSerializationScheme())
-                },
+        nodeSerializationEnv = CheckpointSerializationEnvironmentImpl(
+                CheckpointSerializationFactory(KryoServerSerializationScheme()),
                 checkpointContext = KRYO_CHECKPOINT_CONTEXT.withClassLoader(classloader))
 
         nodeAMQPSerializationEnv = AMQPSerializationEnvironmentImpl(

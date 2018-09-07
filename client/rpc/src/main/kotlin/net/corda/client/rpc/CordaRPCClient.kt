@@ -5,7 +5,7 @@ import net.corda.client.rpc.internal.serialization.amqp.AMQPClientSerializationS
 import net.corda.core.context.Actor
 import net.corda.core.context.Trace
 import net.corda.core.messaging.CordaRPCOps
-import net.corda.core.serialization.internal.effectiveSerializationEnv
+import net.corda.core.serialization.internal.effectiveCheckpointSerializationEnv
 import net.corda.core.utilities.NetworkHostAndPort
 import net.corda.core.messaging.ClientRpcSslOptions
 import net.corda.core.utilities.days
@@ -289,7 +289,7 @@ class CordaRPCClient private constructor(
 
     init {
         try {
-            effectiveSerializationEnv
+            effectiveCheckpointSerializationEnv
         } catch (e: IllegalStateException) {
             try {
                 AMQPClientSerializationScheme.initialiseSerialization(classLoader)

@@ -8,7 +8,6 @@ import net.corda.core.internal.isRegularFile
 import net.corda.core.internal.rootMessage
 import net.corda.core.serialization.*
 import net.corda.core.serialization.internal.AMQPSerializationEnvironmentImpl
-import net.corda.core.serialization.internal.SerializationEnvironmentImpl
 import net.corda.core.serialization.internal._contextAMQPSerializationEnv
 import net.corda.core.serialization.internal._contextSerializationEnv
 import net.corda.core.utilities.base64ToByteArray
@@ -96,7 +95,7 @@ class BlobInspector : Runnable {
 
         initialiseSerialization()
         try {
-            val deserialized = bytes.amqpDeserialize<Any>(context = AMQPSerializationDefaults.STORAGE_CONTEXT)
+            val deserialized = bytes.deserialize<Any>(context = AMQPSerializationDefaults.STORAGE_CONTEXT)
             out.println(deserialized.javaClass.name)
             mapper.writeValue(out, deserialized)
         } finally {

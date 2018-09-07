@@ -217,9 +217,9 @@ object RPCApi {
 
         companion object {
             private fun Any.safeSerialize(context: AMQPSerializationContext, wrap: (Throwable) -> Any) = try {
-                amqpSerialize(context = context)
+                serialize(context = context)
             } catch (t: Throwable) {
-                wrap(t).amqpSerialize(context = context)
+                wrap(t).serialize(context = context)
             }
 
             fun fromClientMessage(context: AMQPSerializationContext, message: ClientMessage): ServerToClient {
@@ -233,7 +233,7 @@ object RPCApi {
                         // If anything goes wrong with deserialisation of the response, we propagate it differently because
                         // we also need to pass through the invocation and dedupe IDs.
                         val result: Try<Any?> = try {
-                            message.getBodyAsByteArray().amqpDeserialize(context = poolWithIdContext)
+                            message.getBodyAsByteArray().deserialize(context = poolWithIdContext)
                         } catch (e: Exception) {
                             throw FailedToDeserializeReply(id, e)
                         }
@@ -246,7 +246,7 @@ object RPCApi {
                     RPCApi.ServerToClient.Tag.OBSERVATION -> {
                         val observableId = message.invocationId(OBSERVABLE_ID_FIELD_NAME, OBSERVABLE_ID_TIMESTAMP_FIELD_NAME) ?: throw IllegalStateException("Cannot parse invocation id from client message.")
                         val poolWithIdContext = context.withProperty(RpcRequestOrObservableIdKey, observableId)
-                        val payload = message.getBodyAsByteArray().amqpDeserialize<Notification<*>>(context = poolWithIdContext)
+                        val payload = message.getBodyAsByteArray().deserialize<Notification<*>>(context = poolWithIdContext)
                         Observation(
                                 id = observableId,
                                 deduplicationIdentity = deduplicationIdentity,

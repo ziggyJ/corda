@@ -7,10 +7,8 @@ import net.corda.core.KeepForDJVM
 import net.corda.core.contracts.Attachment
 import net.corda.core.crypto.SecureHash
 import net.corda.core.internal.buildNamed
-import net.corda.core.internal.copyBytes
 import net.corda.core.serialization.*
 import net.corda.core.utilities.ByteSequence
-import net.corda.serialization.internal.amqp.amqpMagic
 import org.slf4j.LoggerFactory
 import java.io.NotSerializableException
 import java.util.*
@@ -148,69 +146,43 @@ internal class AttachmentsClassLoaderBuilder(private val properties: Map<Any, An
 }
 
 @KeepForDJVM
-open class SerializationFactoryImpl(
-    // TODO: This is read-mostly. Probably a faster implementation to be found.
-    private val schemes: MutableMap<Pair<CordaSerializationMagic, SerializationContext.UseCase>, SerializationScheme>
-) : SerializationFactory() {
-    @DeleteForDJVM
-    constructor() : this(ConcurrentHashMap())
-
-    companion object {
-        val magicSize = amqpMagic.size
-    }
+open class CheckpointSerializationFactory(val checkpointScheme: SerializationScheme) : SerializationFactory() {
 
     private val creator: List<StackTraceElement> = Exception().stackTrace.asList()
 
-    private val registeredSchemes: MutableCollection<SerializationScheme> = Collections.synchronizedCollection(mutableListOf())
-
-    private val logger = LoggerFactory.getLogger(javaClass)
-
-    private fun schemeFor(byteSequence: ByteSequence, target: SerializationContext.UseCase): Pair<SerializationScheme, CordaSerializationMagic> {
-        // truncate sequence to at most magicSize, and make sure it's a copy to avoid holding onto large ByteArrays
-        val magic = CordaSerializationMagic(byteSequence.slice(end = magicSize).copyBytes())
-        val lookupKey = magic to target
-        return schemes.computeIfAbsent(lookupKey) {
-            registeredSchemes.filter { it.canDeserializeVersion(magic, target) }.forEach { return@computeIfAbsent it } // XXX: Not single?
-            logger.warn("Cannot find serialization scheme for: [$lookupKey, " +
-                    "${if (magic == amqpMagic) "AMQP" else "UNKNOWN MAGIC"}] registeredSchemes are: $registeredSchemes")
-            throw UnsupportedOperationException("Serialization scheme $lookupKey not supported.")
-        } to magic
-    }
-
     @Throws(NotSerializableException::class)
     override fun <T : Any> deserialize(byteSequence: ByteSequence, clazz: Class<T>, context: SerializationContext): T {
-        return asCurrent { withCurrentContext(context) { schemeFor(byteSequence, context.useCase).first.deserialize(byteSequence, clazz, context) } }
+        return asCurrent { withCurrentContext(context) { checkpointScheme.deserialize(byteSequence, clazz, context) } }
     }
 
     @Throws(NotSerializableException::class)
     override fun <T : Any> deserializeWithCompatibleContext(byteSequence: ByteSequence, clazz: Class<T>, context: SerializationContext): ObjectWithCompatibleContext<T> {
         return asCurrent {
             withCurrentContext(context) {
-                val (scheme, magic) = schemeFor(byteSequence, context.useCase)
-                val deserializedObject = scheme.deserialize(byteSequence, clazz, context)
-                ObjectWithCompatibleContext(deserializedObject, context.withPreferredSerializationVersion(magic))
+                val deserializedObject = checkpointScheme.deserialize(byteSequence, clazz, context)
+                ObjectWithCompatibleContext(deserializedObject, context)
             }
         }
     }
 
     override fun <T : Any> serialize(obj: T, context: SerializationContext): SerializedBytes<T> {
-        return asCurrent { withCurrentContext(context) { schemeFor(context.preferredSerializationVersion, context.useCase).first.serialize(obj, context) } }
+        return asCurrent { withCurrentContext(context) { checkpointScheme.serialize(obj, context) } }
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun registerScheme(scheme: SerializationScheme) {
-        check(schemes.isEmpty()) { "All serialization schemes must be registered before any scheme is used." }
-        registeredSchemes += scheme
+        throw UnsupportedOperationException("Checkpoint serialization factory must be initialised with serialisation scheme")
     }
 
     override fun toString(): String {
-        return "${this.javaClass.name} registeredSchemes=$registeredSchemes ${creator.joinToString("\n")}"
+        return "${this.javaClass.name} registeredSchemes=[$checkpointScheme] ${creator.joinToString("\n")}"
     }
 
     override fun equals(other: Any?): Boolean {
-        return other is SerializationFactoryImpl && other.registeredSchemes == this.registeredSchemes
+        return other is CheckpointSerializationFactory && other.checkpointScheme == checkpointScheme
     }
 
-    override fun hashCode(): Int = registeredSchemes.hashCode()
+    override fun hashCode(): Int = checkpointScheme.hashCode()
 }
 
 @KeepForDJVM
@@ -221,10 +193,6 @@ class AMQPSerializationFactoryImpl(
     @DeleteForDJVM
     constructor() : this(ConcurrentHashMap())
 
-    companion object {
-        val magicSize = amqpMagic.size
-    }
-
     private val creator: List<StackTraceElement> = Exception().stackTrace.asList()
 
     private val registeredSchemes: MutableCollection<AMQPSerializationScheme> = Collections.synchronizedCollection(mutableListOf())
@@ -232,11 +200,9 @@ class AMQPSerializationFactoryImpl(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @Suppress("UNUSED_PARAMETER") // TODO: eliminate parameter
-    private fun schemeFor(byteSequence: ByteSequence, target: AMQPSerializationContext.UseCase): AMQPSerializationScheme {
-        // truncate sequence to at most magicSize, and make sure it's a copy to avoid holding onto large ByteArrays
-        val lookupKey = target
+    private fun schemeFor(lookupKey: AMQPSerializationContext.UseCase): AMQPSerializationScheme {
         return schemes.computeIfAbsent(lookupKey) {
-            registeredSchemes.filter { it.canDeserializeVersion(target) }.forEach { return@computeIfAbsent it } // XXX: Not single?
+            registeredSchemes.filter { it.canDeserializeVersion(lookupKey) }.forEach { return@computeIfAbsent it }
             logger.warn("Cannot find serialization scheme for: $lookupKey, registeredSchemes are: $registeredSchemes")
             throw UnsupportedOperationException("Serialization scheme $lookupKey not supported.")
         }
@@ -244,11 +210,11 @@ class AMQPSerializationFactoryImpl(
 
     @Throws(NotSerializableException::class)
     override fun <T : Any> deserialize(byteSequence: ByteSequence, clazz: Class<T>, context: AMQPSerializationContext): T {
-        return asCurrent { withCurrentContext(context) { schemeFor(byteSequence, context.useCase).deserialize(byteSequence, clazz, context) } }
+        return asCurrent { withCurrentContext(context) { schemeFor(context.useCase).deserialize(byteSequence, clazz, context) } }
     }
 
     override fun <T : Any> serialize(obj: T, context: AMQPSerializationContext): SerializedBytes<T> {
-        return asCurrent { withCurrentContext(context) { schemeFor(amqpMagic, context.useCase).serialize(obj, context) } }
+        return asCurrent { withCurrentContext(context) { schemeFor(context.useCase).serialize(obj, context) } }
     }
 
     fun registerScheme(scheme: AMQPSerializationScheme) {
