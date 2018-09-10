@@ -5,8 +5,8 @@ import net.corda.core.identity.AnonymousParty;
 import net.corda.core.identity.CordaX500Name;
 import net.corda.core.identity.Party;
 import net.corda.node.services.api.IdentityServiceInternal;
+import net.corda.testing.core.AMQPSerializationEnvironmentRule;
 import net.corda.testing.core.DummyCommandData;
-import net.corda.testing.core.SerializationEnvironmentRule;
 import net.corda.testing.core.TestIdentity;
 import net.corda.testing.node.MockServices;
 import org.junit.Rule;
@@ -31,7 +31,7 @@ public class CashTestsJava {
     private final Cash.State inState = new Cash.State(issuedBy(DOLLARS(1000), defaultIssuer), new AnonymousParty(MEGA_CORP.getPublicKey()));
     private final Cash.State outState = new Cash.State(inState.getAmount(), new AnonymousParty(MINI_CORP.getPublicKey()));
     @Rule
-    public final SerializationEnvironmentRule testSerialization = new SerializationEnvironmentRule();
+    public final AMQPSerializationEnvironmentRule testSerialization = new AMQPSerializationEnvironmentRule();
 
     @Test
     public void trivial() {

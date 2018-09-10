@@ -19,8 +19,8 @@ import net.corda.node.cordapp.CordappLoader
 import net.corda.node.internal.cordapp.CordappProviderImpl
 import net.corda.node.internal.cordapp.JarScanningCordappLoader
 import net.corda.testing.common.internal.testNetworkParameters
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.DUMMY_NOTARY_NAME
-import net.corda.testing.core.SerializationEnvironmentRule
 import net.corda.testing.core.TestIdentity
 import net.corda.testing.internal.MockCordappConfigProvider
 import net.corda.testing.internal.rigorousMock
@@ -43,7 +43,7 @@ class AttachmentsClassLoaderStaticContractTests {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
 
     class AttachmentDummyContract : Contract {
         companion object {

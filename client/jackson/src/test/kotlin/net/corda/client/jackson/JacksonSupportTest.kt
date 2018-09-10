@@ -73,7 +73,7 @@ class JacksonSupportTest(@Suppress("unused") private val name: String, factory: 
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
 
     private val partyObjectMapper = TestPartyObjectMapper()
     private val mapper = JacksonSupport.createPartyObjectMapper(partyObjectMapper, factory)

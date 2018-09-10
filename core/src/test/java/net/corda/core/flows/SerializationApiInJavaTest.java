@@ -10,6 +10,7 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import static net.corda.core.serialization.SerializationAPIKt.serialize;
+import static net.corda.core.serialization.AMQPSerializationAPIKt.serialize;
 import static org.junit.Assert.assertNull;
 
 /**

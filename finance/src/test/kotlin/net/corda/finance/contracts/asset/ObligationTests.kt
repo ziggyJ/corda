@@ -62,7 +62,7 @@ class ObligationTests {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
     private val defaultRef = OpaqueBytes.of(1)
     private val defaultIssuer = MEGA_CORP.ref(defaultRef)
     private val oneMillionDollars = 1000000.DOLLARS `issued by` defaultIssuer

@@ -15,7 +15,6 @@ import net.corda.core.crypto.TransactionSignature
 import net.corda.core.internal.uncheckedCast
 import net.corda.core.serialization.SerializationContext
 import net.corda.core.serialization.SerializationContext.UseCase.Checkpoint
-import net.corda.core.serialization.SerializationContext.UseCase.Storage
 import net.corda.core.serialization.SerializeAsTokenContext
 import net.corda.core.serialization.SerializedBytes
 import net.corda.core.transactions.*
@@ -282,7 +281,7 @@ sealed class UseCaseSerializer<T>(private val allowedUseCases: EnumSet<Serializa
 }
 
 @ThreadSafe
-object PrivateKeySerializer : UseCaseSerializer<PrivateKey>(EnumSet.of(Storage, Checkpoint)) {
+object PrivateKeySerializer : UseCaseSerializer<PrivateKey>(EnumSet.of(Checkpoint)) {
     override fun write(kryo: Kryo, output: Output, obj: PrivateKey) {
         checkUseCase()
         output.writeBytesWithLength(obj.encoded)

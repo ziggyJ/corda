@@ -51,7 +51,7 @@ class CashTests {
 
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
     private val defaultIssuer = megaCorp.ref(1)
     private val inState = Cash.State(
             amount = 1000.DOLLARS `issued by` defaultIssuer,

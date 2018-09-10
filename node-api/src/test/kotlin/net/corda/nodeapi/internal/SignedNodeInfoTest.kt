@@ -9,6 +9,7 @@ import net.corda.core.utilities.NetworkHostAndPort
 import net.corda.nodeapi.internal.crypto.CertificateType
 import net.corda.nodeapi.internal.crypto.X509Utilities
 import net.corda.testing.core.ALICE_NAME
+import net.corda.testing.core.AMQPSerializationEnvironmentRule
 import net.corda.testing.core.BOB_NAME
 import net.corda.testing.core.SerializationEnvironmentRule
 import net.corda.testing.internal.TestNodeInfoBuilder
@@ -24,7 +25,7 @@ import java.security.SignatureException
 class SignedNodeInfoTest {
     @Rule
     @JvmField
-    val testSerialization = SerializationEnvironmentRule()
+    val testSerialization = AMQPSerializationEnvironmentRule()
 
     private val nodeInfoBuilder = TestNodeInfoBuilder()
 

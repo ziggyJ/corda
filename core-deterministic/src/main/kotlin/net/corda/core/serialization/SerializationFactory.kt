@@ -5,8 +5,7 @@ import net.corda.core.serialization.internal.effectiveCheckpointSerializationEnv
 import net.corda.core.utilities.ByteSequence
 
 /**
- * An abstraction for serializing and deserializing objects, with support for versioning of the wire format via
- * a header / prefix in the bytes.
+ * An abstraction for serializing and deserializing objects, using Kryo.
  */
 @KeepForDJVM
 abstract class SerializationFactory {
