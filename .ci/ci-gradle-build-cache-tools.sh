@@ -1,7 +1,5 @@
 #!/bin/bash
 
-source .ci/ci-gradle-build-cache-init.sh
-
 # Tools
 echo ":tools:blobinspector"
 cd tools/blobinspector

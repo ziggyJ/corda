@@ -1,7 +1,5 @@
 #!/bin/bash
 
-source .ci/ci-gradle-build-cache-init.sh
-
 # Samples
 echo ":samples:attachment-demo"
 cd  samples/attachment-demo

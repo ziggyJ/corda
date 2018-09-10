@@ -1,7 +1,5 @@
 #!/bin/bash
 
-source .ci/ci-gradle-build-cache-init.sh
-
 # This test is consistently re-run (cache entry miss)
 echo ":core:smokeTest"
 cd core

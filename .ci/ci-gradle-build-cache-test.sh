@@ -1,7 +1,5 @@
 #!/bin/bash
 
-source .ci/ci-gradle-build-cache-init.sh
-
 echo ":core:test"
 cd core
 ../gradlew --stacktrace -Dorg.gradle.daemon=${USE_GRADLE_DAEMON} -Dorg.gradle.caching.debug=${GRADLE_CACHE_DEBUG} clean test --build-cache ${PERFORM_GRADLE_SCAN}; echo $?
