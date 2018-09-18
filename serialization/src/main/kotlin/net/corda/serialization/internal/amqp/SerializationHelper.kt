@@ -57,24 +57,27 @@ fun constructorForDeserialization(type: Type): KFunction<Any> {
 }
 
 /**
- * Identifies the properties to be used during serialization by attempting to find those that match the parameters
- * to the deserialization constructor, if the class is concrete.  If it is abstract, or an interface, then use all
- * the properties.
+ * Identifies the properties to be used during serialization of a concrete class by attempting to find those that match
+ * the parameters to the deserialization constructor.
  *
  * Note, you will need any Java classes to be compiled with the `-parameters` option to ensure constructor parameters
  * have names accessible via reflection.
  */
-fun <T : Any> propertiesForSerialization(
-        kotlinConstructor: KFunction<T>?,
+fun propertiesForConcreteTypeSerialization(
+        kotlinConstructor: KFunction<Any>,
         type: Type,
         factory: SerializerFactory): PropertySerializers = PropertySerializers.make(
-            if (kotlinConstructor != null) {
-                propertiesForSerializationFromConstructor(kotlinConstructor, type, factory)
-            } else {
-                propertiesForSerializationFromAbstract(type.asClass(), type, factory)
-            }.sortedWith(PropertyAccessor)
-    )
+            propertiesForSerializationFromConstructor(kotlinConstructor, type, factory)
+                    .sortedWith(PropertyAccessor))
 
+/**
+ * Identifies the properties to be used during serialization of an abstract class, by reflecting over its accessor methods.
+ */
+fun propertiesForAbstractTypeSerialization(
+        type: Type,
+        factory: SerializerFactory): PropertySerializers = PropertySerializers.make(
+        propertiesForSerializationFromAbstract(type.asClass(), type, factory)
+                .sortedWith(PropertyAccessor))
 /**
  * From a constructor, determine which properties of a class are to be serialized.
  *

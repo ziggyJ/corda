@@ -173,12 +173,15 @@ internal class FingerPrintingState(private val factory: SerializerFactory) {
             && (type !is TypeVariable<*>)
             && (type !is WildcardType)
 
-    private fun orderedPropertiesForSerialization(type: Type): List<PropertyAccessor> {
-        return propertiesForSerialization(
-                if (type.asClass().isConcreteClass) constructorForDeserialization(type) else null,
-                currentContext ?: type,
-                factory).serializationOrder
-    }
+    private fun orderedPropertiesForSerialization(type: Type): List<PropertyAccessor> =
+            (if (type.asClass().isConcreteClass) {
+                propertiesForConcreteTypeSerialization(
+                        constructorForDeserialization(type),
+                        currentContext ?: type,
+                        factory)
+            } else {
+                propertiesForAbstractTypeSerialization(currentContext ?: type, factory)
+            }).serializationOrder
 
 }
 

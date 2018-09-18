@@ -116,7 +116,7 @@ class SerializationPropertyOrdering {
         serializersByDescriptor.filterKeys { (it as Symbol) == schemaDescriptor }.values.apply {
             assertEquals(1, this.size)
             assertTrue(this.first() is ObjectSerializer)
-            val propertyAccessors = (this.first() as ObjectSerializer).propertySerializers.serializationOrder as List<PropertyAccessorGetterSetter>
+            val propertyAccessors = (this.first() as ObjectSerializer).propertyAccessors as List<PropertyAccessorGetterSetter>
             propertyAccessors.forEach { property -> assertNotNull(fields["setter"]!!.get(property) as Method?) }
         }
 

@@ -38,10 +38,7 @@ import net.corda.core.utilities.NetworkHostAndPort
 import net.corda.core.utilities.parseAsHex
 import net.corda.core.utilities.toHexString
 import net.corda.serialization.internal.AllWhitelist
-import net.corda.serialization.internal.amqp.SerializerFactory
-import net.corda.serialization.internal.amqp.constructorForDeserialization
-import net.corda.serialization.internal.amqp.hasCordaSerializable
-import net.corda.serialization.internal.amqp.propertiesForSerialization
+import net.corda.serialization.internal.amqp.*
 import java.math.BigDecimal
 import java.security.PublicKey
 import java.security.cert.CertPath
@@ -96,7 +93,7 @@ private class CordaSerializableBeanSerializerModifier : BeanSerializerModifier()
         val beanClass = beanDesc.beanClass
         if (hasCordaSerializable(beanClass) && beanClass.kotlinObjectInstance == null) {
             val ctor = constructorForDeserialization(beanClass)
-            val amqpProperties = propertiesForSerialization(ctor, beanClass, serializerFactory)
+            val amqpProperties = propertiesForConcreteTypeSerialization(ctor, beanClass, serializerFactory)
                     .serializationOrder
                     .map { it.serializer.name }
             val propertyRenames = beanDesc.findProperties().associateBy({ it.name }, { it.internalName })

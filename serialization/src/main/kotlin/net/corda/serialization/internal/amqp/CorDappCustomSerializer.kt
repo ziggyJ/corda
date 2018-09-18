@@ -65,7 +65,7 @@ class CorDappCustomSerializer(
     val proxyType = types[PROXY_TYPE]
     override val typeDescriptor: Symbol = Symbol.valueOf("$DESCRIPTOR_DOMAIN:${nameForType(type)}")
     val descriptor: Descriptor = Descriptor(typeDescriptor)
-    private val proxySerializer: ObjectSerializer by lazy { ObjectSerializer(proxyType, factory) }
+    private val proxySerializer: ObjectSerializer by lazy { ObjectSerializer.forType(proxyType, factory) }
 
     override fun writeClassInfo(output: SerializationOutput) {}
 
@@ -73,13 +73,11 @@ class CorDappCustomSerializer(
                              context: SerializationContext, debugIndent: Int
     ) {
         val proxy = uncheckedCast<SerializationCustomSerializer<*, *>,
-                SerializationCustomSerializer<Any?, Any?>>(serializer).toProxy(obj)
+                SerializationCustomSerializer<Any?, Any>>(serializer).toProxy(obj)
 
         data.withDescribed(descriptor) {
             data.withList {
-                proxySerializer.propertySerializers.serializationOrder.forEach {
-                    it.serializer.writeProperty(proxy, this, output, context)
-                }
+                proxySerializer.writeData(proxy, this, output, context)
             }
         }
     }

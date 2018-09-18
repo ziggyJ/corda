@@ -306,7 +306,7 @@ open class SerializerFactory(
                         SingletonSerializer(clazz, singleton, this)
                     } else {
                         whitelist.requireWhitelisted(type)
-                        ObjectSerializer(type, this)
+                        ObjectSerializer.forType(type, this)
                     }
                 }
             }
