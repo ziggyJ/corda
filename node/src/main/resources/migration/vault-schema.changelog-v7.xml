@@ -1,0 +1,27 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.5.xsd">
+    <changeSet author="R3.Corda" id="normalise_contract_state_metadata">
+        <createTable tableName="vault_contract_metadata">
+            <column name="contract_metadata_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="contract_state_class_name" type="NVARCHAR(255)"/>
+            <column name="constraint_type" type="INT" defaultValue="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="constraint_data" type="NVARCHAR(130)"/>
+        </createTable>
+        <addPrimaryKey columnNames="contract_metadata_id" constraintName="contract_metadata_pkey" tableName="vault_contract_metadata"/>
+        <dropColumn tableName="vault_states" columnName="contract_state_class_name"/>
+        <addColumn tableName="vault_states">
+            <column name="contract_metadata" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <addForeignKeyConstraint baseColumnNames="contract_metadata" baseTableName="vault_states"
+                                 constraintName="FK_vault_states_to_contract_metadata"
+                                 referencedColumnNames="contract_metadata_id" referencedTableName="vault_contract_metadata"/>
+    </changeSet>
+</databaseChangeLog>

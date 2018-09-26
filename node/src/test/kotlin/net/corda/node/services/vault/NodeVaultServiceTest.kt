@@ -7,6 +7,7 @@ import com.nhaarman.mockito_kotlin.doNothing
 import com.nhaarman.mockito_kotlin.whenever
 import net.corda.core.contracts.*
 import net.corda.core.crypto.NullKeys
+import net.corda.core.crypto.SecureHash
 import net.corda.core.crypto.generateKeyPair
 import net.corda.core.identity.*
 import net.corda.core.internal.NotaryChangeTransactionBuilder
@@ -16,6 +17,7 @@ import net.corda.core.node.services.*
 import net.corda.core.node.services.vault.PageSpecification
 import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.node.services.vault.QueryCriteria.*
+import net.corda.core.schemas.PersistentStateRef
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.NonEmptySet
@@ -26,6 +28,7 @@ import net.corda.finance.contracts.asset.Cash
 import net.corda.finance.contracts.getCashBalance
 import net.corda.finance.schemas.CashSchemaV1
 import net.corda.finance.utils.sumCash
+import net.corda.node.internal.configureDatabase
 import net.corda.node.services.api.IdentityServiceInternal
 import net.corda.node.services.api.WritableTransactionStorage
 import net.corda.nodeapi.internal.persistence.CordaPersistence
@@ -45,6 +48,7 @@ import org.junit.Rule
 import org.junit.Test
 import rx.observers.TestSubscriber
 import java.math.BigDecimal
+import java.time.Instant
 import java.util.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -139,6 +143,38 @@ class NodeVaultServiceTest {
             val transaction = issuerServices.signInitialTransaction(issuance, DUMMY_CASH_ISSUER.party.owningKey)
             services.recordTransactions(transaction)
             services.recordTransactions(transaction)
+        }
+    }
+
+
+    @Test
+    fun `insert into vault states table`() {
+        val constraintInfo = Vault.ConstraintInfo(SignatureAttachmentConstraint(DUMMY_NOTARY_IDENTITY.certificate.publicKey))
+        val contractClassName = "com.my.sample.contract"
+
+        val contractMetadata = VaultSchemaV1.VaultContractMetadata(contractStateClassName = contractClassName,
+                constraintType = constraintInfo.type(), constraintData = constraintInfo.data())
+
+        val constraintInfo2 = Vault.ConstraintInfo(AlwaysAcceptAttachmentConstraint)
+        val contractMetadata2 = VaultSchemaV1.VaultContractMetadata(contractStateClassName = contractClassName,
+                constraintType = constraintInfo2.type(), constraintData = constraintInfo2.data())
+
+        database.transaction {
+            session.save(contractMetadata)
+            session.save(contractMetadata2)
+        }
+
+        database.transaction {
+            val persistentVaultState = VaultSchemaV1.VaultStates(
+                    notary = DUMMY_NOTARY_IDENTITY.party,
+                    contractStateClassName = contractClassName,
+                    stateStatus = Vault.StateStatus.UNCONSUMED,
+                    recordedTime = Instant.now(),
+                    relevancyStatus = Vault.RelevancyStatus.RELEVANT,
+                    constraintType = constraintInfo.type(),
+                    contractMetadata = contractMetadata2)
+            persistentVaultState.stateRef = PersistentStateRef(StateRef(SecureHash.randomSHA256(), Random().nextInt(32)))
+            session.save(persistentVaultState)
         }
     }
 

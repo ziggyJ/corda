@@ -144,7 +144,7 @@ class NodeVaultService(
                         recordedTime = clock.instant(),
                         relevancyStatus = if (isRelevant) Vault.RelevancyStatus.RELEVANT else Vault.RelevancyStatus.NOT_RELEVANT,
                         constraintType = constraintInfo.type(),
-                        constraintData = constraintInfo.data()
+                        contractMetadata = VaultSchemaV1.VaultContractMetadata.make(stateAndRef.value.state.data.javaClass.name, constraintInfo.type(), constraintInfo.data())
                 )
                 stateToAdd.stateRef = PersistentStateRef(stateAndRef.key)
                 session.save(stateToAdd)
@@ -521,7 +521,7 @@ class NodeVaultService(
                                     vaultState.lockId,
                                     vaultState.lockUpdateTime,
                                     vaultState.relevancyStatus,
-                                    constraintInfo(vaultState.constraintType, vaultState.constraintData)
+                                    constraintInfo(vaultState.constraintType, vaultState.contractMetadata.constraintData)
                             ))
                         } else {
                             // TODO: improve typing of returned other results

@@ -473,6 +473,25 @@ abstract class VaultQueryTestsBase : VaultQueryParties {
         }
     }
 
+    /**
+     * Benchmark data encoding for HASH ([SecureHash]) and SIGNATURE ([CompositeKey] and [PublicKey]) constraints data
+     * See schema definition in [net.corda.node.services.vault.VaultSchemaV1.VaultStates]
+     * See liquibase SQL DDL in [migration/vault-schema.changelog-v6.xml]
+     * See encoding/decoding logic in [net.corda.core.node.services.Vault.ConstraintInfo]
+     */
+    @Test
+    fun `query constraint type`() {
+        database.transaction {
+            // insert states with different constraint types
+            vaultFiller.fillWithSomeTestLinearStates(1, constraint = HashAttachmentConstraint(SecureHash.randomSHA256()))
+            vaultFiller.fillWithSomeTestLinearStates(1, constraint = SignatureAttachmentConstraint(alice.publicKey))
+            vaultFiller.fillWithSomeTestLinearStates(1, constraint = SignatureAttachmentConstraint(CompositeKey.Builder().addKeys(alice.publicKey).build()))
+            vaultFiller.fillWithSomeTestLinearStates(1, constraint = SignatureAttachmentConstraint(CompositeKey.Builder().addKeys(alice.publicKey,  bob.publicKey).build()))
+            vaultFiller.fillWithSomeTestLinearStates(1, constraint = SignatureAttachmentConstraint(CompositeKey.Builder().addKeys(alice.publicKey,  bob.publicKey, charlie.publicKey).build()))
+            vaultService.queryBy<LinearState>()
+        }
+    }
+
     @Test
     fun `query by contract states constraint type`() {
         database.transaction {
@@ -487,9 +506,14 @@ abstract class VaultQueryTestsBase : VaultQueryParties {
             val linearStateSignature = vaultFiller.fillWithSomeTestLinearStates(1, constraint = SignatureAttachmentConstraint(alice.publicKey))
             val constraintSignature = linearStateSignature.states.first().state.constraint as SignatureAttachmentConstraint
             // signature constraint (composite key)
-            val compositeKey = CompositeKey.Builder().addKeys(alice.publicKey, bob.publicKey, charlie.publicKey, bankOfCorda.publicKey, bigCorp.publicKey, megaCorp.publicKey, miniCorp.publicKey, cashNotary.publicKey, dummyNotary.publicKey, dummyCashIssuer.publicKey).build()
+//            val compositeKey = CompositeKey.Builder().addKeys(alice.publicKey, bob.publicKey, charlie.publicKey, bankOfCorda.publicKey, bigCorp.publicKey, megaCorp.publicKey, miniCorp.publicKey, cashNotary.publicKey, dummyNotary.publicKey, dummyCashIssuer.publicKey).build()
+//            val compositeKey = CompositeKey.Builder().addKeys(alice.publicKey,  bob.publicKey, charlie.publicKey).build()
+            val list = List(100) { Crypto.generateKeyPair(Crypto.EDDSA_ED25519_SHA512).public }
+            val compositeKey = CompositeKey.Builder().addKeys(list).build()
+            println("COMPOSITE KEY before txn create: $compositeKey")
             val linearStateSignatureCompositeKey = vaultFiller.fillWithSomeTestLinearStates(1, constraint = SignatureAttachmentConstraint(compositeKey))
             val constraintSignatureCompositeKey = linearStateSignatureCompositeKey.states.first().state.constraint as SignatureAttachmentConstraint
+            println("COMPOSITE KEY after  txn create: ${constraintSignatureCompositeKey.key}")
 
             // default Constraint Type is ALL
             val results = vaultService.queryBy<LinearState>()
@@ -520,6 +544,10 @@ abstract class VaultQueryTestsBase : VaultQueryParties {
             val constraintResults4 = vaultService.queryBy<LinearState>(constraintTypeCriteria4)
             assertThat(constraintResults4.states).hasSize(2)
             assertThat(constraintResults4.states.map { it.state.constraint }).containsAll(listOf(constraintSignature, constraintSignatureCompositeKey))
+            println("SIGNATURE constraint: $constraintSignature")
+            constraintResults4.statesMetadata.forEach { state ->
+                println(state.constraintInfo.constraint)
+            }
 
             // search for states with [Vault.ConstraintInfo.Type] = SIGNATURE or CZ_WHITELISED
             val constraintTypeCriteria5 = VaultQueryCriteria(constraintTypes = setOf(SIGNATURE, CZ_WHITELISTED))

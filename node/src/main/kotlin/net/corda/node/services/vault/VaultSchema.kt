@@ -26,7 +26,7 @@ object VaultSchema
  */
 @CordaSerializable
 object VaultSchemaV1 : MappedSchema(schemaFamily = VaultSchema.javaClass, version = 1,
-        mappedTypes = listOf(VaultStates::class.java, VaultLinearStates::class.java, VaultFungibleStates::class.java, VaultTxnNote::class.java)) {
+        mappedTypes = listOf(VaultStates::class.java, VaultLinearStates::class.java, VaultFungibleStates::class.java, VaultTxnNote::class.java, VaultContractMetadata::class.java)) {
 
     override val migrationResource = "vault-schema.changelog-master"
 
@@ -73,11 +73,42 @@ object VaultSchemaV1 : MappedSchema(schemaFamily = VaultSchema.javaClass, versio
             @Column(name = "constraint_type", nullable = false)
             var constraintType: Vault.ConstraintInfo.Type,
 
+            /**
+             * ID -> Contract class name, constraint type, constraint data
+             */
+            @OneToOne(cascade = [CascadeType.ALL])
+            @JoinColumn(name = "contract_metadata", nullable = false)
+            var contractMetadata: VaultContractMetadata
+
+    ) : PersistentState()
+
+    @Entity
+    @Table(name = "vault_contract_metadata", indexes = [Index(name = "contract_metadata_id_index", columnList = "contract_metadata_id"),
+                                                        Index(name = "contract_state_class_name_index", columnList = "contract_state_class_name"),
+                                                        Index(name = "constraint_type_index", columnList = "constraint_type")])
+    class VaultContractMetadata(
+            @Id
+            @GeneratedValue
+            @Column(name = "contract_metadata_id", nullable = false)
+            val id: Int = 0,
+
+            /** references a concrete ContractState that is [QueryableState] and has a [MappedSchema] */
+            @Column(name = "contract_state_class_name", nullable = false)
+            var contractStateClassName: String,
+
+            /** refers to constraint type (none, hash, whitelisted, signature) associated with a contract state */
+            @Column(name = "constraint_type", nullable = false)
+            var constraintType: Vault.ConstraintInfo.Type,
+
             /** associated constraint type data (if any) */
             @Column(name = "constraint_data", length = MAX_CONSTRAINT_DATA_SIZE, nullable = true)
-            @Type(type = "corda-wrapper-binary")
-            var constraintData: ByteArray? = null
-    ) : PersistentState()
+            var constraintData: String? = null
+    ) {
+        companion object {
+            fun make(contractClassName: String, constraintType: Vault.ConstraintInfo.Type, constraintData: String?) =
+                    VaultContractMetadata(0, contractClassName, constraintType, constraintData)
+        }
+    }
 
     @Entity
     @Table(name = "vault_linear_states", indexes = [Index(name = "external_id_index", columnList = "external_id"), Index(name = "uuid_index", columnList = "uuid")])

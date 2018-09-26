@@ -5,8 +5,9 @@ import net.corda.core.DeleteForDJVM
 import net.corda.core.DoNotImplement
 import net.corda.core.concurrent.CordaFuture
 import net.corda.core.contracts.*
-import net.corda.core.crypto.Crypto
 import net.corda.core.crypto.SecureHash
+import net.corda.core.crypto.generateKeyPair
+import net.corda.core.crypto.toStringShort
 import net.corda.core.flows.FlowException
 import net.corda.core.flows.FlowLogic
 import net.corda.core.identity.AbstractParty
@@ -18,8 +19,8 @@ import net.corda.core.node.services.vault.*
 import net.corda.core.serialization.CordaSerializable
 import net.corda.core.toFuture
 import net.corda.core.transactions.LedgerTransaction
+import net.corda.core.utilities.MAX_HASH_HEX_SIZE
 import net.corda.core.utilities.NonEmptySet
-import net.corda.core.utilities.toHexString
 import rx.Observable
 import java.time.Instant
 import java.util.*
@@ -147,20 +148,29 @@ class Vault<out T : ContractState>(val states: Iterable<StateAndRef<T>>) {
                 else -> throw IllegalArgumentException("Invalid constraint type: $constraint")
             }
         }
-        fun data(): ByteArray? {
+        fun data(): String? {
             return when (type()) {
-                Type.HASH -> (constraint as HashAttachmentConstraint).attachmentId.bytes
-                Type.SIGNATURE -> (constraint as SignatureAttachmentConstraint).key.encoded
+                Type.HASH -> {
+                    println("HASH SIZE: ${(constraint as HashAttachmentConstraint).attachmentId}")
+                    (constraint as HashAttachmentConstraint).attachmentId.toString()
+                }
+                Type.SIGNATURE -> {
+                    println("PUBLIC_KEY SIZE: ${(constraint as SignatureAttachmentConstraint).key.toStringShort()}")
+                    (constraint as SignatureAttachmentConstraint).key.toStringShort()
+                }
                 else -> null
             }
         }
         companion object {
-            fun constraintInfo(type: Type, data: ByteArray?): ConstraintInfo {
+            fun constraintInfo(type: Type, data: String?): ConstraintInfo {
                 return when (type) {
                     Type.ALWAYS_ACCEPT -> ConstraintInfo(AlwaysAcceptAttachmentConstraint)
-                    Type.HASH -> ConstraintInfo(HashAttachmentConstraint(SecureHash.parse(data!!.toHexString())))
+                    Type.HASH -> ConstraintInfo(HashAttachmentConstraint(SecureHash.parse(data!!)))
                     Type.CZ_WHITELISTED -> ConstraintInfo(WhitelistedByZoneAttachmentConstraint)
-                    Type.SIGNATURE -> ConstraintInfo(SignatureAttachmentConstraint(Crypto.decodePublicKey(data!!)))
+                    Type.SIGNATURE -> {
+                        // lookup via Public Key Hash (see "node_our_key_pairs" table)
+                        ConstraintInfo(SignatureAttachmentConstraint(generateKeyPair().public))
+                    }
                 }
             }
         }
@@ -262,9 +272,9 @@ class Vault<out T : ContractState>(val states: Iterable<StateAndRef<T>>) {
 
 /**
  * The maximum permissible size of contract constraint type data (for storage in vault states database table).
- * Maximum value equates to a CompositeKey with 10 EDDSA_ED25519_SHA512 keys stored in.
+ * Maximum value equates to the hashed size of a Public Key.
  */
-const val MAX_CONSTRAINT_DATA_SIZE = 563
+const val MAX_CONSTRAINT_DATA_SIZE = MAX_HASH_HEX_SIZE
 
 /**
  * A [VaultService] is responsible for securely and safely persisting the current state of a vault to storage. The
