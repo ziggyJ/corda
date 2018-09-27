@@ -168,12 +168,12 @@ interface EvolutionSerializer: ObjectSerializer {
         ): AMQPSerializer<Any> {
             // Evolution is triggered by a mismatch in the fingerprint for the entire type,
             // however the actual difference may not be in this type but in the type of one of its properties
-            // (or one of its properties properties, etc), in which case we can safely return the serializer
+            // (or one of its properties' properties, etc), in which case we can safely return the serializer
             // we just generated for this type, and let the serializer generated for the property type look
             // after evolving values of that type.
             //
-            // The outcome of doing this is that the existing serializer is associated with the new fingerprint
-            // as well as the old one, so we won't go looking for an evolution serializer the next time around.
+            // The outcome of doing this is that the non-evolution serializer is associated with the new fingerprint,
+            // so we won't go looking for an evolution serializer the next time around.
             if (!mustEvolve(old, new)) return new
 
             // The order in which the properties were serialised is important and must be preserved
