@@ -209,11 +209,14 @@ open class SerializerFactory(
             try {
                 val serialiser = processSchemaEntry(typeNotation)
                 // if we just successfully built a serializer for the type but the type fingerprint
-                // doesn't match that of the serialised object then we are dealing with  different
-                // instance of the class, as such we need to build an EvolutionSerializer
+                // doesn't match that of the serialised object then we may be dealing with  different
+                // instance of the class, such that we would need to build an EvolutionSerializer
                 if (serialiser.typeDescriptor != typeNotation.descriptor.name) {
-                    logger.trace { "typeNotation=${typeNotation.name} action=\"requires Evolution\"" }
-                    getEvolutionSerializer(typeNotation, serialiser, schemaAndDescriptor.schemas)
+                    logger.trace { "typeNotation=${typeNotation.name} action=\"may require Evolution\"" }
+                    val maybeEvolving = getEvolutionSerializer(typeNotation, serialiser, schemaAndDescriptor.schemas)
+                    if (maybeEvolving !== serialiser) {
+                        logger.info("typeNotation=${typeNotation.name} action=\"required Evolution to ${serialiser.type.typeName}\"")
+                    }
                 }
             } catch (e: ClassNotFoundException) {
                 if (sentinel) {

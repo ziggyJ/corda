@@ -166,6 +166,16 @@ interface EvolutionSerializer: ObjectSerializer {
                  new: ObjectSerializer,
                  factory: SerializerFactory
         ): AMQPSerializer<Any> {
+            // Evolution is triggered by a mismatch in the fingerprint for the entire type,
+            // however the actual difference may not be in this type but in the type of one of its properties
+            // (or one of its properties properties, etc), in which case we can safely return the serializer
+            // we just generated for this type, and let the serializer generated for the property type look
+            // after evolving values of that type.
+            //
+            // The outcome of doing this is that the existing serializer is associated with the new fingerprint
+            // as well as the old one, so we won't go looking for an evolution serializer the next time around.
+            if (!mustEvolve(old, new)) return new
+
             // The order in which the properties were serialised is important and must be preserved
             val readersAsSerialized = LinkedHashMap<String, OldParam>()
             old.fields.forEach {
@@ -190,6 +200,18 @@ interface EvolutionSerializer: ObjectSerializer {
             } else {
                 makeWithConstructor(typeInfo, objectConstructor, readersAsSerialized)
             }
+        }
+
+        /**
+         * We must evolve if the number of fields is different, or their names or types do not match up.
+         */
+        private fun mustEvolve(old: CompositeType, new: ObjectSerializer): Boolean {
+            if (old.fields.size != new.propertyAccessors.size) return true
+            old.fields.zip(new.propertyAccessors).forEach { (field, accessor) ->
+                if (field.name != accessor.serializer.name) return true
+                if (field.type != accessor.serializer.type) return true
+            }
+            return false
         }
     }
 
