@@ -61,7 +61,7 @@ open class ArraySerializer(override val type: Type, factory: SerializerFactory) 
     internal val elementType: Type by lazy { type.componentType() }
     internal open val typeName by lazy { calcTypeName(type) }
 
-    internal val typeNotation: TypeNotation by lazy {
+    protected val typeNotation: TypeNotation by lazy {
         RestrictedType(typeName, null, emptyList(), "list", Descriptor(typeDescriptor), emptyList())
     }
 

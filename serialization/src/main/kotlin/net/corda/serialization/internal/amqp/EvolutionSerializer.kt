@@ -217,6 +217,7 @@ interface EvolutionSerializer: ObjectSerializer {
 
     override fun writeClassInfo(output: SerializationOutput) = Unit // nothing to do in this case
 
+    @JvmDefault
     override fun writeData(obj: Any, data: Data, output: SerializationOutput, context: SerializationContext, debugLevel: Int) =
             Unit // nothing to do in this case
 
@@ -234,7 +235,7 @@ private class EvolutionSerializerViaConstructor(
         private val constructorArgs: Array<Any?>,
         private val objectConstructor: ObjectConstructor):
         EvolutionSerializer,
-        HasTypeInformation by typeInformation {
+        HasTypeNotation by typeInformation {
 
     /**
      * Unlike a normal [readObject] call where we simply apply the parameter deserialisers
@@ -267,7 +268,7 @@ private class EvolutionSerializerViaSetters(
         private val objectConstructor: ObjectConstructor,
         private val setters: Map<String, PropertyAccessor>):
         EvolutionSerializer,
-        HasTypeInformation by typeInformation {
+        HasTypeNotation by typeInformation {
 
     override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
                             context: SerializationContext

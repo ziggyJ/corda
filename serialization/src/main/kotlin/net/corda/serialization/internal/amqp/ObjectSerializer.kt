@@ -10,21 +10,21 @@ import org.apache.qpid.proton.codec.Data
 import java.lang.reflect.Type
 import kotlin.reflect.KFunction
 
-interface HasTypeInformation {
-    val type: Type
-    val typeDescriptor: Symbol
+interface HasTypeNotation : HasTypeInformation {
     val typeNotation: TypeNotation
 }
 
-interface CanWriteOutput {
-    fun writeData(obj: Any, data: Data, output: SerializationOutput, context: SerializationContext, debugLevel: Int = 0)
-    fun writeClassInfo(output: SerializationOutput)
-    fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput, context: SerializationContext, debugIndent: Int)
+interface CanWriteObjectWithPropertyAccessors : CanWriteObject {
     val propertyAccessors: List<PropertyAccessor>
+
+    @JvmDefault
+    fun writeData(obj: Any, data: Data, output: SerializationOutput, context: SerializationContext, debugLevel: Int = 0) =
+            propertyAccessors.forEach {
+                it.serializer.writeProperty(obj, data, output, context, debugLevel)
+            }
 }
 
-interface ObjectSerializer : AMQPSerializer<Any>, HasTypeInformation, CanWriteOutput {
-
+interface ObjectSerializer : AMQPSerializer<Any>, CanWriteObjectWithPropertyAccessors, HasTypeNotation {
     companion object {
         fun forType(type: Type, factory: SerializerFactory): ObjectSerializer {
             val interfaces = interfacesForSerialization(type, factory)
@@ -39,7 +39,7 @@ interface ObjectSerializer : AMQPSerializer<Any>, HasTypeInformation, CanWriteOu
         private fun makeAbstractObjectSerializer(type: Type, factory: SerializerFactory, interfaces: List<Type>): AbstractClassObjectSerializer {
             val propertySerializers = propertiesForAbstractTypeSerialization(type, factory)
             val typeInformation = TypeInformation.forType(type, factory, propertySerializers)
-            val outputWriter = OutputWriter(typeInformation.typeNotation, interfaces, propertySerializers)
+            val outputWriter = ObjectWriterUsingPropertyAccessors(typeInformation.typeNotation, interfaces, propertySerializers.serializationOrder)
 
             return AbstractClassObjectSerializer(typeInformation, outputWriter)
         }
@@ -48,15 +48,17 @@ interface ObjectSerializer : AMQPSerializer<Any>, HasTypeInformation, CanWriteOu
             val objectConstructor = ObjectConstructor(type, constructorForDeserialization(type))
             val propertySerializers = propertiesForConcreteTypeSerialization(constructorForDeserialization(type), type, factory)
             val typeInformation = TypeInformation.forType(type, factory, propertySerializers)
-            val outputWriter = OutputWriter(typeInformation.typeNotation, interfaces, propertySerializers)
+            val outputWriter = ObjectWriterUsingPropertyAccessors(typeInformation.typeNotation, interfaces, propertySerializers.serializationOrder)
 
             return ConcreteClassObjectSerializer(typeInformation, outputWriter, objectConstructor)
         }
     }
 }
 
-class OutputWriter(private val typeNotation: TypeNotation, private val interfaces: List<Type>, private val propertySerializers: PropertySerializers): CanWriteOutput {
-    override val propertyAccessors: List<PropertyAccessor> get() = propertySerializers.serializationOrder
+class ObjectWriterUsingPropertyAccessors(
+        private val typeNotation: TypeNotation,
+        private val interfaces: List<Type>,
+        override val propertyAccessors: List<PropertyAccessor>): CanWriteObject, CanWriteObjectWithPropertyAccessors {
 
     override fun writeClassInfo(output: SerializationOutput) {
         if (output.writeTypeNotations(typeNotation)) {
@@ -64,7 +66,7 @@ class OutputWriter(private val typeNotation: TypeNotation, private val interface
                 output.requireSerializer(iface)
             }
 
-            propertySerializers.serializationOrder.forEach { property ->
+            propertyAccessors.forEach { property ->
                 property.serializer.writeClassInfo(output)
             }
         }
@@ -81,7 +83,7 @@ class OutputWriter(private val typeNotation: TypeNotation, private val interface
     }
 
     override fun writeData(obj: Any, data: Data, output: SerializationOutput, context: SerializationContext, debugLevel: Int) =
-            propertySerializers.serializationOrder.forEach {
+            propertyAccessors.forEach {
                 it.serializer.writeProperty(obj, data, output, context, debugLevel)
             }
 }
@@ -122,11 +124,11 @@ internal class ObjectConstructor(
 
 private class ConcreteClassObjectSerializer(
         private val typeInformation: TypeInformation,
-        private val outputWriter: CanWriteOutput,
+        private val objectWriter: ObjectWriterUsingPropertyAccessors,
         private val objectConstructor: ObjectConstructor):
         ObjectSerializer,
-        HasTypeInformation by typeInformation,
-        CanWriteOutput by outputWriter {
+        HasTypeNotation by typeInformation,
+        CanWriteObjectWithPropertyAccessors by objectWriter {
 
     companion object {
         private val logger = contextLogger()
@@ -146,7 +148,7 @@ private class ConcreteClassObjectSerializer(
                     + "properties to serialize.")
         }
 
-        outputWriter.writeObject(obj, data, type, output, context, debugIndent)
+        objectWriter.writeObject(obj, data, type, output, context, debugIndent)
     }
 
     override fun readObject(
@@ -209,10 +211,10 @@ private class ConcreteClassObjectSerializer(
 /**
  * Responsible for serializing an abstract object instance via a series of properties.
  */
-private class AbstractClassObjectSerializer(typeInformation: TypeInformation, private val outputWriter: CanWriteOutput)
+private class AbstractClassObjectSerializer(typeInformation: TypeInformation, private val objectWriter: ObjectWriterUsingPropertyAccessors)
     : ObjectSerializer,
-    HasTypeInformation by typeInformation,
-    CanWriteOutput by outputWriter {
+    HasTypeNotation by typeInformation,
+    CanWriteObjectWithPropertyAccessors by objectWriter {
 
     override fun readObject(
             obj: Any,
@@ -233,7 +235,7 @@ private class AbstractClassObjectSerializer(typeInformation: TypeInformation, pr
 data class TypeInformation(
         override val type: Type,
         override val typeDescriptor: Symbol,
-        override val typeNotation: TypeNotation): HasTypeInformation {
+        override val typeNotation: TypeNotation): HasTypeNotation {
 
     companion object {
         /**

@@ -64,6 +64,7 @@ class CorDappCustomSerializer(
     override val type = types[CORDAPP_TYPE]
     val proxyType = types[PROXY_TYPE]
     override val typeDescriptor: Symbol = Symbol.valueOf("$DESCRIPTOR_DOMAIN:${nameForType(type)}")
+
     val descriptor: Descriptor = Descriptor(typeDescriptor)
     private val proxySerializer: ObjectSerializer by lazy { ObjectSerializer.forType(proxyType, factory) }
 
