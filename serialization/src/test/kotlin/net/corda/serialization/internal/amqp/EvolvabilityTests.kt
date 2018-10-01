@@ -443,6 +443,7 @@ class EvolvabilityTests {
         val resource = "EvolvabilityTests.changeSubType"
         val oa = 100
         val ia = 200
+        val ib = "new"
 
         // Original version of the class as it was serialised
         // data class Inner (val a: Int)
@@ -461,6 +462,13 @@ class EvolvabilityTests {
         assertEquals(oa, outer.a)
         assertEquals(ia, outer.b.a)
         assertEquals(null, outer.b.b)
+
+        // Repeat, but receiving a message with the newer version of Inner
+        val newBytes = SerializationOutput(sf).serialize(Outer(oa, Inner(ia, ib))).bytes
+        val newOuter = DeserializationInput(sf).deserialize(SerializedBytes<Outer>(newBytes))
+        assertEquals(oa, newOuter.a)
+        assertEquals(ia, newOuter.b.a)
+        assertEquals("new", outer.b.b)
     }
 
     @Test
