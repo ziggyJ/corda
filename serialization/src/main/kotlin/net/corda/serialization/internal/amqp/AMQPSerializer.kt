@@ -6,7 +6,12 @@ import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.codec.Data
 import java.lang.reflect.Type
 
-interface HasTypeInformation {
+/**
+ * Implemented to serialize and deserialize different types of objects to/from AMQP.
+ */
+@KeepForDJVM
+interface AMQPSerializer<out T> {
+
     /**
      * The JVM type this can serialize and deserialize.
      */
@@ -19,9 +24,7 @@ interface HasTypeInformation {
      * This should be unique enough that we can use one global cache of [AMQPSerializer]s and use this as the look up key.
      */
     val typeDescriptor: Symbol
-}
 
-interface CanWriteObject {
     /**
      * Add anything required to the AMQP schema via [SerializationOutput.writeTypeNotations] and any dependent serializers
      * via [SerializationOutput.requireSerializer]. e.g. for the elements of an array.
@@ -33,17 +36,9 @@ interface CanWriteObject {
      */
     fun writeObject(obj: Any, data: Data, type: Type, output: SerializationOutput,
                     context: SerializationContext, debugIndent: Int = 0)
-}
 
-interface CanReadObject<out T> {
     /**
      * Read the given object from the input. The envelope is provided in case the schema is required.
      */
     fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput, context: SerializationContext): T
 }
-
-/**
- * Implemented to serialize and deserialize different types of objects to/from AMQP.
- */
-@KeepForDJVM
-interface AMQPSerializer<out T> : HasTypeInformation, CanWriteObject, CanReadObject<T>

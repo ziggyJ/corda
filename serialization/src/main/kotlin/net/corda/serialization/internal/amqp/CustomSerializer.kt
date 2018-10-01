@@ -139,7 +139,7 @@ abstract class CustomSerializer<T : Any> : AMQPSerializer<T>, SerializerFor {
                             nameForType(type),
                             null,
                             emptyList(),
-                            descriptor, (proxySerializer.typeNotation as CompositeType).fields))
+                            descriptor, (proxySerializer.typeInformation.typeNotation as CompositeType).fields))
             for (additional in additionalSerializers) {
                 typeNotations.addAll(additional.schemaForDocumentation.types)
             }
