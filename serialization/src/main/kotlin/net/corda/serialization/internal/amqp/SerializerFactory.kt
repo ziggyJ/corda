@@ -28,6 +28,126 @@ data class FactorySchemaAndDescriptor(val schemas: SerializationSchemas, val typ
 data class CustomSerializersCacheKey(val clazz: Class<*>, val declaredType: Type)
 
 /**
+ * Represents a type which has been
+ */
+data class RemoteType(val type: Type, val typeNotation: TypeNotation, val localDescriptor: Symbol) {
+    val remoteDescriptor get() = typeNotation.descriptor.name!!
+    val name: String get() = typeNotation.name
+}
+
+/**
+ * A cache which maintains information about types for which we have received schemas.
+ */
+interface RemoteTypeResolver {
+    /**
+     * For every [TypeNotation] in the provided list, obtain a suitable Java [Type].
+     */
+    fun resolveTypes(typeNotations: List<TypeNotation>): List<RemoteType>
+}
+
+class CacheingRemoteTypeResolver(
+        private val cache: MutableMap<Symbol, RemoteType>,
+        private val classCarpenter: ClassCarpenter,
+        private val fingerPrinter: FingerPrinter,
+        private val classLoader: ClassLoader
+): RemoteTypeResolver {
+
+    companion object {
+        val logger = contextLogger()
+    }
+
+    override fun resolveTypes(typeNotations: List<TypeNotation>): List<RemoteType> {
+        val resolvedTypes = mutableListOf<RemoteType>()
+        val typesRequiringCarpentry = mutableListOf<TypeNotation>()
+
+        // First pass (before carpentry)
+        for (typeNotation in typeNotations) {
+            try {
+                resolvedTypes += cache.computeIfAbsent(typeNotation.descriptor.name!!) {
+                    getRemoteType(typeNotation)
+                }
+            } catch (e: ClassNotFoundException) {
+                logger.trace { "typeNotation=\"${typeNotation.name}\" action=\"carpentry required\"" }
+                typesRequiringCarpentry += typeNotation
+            }
+        }
+
+        synthesizeMissingTypes(typesRequiringCarpentry)
+
+        // Second pass (after carpentry)
+        for (typeNotation in typesRequiringCarpentry) {
+            try {
+                resolvedTypes += cache.computeIfAbsent(typeNotation.descriptor.name!!) {
+                    getRemoteType(typeNotation)
+                }
+            } catch (e: ClassNotFoundException) {
+                logger.error("typeNotation=${typeNotation.name} error=\"after Carpentry attempt failed to load\"")
+                throw e
+            }
+        }
+
+        return resolvedTypes
+    }
+
+    fun getRemoteType(typeNotation: TypeNotation): RemoteType {
+        val type = typeForName(typeNotation.name)
+        val localDescriptor = Symbol.valueOf("$DESCRIPTOR_DOMAIN:${fingerPrinter.fingerprint(type)}")
+        return RemoteType(type, typeNotation, localDescriptor)
+    }
+
+    @StubOutForDJVM
+    private fun synthesizeMissingTypes(typesRequiringCarpentry: MutableList<TypeNotation>) {
+        val metaSchema = CarpenterMetaSchema.newInstance()
+        for (typeNotation in typesRequiringCarpentry) {
+            metaSchema.buildFor(typeNotation, classLoader)
+        }
+        val mc = MetaCarpenter(metaSchema, classCarpenter)
+        try {
+            mc.build()
+        } catch (e: MetaCarpenterException) {
+            // preserve the actual message locally
+            loggerFor<SerializerFactory>().apply {
+                error("${e.message} [hint: enable trace debugging for the stack trace]")
+                trace("", e)
+            }
+
+            // prevent carpenter exceptions escaping into the world, convert things into a nice
+            // NotSerializableException for when this escapes over the wire
+            NotSerializableException(e.name)
+        }
+    }
+
+    private fun typeForName(name: String): Type {
+        return if (name.endsWith("[]")) {
+            val elementType = typeForName(name.substring(0, name.lastIndex - 1))
+            if (elementType is ParameterizedType || elementType is GenericArrayType) {
+                DeserializedGenericArrayType(elementType)
+            } else if (elementType is Class<*>) {
+                java.lang.reflect.Array.newInstance(elementType, 0).javaClass
+            } else {
+                throw AMQPNoTypeNotSerializableException("Not able to deserialize array type: $name")
+            }
+        } else if (name.endsWith("[p]")) {
+            // There is no need to handle the ByteArray case as that type is coercible automatically
+            // to the binary type and is thus handled by the main serializer and doesn't need a
+            // special case for a primitive array of bytes
+            when (name) {
+                "int[p]" -> IntArray::class.java
+                "char[p]" -> CharArray::class.java
+                "boolean[p]" -> BooleanArray::class.java
+                "float[p]" -> FloatArray::class.java
+                "double[p]" -> DoubleArray::class.java
+                "short[p]" -> ShortArray::class.java
+                "long[p]" -> LongArray::class.java
+                else -> throw AMQPNoTypeNotSerializableException("Not able to deserialize array type: $name")
+            }
+        } else {
+            DeserializedParameterizedType.make(name, classLoader)
+        }
+    }
+}
+
+/**
  * Factory of serializers designed to be shared across threads and invocations.
  *
  * @property evolutionSerializerGetter controls how evolution serializers are generated by the factory. The normal
@@ -94,14 +214,22 @@ open class SerializerFactory(
             fingerPrinterConstructor,
             onlyCustomSerializers)
 
+    val remoteTypeResolver by lazy {
+        CacheingRemoteTypeResolver(
+                ConcurrentHashMap(),
+                classCarpenter,
+                fingerPrinter,
+                classloader)
+    }
+
     val fingerPrinter by lazy { fingerPrinterConstructor(this) }
 
     val classloader: ClassLoader get() = classCarpenter.classloader
 
-    private fun getEvolutionSerializer(typeNotation: TypeNotation,
+    private fun getEvolutionSerializer(remoteType: RemoteType,
                                        newSerializer: AMQPSerializer<Any>,
                                        schemas: SerializationSchemas): AMQPSerializer<Any> {
-        return evolutionSerializerGetter.getEvolutionSerializer(this, typeNotation, newSerializer, schemas)
+        return evolutionSerializerGetter.getEvolutionSerializer(this, remoteType.typeNotation, newSerializer, schemas)
     }
 
     /**
@@ -202,81 +330,36 @@ open class SerializerFactory(
      * Iterate over an AMQP schema, for each type ascertain whether it's on ClassPath of [classloader] and,
      * if not, use the [ClassCarpenter] to generate a class to use in its place.
      */
-    private fun processSchema(schemaAndDescriptor: FactorySchemaAndDescriptor, sentinel: Boolean = false) {
-        val metaSchema = CarpenterMetaSchema.newInstance()
-        for (typeNotation in schemaAndDescriptor.schemas.schema.types) {
-            logger.trace { "descriptor=${schemaAndDescriptor.typeDescriptor}, typeNotation=${typeNotation.name}" }
-            try {
-                val serialiser = processSchemaEntry(typeNotation)
-                // if we just successfully built a serializer for the type but the type fingerprint
-                // doesn't match that of the serialised object then we may be dealing with  different
-                // instance of the class, such that we would need to build an EvolutionSerializer
-                if (serialiser.typeDescriptor != typeNotation.descriptor.name) {
-                    logger.trace { "typeNotation=${typeNotation.name} action=\"may require Evolution\"" }
-                    val maybeEvolving = getEvolutionSerializer(typeNotation, serialiser, schemaAndDescriptor.schemas)
-                    if (maybeEvolving !== serialiser) {
-                        logger.info("typeNotation=${typeNotation.name} action=\"required Evolution to ${serialiser.type.typeName}\"")
-                    }
-                }
-            } catch (e: ClassNotFoundException) {
-                if (sentinel) {
-                    logger.error("typeNotation=${typeNotation.name} error=\"after Carpentry attempt failed to load\"")
-                    throw e
-                }
-                else {
-                    logger.trace { "typeNotation=\"${typeNotation.name}\" action=\"carpentry required\"" }
-                }
-                metaSchema.buildFor(typeNotation, classloader)
-            }
-        }
+    private fun processSchema(schemaAndDescriptor: FactorySchemaAndDescriptor) {
+        val remoteTypes = remoteTypeResolver.resolveTypes(schemaAndDescriptor.schemas.schema.types)
+        for (remoteType in remoteTypes) {
+            logger.trace { "descriptor=${schemaAndDescriptor.typeDescriptor}, typeNotation=${remoteType.name}" }
+            val serialiser = processRemoteType(remoteType)
 
-        if (metaSchema.isNotEmpty()) {
-            runCarpentry(schemaAndDescriptor, metaSchema)
+            // if we just successfully built a serializer for the type but the type fingerprint
+            // doesn't match that of the serialised object then we may be dealing with  different
+            // instance of the class, such that we would need to build an EvolutionSerializer
+            if (remoteType.localDescriptor != remoteType.remoteDescriptor) {
+                logger.trace { "typeNotation=${remoteType.name} action=\"may require Evolution\"" }
+                val maybeEvolving = getEvolutionSerializer(remoteType, serialiser, schemaAndDescriptor.schemas)
+                if (maybeEvolving !== serialiser) {
+                    logger.info("typeNotation=${remoteType.name} action=\"required Evolution to ${serialiser.type.typeName}\"")
+                }
+            }
         }
     }
 
-    @StubOutForDJVM
-    private fun runCarpentry(schemaAndDescriptor: FactorySchemaAndDescriptor, metaSchema: CarpenterMetaSchema) {
-        val mc = MetaCarpenter(metaSchema, classCarpenter)
-        try {
-            mc.build()
-        } catch (e: MetaCarpenterException) {
-            // preserve the actual message locally
-            loggerFor<SerializerFactory>().apply {
-                error("${e.message} [hint: enable trace debugging for the stack trace]")
-                trace("", e)
-            }
-
-            // prevent carpenter exceptions escaping into the world, convert things into a nice
-            // NotSerializableException for when this escapes over the wire
-            NotSerializableException(e.name)
-        }
-        processSchema(schemaAndDescriptor, true)
-    }
-
-    private fun processSchemaEntry(typeNotation: TypeNotation) = when (typeNotation) {
-    // java.lang.Class (whether a class or interface)
+    private fun processRemoteType(remoteType: RemoteType) = when (remoteType.typeNotation) {
+        // java.lang.Class (whether a class or interface)
         is CompositeType -> {
-            logger.trace("typeNotation=${typeNotation.name} amqpType=CompositeType")
-            processCompositeType(typeNotation)
+            logger.trace("typeNotation=${remoteType.typeNotation.name} amqpType=CompositeType")
+            get(remoteType.type.asClass(), remoteType.type)
         }
-    // Collection / Map, possibly with generics
+        // Collection / Map, possibly with generics
         is RestrictedType -> {
-            logger.trace("typeNotation=${typeNotation.name} amqpType=RestrictedType")
-            processRestrictedType(typeNotation)
+            logger.trace("typeNotation=${remoteType.typeNotation.name} amqpType=RestrictedType")
+            get(null, remoteType.type)
         }
-    }
-
-    // TODO: class loader logic, and compare the schema.
-    private fun processRestrictedType(typeNotation: RestrictedType) = get(null,
-            typeForName(typeNotation.name, classloader))
-
-    private fun processCompositeType(typeNotation: CompositeType): AMQPSerializer<Any> {
-        // TODO: class loader logic, and compare the schema.
-        val type = typeForName(typeNotation.name, classloader)
-        return get(
-                type.asClass(),
-                type)
     }
 
     private fun makeClassSerializer(
@@ -407,35 +490,6 @@ open class SerializerFactory(
             is WildcardType -> "?"
             is TypeVariable<*> -> "?"
             else -> throw AMQPNotSerializableException(type, "Unable to render type $type to a string.")
-        }
-
-        private fun typeForName(name: String, classloader: ClassLoader): Type {
-            return if (name.endsWith("[]")) {
-                val elementType = typeForName(name.substring(0, name.lastIndex - 1), classloader)
-                if (elementType is ParameterizedType || elementType is GenericArrayType) {
-                    DeserializedGenericArrayType(elementType)
-                } else if (elementType is Class<*>) {
-                    java.lang.reflect.Array.newInstance(elementType, 0).javaClass
-                } else {
-                    throw AMQPNoTypeNotSerializableException("Not able to deserialize array type: $name")
-                }
-            } else if (name.endsWith("[p]")) {
-                // There is no need to handle the ByteArray case as that type is coercible automatically
-                // to the binary type and is thus handled by the main serializer and doesn't need a
-                // special case for a primitive array of bytes
-                when (name) {
-                    "int[p]" -> IntArray::class.java
-                    "char[p]" -> CharArray::class.java
-                    "boolean[p]" -> BooleanArray::class.java
-                    "float[p]" -> FloatArray::class.java
-                    "double[p]" -> DoubleArray::class.java
-                    "short[p]" -> ShortArray::class.java
-                    "long[p]" -> LongArray::class.java
-                    else -> throw AMQPNoTypeNotSerializableException("Not able to deserialize array type: $name")
-                }
-            } else {
-                DeserializedParameterizedType.make(name, classloader)
-            }
         }
     }
 
