@@ -7,11 +7,9 @@ import java.util.*
 
 interface Configuration {
 
-    companion object : ConfigurationBuilder {
+    companion object {
 
-        override val from: SourceSelector = TODO("not implemented")
-
-        override fun build(): Configuration = TODO("not implemented")
+        val from: Builder.SourceSelector = TODO("not implemented")
     }
 
     fun mutable(): Configuration.Mutable = TODO("not implemented")
@@ -26,48 +24,47 @@ interface Configuration {
 
         override fun mutable() = this
     }
-}
 
-interface SourceSelector {
+    interface Builder {
 
-    fun systemProperties(prefixFilter: String? = null): ConfigurationBuilder
+        val from: SourceSelector
 
-    fun environment(): ConfigurationBuilder
+        fun build(): Configuration
 
-    fun properties(properties: Properties): ConfigurationBuilder
+        interface SourceSelector {
 
-    fun map(map: Map<String, Any?>): ConfigurationBuilder
+            fun systemProperties(prefixFilter: String? = null): Configuration.Builder
 
-    fun hierarchicalMap(map: Map<String, Any?>): ConfigurationBuilder
+            fun environment(): Configuration.Builder
 
-    val hocon: FormatAwareSourceSelector
+            fun properties(properties: Properties): Configuration.Builder
 
-    val yaml: FormatAwareSourceSelector
+            fun map(map: Map<String, Any?>): Configuration.Builder
 
-    val xml: FormatAwareSourceSelector
+            fun hierarchicalMap(map: Map<String, Any?>): Configuration.Builder
 
-    val json: FormatAwareSourceSelector
-}
+            val hocon: SourceSelector.FormatAware
 
-interface FormatAwareSourceSelector {
+            val yaml: SourceSelector.FormatAware
 
-    fun file(path: Path): ConfigurationBuilder
+            val xml: SourceSelector.FormatAware
 
-    fun resource(resourceName: String): ConfigurationBuilder
+            val json: SourceSelector.FormatAware
 
-    fun reader(reader: Reader): ConfigurationBuilder
+            interface FormatAware {
 
-    fun inputStream(stream: InputStream): ConfigurationBuilder
+                fun file(path: Path): Configuration.Builder
 
-    fun string(rawFormat: String): ConfigurationBuilder
+                fun resource(resourceName: String): Configuration.Builder
 
-    fun bytes(bytes: ByteArray): ConfigurationBuilder
-}
+                fun reader(reader: Reader): Configuration.Builder
 
-// TODO sollecitom maybe join this with `Configuration` interface directly
-interface ConfigurationBuilder {
+                fun inputStream(stream: InputStream): Configuration.Builder
 
-    val from: SourceSelector
+                fun string(rawFormat: String): Configuration.Builder
 
-    fun build(): Configuration
+                fun bytes(bytes: ByteArray): Configuration.Builder
+            }
+        }
+    }
 }
