@@ -40,16 +40,16 @@ interface SourceSelector {
 
     fun hierarchicalMap(map: Map<String, Any?>): ConfigurationBuilder
 
-    val hocon: FileSourceSelector
+    val hocon: FormatAwareSourceSelector
 
-    val yaml: FileSourceSelector
+    val yaml: FormatAwareSourceSelector
 
-    val xml: FileSourceSelector
+    val xml: FormatAwareSourceSelector
 
-    val json: FileSourceSelector
+    val json: FormatAwareSourceSelector
 }
 
-interface FileSourceSelector {
+interface FormatAwareSourceSelector {
 
     fun file(path: Path): ConfigurationBuilder
 
