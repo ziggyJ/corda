@@ -174,6 +174,8 @@ class ConfigurationTest {
 
         val config = Configuration.from.systemProperties().build(spec)
 
+        assertThat(spec.properties).contains(spec.myLegalName)
+
         val legalName: String = config["corda.configuration.myLegalName"]
 
         assertThat(legalName).isEqualTo("test")
