@@ -7,19 +7,30 @@ import java.util.*
 
 interface Configuration {
 
-    operator fun <EXPECTED_VALUE> get(key: String): EXPECTED_VALUE
-
     companion object : ConfigurationBuilder {
 
         override val from: SourceSelector = TODO("not implemented")
 
         override fun build(): Configuration = TODO("not implemented")
     }
+
+    fun mutable(): Configuration.Mutable = TODO("not implemented")
+
+    operator fun <EXPECTED_VALUE> get(key: String): EXPECTED_VALUE
+
+    // TODO sollecitom create a function that returns a mutable version of the configuration
+
+    interface Mutable : Configuration {
+
+        operator fun set(key: String, value: Any?)
+
+        override fun mutable() = this
+    }
 }
 
 interface SourceSelector {
 
-    fun systemProperties(): ConfigurationBuilder
+    fun systemProperties(prefixFilter: String? = null): ConfigurationBuilder
 
     fun environment(): ConfigurationBuilder
 
