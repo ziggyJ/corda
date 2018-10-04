@@ -60,11 +60,11 @@ interface Configuration {
     }
 
     // TODO sollecitom refactor
-    sealed class Property<TYPE>(val name: String, val description: String, val type: Class<TYPE>, val nullable: Boolean, val optional: Boolean, val default: TYPE?, internal val item: Item<TYPE>) {
+    sealed class Property<TYPE>(val name: String, val description: String, val nullable: Boolean, val optional: Boolean, val default: TYPE?, internal val item: Item<TYPE>) {
 
-        internal class Required<TYPE>(name: String, description: String, type: Class<TYPE>, nullable: Boolean, item: RequiredItem<TYPE>) : Property<TYPE>(name, description, type, nullable, false, null, item)
+        internal class Required<TYPE>(name: String, description: String, nullable: Boolean, item: RequiredItem<TYPE>) : Property<TYPE>(name, description, nullable, false, null, item)
 
-        internal class Optional<TYPE>(default: TYPE, name: String, description: String, type: Class<TYPE>, nullable: Boolean, item: OptionalItem<TYPE>) : Property<TYPE>(name, description, type, nullable, true, default, item)
+        internal class Optional<TYPE>(default: TYPE, name: String, description: String, nullable: Boolean, item: OptionalItem<TYPE>) : Property<TYPE>(name, description, nullable, true, default, item)
     }
 
     interface Builder {
@@ -131,7 +131,7 @@ open class RequiredDelegatedProperty<T>(
 
         val name = name ?: property.name
         val item = object : RequiredItem<T>(spec, name, description, type, nullable) {}
-        val prop = Configuration.Property.Required(name, description, type.rawClass as Class<T>, nullable, item).also(addProperty)
+        val prop = Configuration.Property.Required(name, description, nullable, item).also(addProperty)
 
         return object : ReadOnlyProperty<Any?, Configuration.Property<T>> {
 
@@ -156,7 +156,7 @@ open class OptionalDelegatedProperty<T>(
 
         val name = name ?: property.name
         val item = object : OptionalItem<T>(spec, name, default, description, type, nullable) {}
-        val prop = Configuration.Property.Optional(default, name, description, type.rawClass as Class<T>, nullable, item).also(addProperty)
+        val prop = Configuration.Property.Optional(default, name, description, nullable, item).also(addProperty)
 
         return object : ReadOnlyProperty<Any?, Configuration.Property<T>> {
 

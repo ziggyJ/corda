@@ -1,9 +1,5 @@
 package net.corda.node.services.config
 
-import com.uchuhimo.konf.Config
-import com.uchuhimo.konf.ConfigSpec
-import com.uchuhimo.konf.RequiredItem
-import net.corda.core.internal.toPath
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 
