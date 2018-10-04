@@ -13,7 +13,13 @@ import java.util.*
 // TODO sollecitom make value protected again
 internal open class Konfiguration(val value: Config) : Configuration {
 
-    override fun <EXPECTED_VALUE> get(key: String): EXPECTED_VALUE = value[key]
+    override fun <VALUE> get(key: String): VALUE = value[key]
+
+    override fun <VALUE> getOrNull(key: String): VALUE? = value.getOrNull(key)
+
+    override fun <VALUE> get(key: Configuration.Property<VALUE>): VALUE = value[key.item]
+
+    override fun <VALUE> getOrNull(key: Configuration.Property<VALUE>): VALUE? = value.getOrNull(key.item)
 
     override fun mutable() = Konfiguration.Mutable(value)
 
@@ -31,7 +37,11 @@ internal open class Konfiguration(val value: Config) : Configuration {
 
         override val from = Konfiguration.Builder.SourceSelector(value.from)
 
-        override fun build() = Konfiguration(value)
+        override fun build(specification: Configuration.Specification): Configuration {
+
+            value.addSpec(specification.delegate)
+            return Konfiguration(value)
+        }
 
         class SourceSelector(private val from: DefaultLoaders) : Configuration.Builder.SourceSelector {
 
