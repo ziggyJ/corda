@@ -13,11 +13,9 @@ interface Configuration {
         val from: Builder.SourceSelector = TODO("not implemented")
     }
 
-    fun mutable(): Configuration.Mutable = TODO("not implemented")
+    fun mutable(): Configuration.Mutable
 
     operator fun <EXPECTED_VALUE> get(key: String): EXPECTED_VALUE
-
-    // TODO sollecitom create a function that returns a mutable version of the configuration
 
     interface Mutable : Configuration {
 
