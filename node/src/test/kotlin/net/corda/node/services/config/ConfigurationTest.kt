@@ -4,6 +4,7 @@ import net.corda.core.internal.toPath
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 
+// TODO sollecitom add typed-property-based equivalent tests.
 // TODO sollecitom add more tests, including writing to various formats / media, separate the tests in terms of reading, writing and using.
 class ConfigurationTest {
 

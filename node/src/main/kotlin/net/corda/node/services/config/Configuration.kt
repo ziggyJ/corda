@@ -10,7 +10,7 @@ interface Configuration {
     companion object {
 
         // TODO sollecitom perhaps try to use JvmStatic here
-        val from: Builder.SourceSelector = TODO("not implemented")
+        val from: Builder.SourceSelector = Konfiguration.Builder.SourceSelector()
     }
 
     fun mutable(): Configuration.Mutable

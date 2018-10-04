@@ -94,6 +94,8 @@ dependencies {
     // For async logging
     compile "com.lmax:disruptor:$disruptor_version"
 
+    compile group: "com.uchuhimo", name: "konf", version: konf_version
+
     // JOpt: for command line flags.
     compile "net.sf.jopt-simple:jopt-simple:$jopt_simple_version"
 
