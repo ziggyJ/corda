@@ -1,92 +1,100 @@
 package net.corda.node.services.config
 
+import com.uchuhimo.konf.Config
+import com.uchuhimo.konf.source.DefaultLoaders
+import com.uchuhimo.konf.source.Loader
+import com.uchuhimo.konf.source.Source
+import com.uchuhimo.konf.source.base.FlatSource
 import java.io.InputStream
 import java.io.Reader
 import java.nio.file.Path
 import java.util.*
 
-internal open class Konfiguration : Configuration {
+// TODO sollecitom make value protected again
+internal open class Konfiguration(val value: Config) : Configuration {
 
-    override fun <EXPECTED_VALUE> get(key: String): EXPECTED_VALUE {
-        TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun <EXPECTED_VALUE> get(key: String): EXPECTED_VALUE = value[key]
 
-    override fun mutable() = Konfiguration.Mutable()
+    override fun mutable() = Konfiguration.Mutable(value)
 
-    class Mutable : Konfiguration(), Configuration.Mutable {
+    class Mutable(value: Config) : Konfiguration(value), Configuration.Mutable {
 
         override fun set(key: String, value: Any?) {
-            TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
+
+            this.value[key] = value
         }
 
         override fun mutable() = this
     }
 
-    class Builder : Configuration.Builder {
+    class Builder(private val value: Config = Config()) : Configuration.Builder {
 
-        override val from: Configuration.Builder.SourceSelector
-            get() = TODO("sollecitom not implemented") //To change initializer of created properties use File | Settings | File Templates.
+        override val from = Konfiguration.Builder.SourceSelector(value.from)
 
-        override fun build(): Configuration {
-            TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
-        }
+        override fun build() = Konfiguration(value)
 
-        class SourceSelector : Configuration.Builder.SourceSelector {
-            override fun systemProperties(prefixFilter: String?): Configuration.Builder {
-                TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
-            }
+        class SourceSelector(private val from: DefaultLoaders) : Configuration.Builder.SourceSelector {
 
-            override fun environment(): Configuration.Builder {
-                TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
-            }
+            override fun systemProperties(prefixFilter: String) = Konfiguration.Builder(from.config.withSource(SystemPropertiesProvider.source(prefixFilter)))
 
+            override fun environment(prefixFilter: String) = Konfiguration.Builder(from.config.withSource(EnvProvider.source(prefixFilter)))
+
+            // TODO sollecitom perhaps expose a different Selector interface for Map & Properties
             override fun properties(properties: Properties): Configuration.Builder {
-                TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
+
+                @Suppress("UNCHECKED_CAST")
+                return hierarchicalMap(properties as Map<String, Any>)
             }
 
-            override fun map(map: Map<String, Any?>): Configuration.Builder {
-                TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
-            }
+            // TODO sollecitom look here at the difference between .kv() and .flat()
+            override fun map(map: Map<String, Any>) = Konfiguration.Builder(from.map.flat(map.mapValues { (_, value) -> value.toString() }))
 
-            override fun hierarchicalMap(map: Map<String, Any?>): Configuration.Builder {
-                TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
-            }
+            override fun hierarchicalMap(map: Map<String, Any>) = Konfiguration.Builder(from.map.hierarchical(map))
 
             override val hocon: Configuration.Builder.SourceSelector.FormatAware
-                get() = TODO("sollecitom not implemented") //To change initializer of created properties use File | Settings | File Templates.
+                get() = Konfiguration.Builder.SourceSelector.FormatAware(from.hocon)
+
             override val yaml: Configuration.Builder.SourceSelector.FormatAware
-                get() = TODO("sollecitom not implemented") //To change initializer of created properties use File | Settings | File Templates.
+                get() = Konfiguration.Builder.SourceSelector.FormatAware(from.yaml)
+
             override val xml: Configuration.Builder.SourceSelector.FormatAware
-                get() = TODO("sollecitom not implemented") //To change initializer of created properties use File | Settings | File Templates.
+                get() = Konfiguration.Builder.SourceSelector.FormatAware(from.xml)
+
             override val json: Configuration.Builder.SourceSelector.FormatAware
-                get() = TODO("sollecitom not implemented") //To change initializer of created properties use File | Settings | File Templates.
+                get() = Konfiguration.Builder.SourceSelector.FormatAware(from.json)
 
-            class FormatAware : Configuration.Builder.SourceSelector.FormatAware {
+            class FormatAware(private val loader: Loader) : Configuration.Builder.SourceSelector.FormatAware {
 
-                override fun file(path: Path): Configuration.Builder {
-                    TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
-                }
+                override fun file(path: Path) = Konfiguration.Builder(loader.file(path.toAbsolutePath().toFile()))
 
-                override fun resource(resourceName: String): Configuration.Builder {
-                    TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
-                }
+                override fun resource(resourceName: String) = Konfiguration.Builder(loader.resource(resourceName))
 
-                override fun reader(reader: Reader): Configuration.Builder {
-                    TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
-                }
+                override fun reader(reader: Reader) = Konfiguration.Builder(loader.reader(reader))
 
-                override fun inputStream(stream: InputStream): Configuration.Builder {
-                    TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
-                }
+                override fun inputStream(stream: InputStream) = Konfiguration.Builder(loader.inputStream(stream))
 
-                override fun string(rawFormat: String): Configuration.Builder {
-                    TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
-                }
+                override fun string(rawFormat: String) = Konfiguration.Builder(loader.string(rawFormat))
 
-                override fun bytes(bytes: ByteArray): Configuration.Builder {
-                    TODO("sollecitom not implemented") //To change body of created functions use File | Settings | File Templates.
-                }
+                override fun bytes(bytes: ByteArray) = Konfiguration.Builder(loader.bytes(bytes))
             }
         }
     }
 }
+
+private object SystemPropertiesProvider {
+
+    fun source(prefixFilter: String = ""): Source = FlatSource(System.getProperties().toMap().onlyWithPrefix(prefixFilter), type = "system-properties")
+
+    @Suppress("UNCHECKED_CAST")
+    private fun Properties.toMap(): Map<String, String> = this as Map<String, String>
+}
+
+private object EnvProvider {
+
+    fun source(prefixFilter: String = ""): Source {
+
+        return FlatSource(System.getenv().mapKeys { (key, _) -> key.toLowerCase().replace('_', '.') }.onlyWithPrefix(prefixFilter), type = "system-environment")
+    }
+}
+
+private fun Map<String, String>.onlyWithPrefix(prefix: String) = filterKeys { key -> key.startsWith(prefix) }.mapKeys { (key, _) -> key.removePrefix(prefix) }

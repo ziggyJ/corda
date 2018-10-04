@@ -1,5 +1,6 @@
 package net.corda.node.services.config
 
+import com.uchuhimo.konf.Config
 import java.io.InputStream
 import java.io.Reader
 import java.nio.file.Path
@@ -10,7 +11,7 @@ interface Configuration {
     companion object {
 
         // TODO sollecitom perhaps try to use JvmStatic here
-        val from: Builder.SourceSelector = Konfiguration.Builder.SourceSelector()
+        val from: Builder.SourceSelector = Konfiguration.Builder.SourceSelector(Config.invoke().from)
     }
 
     fun mutable(): Configuration.Mutable
@@ -28,19 +29,20 @@ interface Configuration {
 
         val from: SourceSelector
 
+        // TODO sollecitom perhaps add the Spec here as a mandatory param
         fun build(): Configuration
 
         interface SourceSelector {
 
-            fun systemProperties(prefixFilter: String? = null): Configuration.Builder
+            fun systemProperties(prefixFilter: String = ""): Configuration.Builder
 
-            fun environment(): Configuration.Builder
+            fun environment(prefixFilter: String = ""): Configuration.Builder
 
             fun properties(properties: Properties): Configuration.Builder
 
-            fun map(map: Map<String, Any?>): Configuration.Builder
+            fun map(map: Map<String, Any>): Configuration.Builder
 
-            fun hierarchicalMap(map: Map<String, Any?>): Configuration.Builder
+            fun hierarchicalMap(map: Map<String, Any>): Configuration.Builder
 
             val hocon: SourceSelector.FormatAware
 

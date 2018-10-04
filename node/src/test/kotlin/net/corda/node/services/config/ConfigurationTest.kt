@@ -1,5 +1,7 @@
 package net.corda.node.services.config
 
+import com.uchuhimo.konf.Config
+import com.uchuhimo.konf.ConfigSpec
 import net.corda.core.internal.toPath
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
@@ -99,5 +101,62 @@ class ConfigurationTest {
 
         val myLegalNameRetrieved4: String = configuration1["myLegalName"]
         assertThat(myLegalNameRetrieved4).isEqualTo(legalName1)
+    }
+
+    // TODO sollecitom remove
+    @Test
+    fun blah() {
+
+        System.setProperty("corda.configuration.myLegalName", "test")
+
+        val config = Config().from.systemProperties()
+        config.addSpec(object : ConfigSpec("corda.configuration") {
+
+            val myLegalName by required<String>()
+        })
+//        val config = Config { from.systemProperties().addSpec(object : ConfigSpec("corda.configuration") {}) }
+
+        val legalName = config.get<String>("corda.configuration.myLegalName")
+
+        assertThat(legalName).isEqualTo("test")
+    }
+
+    @Test
+    fun blah3() {
+
+        System.setProperty("corda.configuration.myLegalName", "test")
+
+        val config = Konfiguration.Builder().from.systemProperties().build()
+
+        val spec = object : ConfigSpec("corda.configuration") {
+
+            val myLegalName by required<String>()
+        }
+        config.value.addSpec(spec)
+
+        val legalName: String = config["corda.configuration.myLegalName"]
+        val legalName2: String = config.value.at("corda.configuration")["myLegalName"]
+
+        assertThat(legalName).isEqualTo("test")
+        assertThat(legalName2).isEqualTo("test")
+    }
+
+    // TODO sollecitom remove
+    @Test
+    fun blah2() {
+
+        System.setProperty("corda.configuration.myLegalName", "test")
+
+        val config = Config().from.systemProperties()
+//        val config = Config { from.systemProperties().addSpec(object : ConfigSpec("corda.configuration") {}) }
+
+        val legalName = config.getRaw<String>("corda.configuration.myLegalName")
+
+        assertThat(legalName).isEqualTo("test")
+    }
+
+    private fun <VALUE> Config.getRaw(key: String): String? {
+
+        return sources.asSequence().map { source -> source.getOrNull(key) }.filter { value -> value?.isText() ?: false }.firstOrNull()?.toText()
     }
 }
