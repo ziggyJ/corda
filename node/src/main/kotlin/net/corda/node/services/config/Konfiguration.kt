@@ -17,13 +17,32 @@ internal open class Konfiguration(val value: Config, final override val specific
 
     override fun <VALUE> getOrNull(key: Configuration.Property<VALUE>): VALUE? = key.valueOrNullIn(this)
 
-    override fun mutable(): Configuration.Mutable = Konfiguration.Mutable(value, specification)
+    // TODO sollecitom check why it doesn't work
+    override fun mutable(): Configuration.Mutable = Konfiguration.Mutable(Config.invoke { value.items.forEach { this.addItem(it) } }, specification)
 
     private class Mutable(value: Config, specification: Configuration.Specification) : Konfiguration(value, specification), Configuration.Mutable {
 
-        override fun set(key: String, value: Any?) {
+        override fun <VALUE> set(key: Configuration.Property<VALUE>, value: VALUE) {
 
-            this.value[key] = value
+            // TODO sollecitom refactor
+            when{
+                key is Configuration.Property.Required<VALUE> -> this.value[key.item] = value
+                key is Configuration.Property.Optional<VALUE> -> this.value[key.item] = value
+                // TODO sollecitom check, improve and refactor
+                key is Configuration.Property.RequiredNested && value is Configuration -> {
+
+//                    this.value.at(key.path.joinToString(separator = ".")).clear()
+                    val prefix = key.path.joinToString(separator = ".")
+                    (value as Konfiguration).value.withPrefix(prefix).items.forEach { this.value.addItem(it, prefix) }
+                }
+                // TODO sollecitom check, improve and refactor
+                key is Configuration.Property.OptionalNested && value is Configuration -> {
+
+//                    this.value.at(key.path.joinToString(separator = ".")).clear()
+                    val prefix = key.path.joinToString(separator = ".")
+                    (value as Konfiguration).value.withPrefix(prefix).items.forEach { this.value.addItem(it, prefix) }
+                }
+            }
         }
 
         override fun mutable() = this

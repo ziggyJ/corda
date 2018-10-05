@@ -28,7 +28,7 @@ interface Configuration {
 
     interface Mutable : Configuration {
 
-        operator fun set(key: String, value: Any?)
+        operator fun <VALUE> set(key: Configuration.Property<VALUE>, value: VALUE)
 
         override fun mutable() = this
     }
@@ -93,7 +93,7 @@ interface Configuration {
         // TODO sollecitom refactor!
         abstract fun valueOrNullIn(configuration: Configuration): TYPE?
 
-        internal class Required<TYPE>(name: String, description: String, nullable: Boolean, private val item: RequiredItem<TYPE>) : Property<TYPE>(name, description, nullable, false, null) {
+        internal class Required<TYPE>(name: String, description: String, nullable: Boolean, internal val item: RequiredItem<TYPE>) : Property<TYPE>(name, description, nullable, false, null) {
 
             override val path: List<String> get() = item.path
 
@@ -112,7 +112,7 @@ interface Configuration {
             }
         }
 
-        internal class Optional<TYPE>(default: TYPE, name: String, description: String, nullable: Boolean, private val item: OptionalItem<TYPE>) : Property<TYPE>(name, description, nullable, true, default) {
+        internal class Optional<TYPE>(default: TYPE, name: String, description: String, nullable: Boolean, internal val item: OptionalItem<TYPE>) : Property<TYPE>(name, description, nullable, true, default) {
 
             override val path: List<String> get() = item.path
 
@@ -142,7 +142,8 @@ interface Configuration {
             override fun valueIn(configuration: Configuration): Configuration {
 
                 // TODO sollecitom check name vs path
-                return Konfiguration.Builder((configuration as Konfiguration).value.at(name)).build(specification)
+                return Konfiguration((configuration as Konfiguration).value.at(name), specification)
+//                return Konfiguration.Builder((configuration as Konfiguration).value.at(name)).build(specification)
             }
 
             // TODO sollecitom refactor!
@@ -153,7 +154,8 @@ interface Configuration {
                 // TODO sollecitom check name vs path
                 if (config.contains(name)) {
                     // TODO sollecitom check name vs path
-                    return Konfiguration.Builder(config.at(name)).build(specification)
+                    return Konfiguration(config.at(name), specification)
+//                    return Konfiguration.Builder(config.at(name)).build(specification)
                 }
                 return null
             }
@@ -170,7 +172,8 @@ interface Configuration {
             override fun valueIn(configuration: Configuration): Configuration {
 
                 // TODO sollecitom check name vs path
-                return Konfiguration.Builder((configuration as Konfiguration).value.at(name)).build(specification)
+                return Konfiguration((configuration as Konfiguration).value.at(name), specification)
+//                return Konfiguration.Builder((configuration as Konfiguration).value.at(name)).build(specification)
             }
 
             // TODO sollecitom refactor!
@@ -181,7 +184,8 @@ interface Configuration {
                 // TODO sollecitom check name vs path
                 if (config.contains(name)) {
                     // TODO sollecitom check name vs path
-                    return Konfiguration.Builder(config.at(name)).build(specification)
+                    return Konfiguration(config.at(name), specification)
+//                    return Konfiguration.Builder(config.at(name)).build(specification)
                 }
                 return null
             }

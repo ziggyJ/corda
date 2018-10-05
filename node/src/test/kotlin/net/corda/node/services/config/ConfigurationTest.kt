@@ -157,29 +157,48 @@ class ConfigurationTest {
         assertThat(addresses[AddressesSpec.admin]).isEqualTo("my-corda-node:10004")
     }
 
-//    @Test
-//    fun mutable_configuration_contract() {
-//
-//        val legalName1 = "O=Bank A,L=London,C=GB"
-//        System.setProperty("corda.configuration.myLegalName", legalName1)
-//
-//        val configuration1 = Configuration.from.systemProperties("corda.configuration").build(nodeConfigSpec)
-//
-//        val legalName2 = "O=Bank B,L=London,C=GB"
-//        val configuration2 = configuration1.mutable()
-//
-//        val myLegalNameRetrieved1: String = configuration1["myLegalName"]
-//        assertThat(myLegalNameRetrieved1).isEqualTo(legalName1)
-//
-//        val myLegalNameRetrieved2: String = configuration2["myLegalName"]
-//        assertThat(myLegalNameRetrieved2).isEqualTo(legalName1)
-//
-//        configuration2["myLegalName"] = legalName2
-//
-//        val myLegalNameRetrieved3: String = configuration2["myLegalName"]
-//        assertThat(myLegalNameRetrieved3).isEqualTo(legalName2)
-//
-//        val myLegalNameRetrieved4: String = configuration1["myLegalName"]
-//        assertThat(myLegalNameRetrieved4).isEqualTo(legalName1)
-//    }
+    @Test
+    fun mutable_configuration_contract() {
+
+        val legalName1 = "O=Bank A,L=London,C=GB"
+        val configuration1 = Configuration.from.hocon.resource("net/corda/node/services/config/node.conf").build(NodeConfigSpec)
+
+        val myLegalNameRetrieved1: String = configuration1[NodeConfigSpec.myLegalName]
+        assertThat(myLegalNameRetrieved1).isEqualTo(legalName1)
+
+        val legalName2 = "O=Bank B,L=London,C=GB"
+        val configuration2 = configuration1.mutable()
+
+        val myLegalNameRetrieved2: String = configuration2[NodeConfigSpec.myLegalName]
+        assertThat(myLegalNameRetrieved2).isEqualTo(legalName1)
+
+        configuration2[NodeConfigSpec.myLegalName] = legalName2
+
+        val myLegalNameRetrieved3: String = configuration2[NodeConfigSpec.myLegalName]
+        assertThat(myLegalNameRetrieved3).isEqualTo(legalName2)
+
+        val myLegalNameRetrieved4: String = configuration1[NodeConfigSpec.myLegalName]
+        assertThat(myLegalNameRetrieved4).isEqualTo(legalName1)
+    }
+
+    @Test
+    fun mutable_configuration_contract_with_configuration_properties() {
+
+        val configuration1 = Configuration.from.hocon.resource("net/corda/node/services/config/node.conf").build(NodeConfigSpec)
+
+        val newRpcSettings = Configuration.from.hocon.string("\"useSsl\" = false\n\"addresses\" = {\n\"main\" = \"my-corda-node:10003\"\n\"admin\" = \"my-corda-node:10004\"}").build(RpcSettingsSpec)
+
+        val configuration2 = configuration1.mutable()
+
+        val originalRpcSettings = configuration1[NodeConfigSpec.rpcSettings]
+
+        assertThat(configuration2[NodeConfigSpec.rpcSettings]).isEqualToComparingFieldByField(originalRpcSettings)
+
+        configuration2[NodeConfigSpec.rpcSettings] = newRpcSettings
+
+        val overriddenRpcSettings = configuration2[NodeConfigSpec.rpcSettings]
+        assertThat(overriddenRpcSettings).isEqualToComparingFieldByField(newRpcSettings)
+
+        assertThat(configuration1[NodeConfigSpec.rpcSettings]).isEqualToComparingFieldByField(originalRpcSettings)
+    }
 }
