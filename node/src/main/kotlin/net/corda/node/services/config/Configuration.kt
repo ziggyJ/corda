@@ -15,16 +15,14 @@ interface Configuration {
     companion object {
 
         // TODO sollecitom perhaps try to use JvmStatic here
-        val from: Builder.SourceSelector = Konfiguration.Builder.SourceSelector(Config.invoke().from)
+        val from: Builder.SourceSelector get() = Konfiguration.Builder.SourceSelector(Config.invoke().from)
+
+        fun empty(specification: Configuration.Specification): Configuration = Konfiguration(Config.invoke(), specification)
     }
 
     fun mutable(): Configuration.Mutable
 
-    operator fun <VALUE> get(key: String): VALUE
-
     operator fun <VALUE> get(key: Configuration.Property<VALUE>): VALUE
-
-    fun <VALUE> getOrNull(key: String): VALUE?
 
     fun <VALUE> getOrNull(key: Configuration.Property<VALUE>): VALUE?
 
@@ -35,6 +33,8 @@ interface Configuration {
         override fun mutable() = this
     }
 
+    val specification: Configuration.Specification
+
     // TODO sollecitom refactor
     open class Specification(val prefix: String = "") {
 
@@ -44,6 +44,8 @@ interface Configuration {
 
         val properties: Set<Configuration.Property<*>> = propertiesSet
 
+        // TODO sollecitom remove distinction optional/required nullable/non-nullable -> either optional/nullable or required/non-nullable
+        // TODO sollecitom move these into a Builder type and use a receiver function to create the spec - avoids `object : Configuration.Specification("name") { ... }`
         inline fun <reified T> required(name: String? = null, description: String = ""): DelegatedProperty<T> = required(name, description, null is T)
 
         inline fun <reified T> optional(default: T, name: String? = null, description: String = ""): DelegatedProperty<T> = optional(default, name, description, null is T)
@@ -58,27 +60,129 @@ interface Configuration {
             return object : OptionalDelegatedProperty<TYPE>({ propertiesSet.add(it) }, delegate, default, name, description, nullable) {}
         }
 
-        // TODO sollecitom check and hopefully remove by turning the sub-specs into properties.
-        protected fun addNestedSpec(nested: Configuration.Specification) {
+        inline fun <reified T : Configuration?> required(specification: Configuration.Specification, name: String? = null, description: String = ""): DelegatedProperty<Configuration> = required(specification, name, description, null is T)
 
-            nested.properties.forEach {
+        inline fun <reified T : Configuration?> optional(specification: Configuration.Specification, default: Configuration, name: String? = null, description: String = ""): DelegatedProperty<Configuration> = optional(specification, default, name, description, null is T)
 
-                delegate.addItem(it.item)
-                propertiesSet.add(it)
-            }
+        fun required(specification: Configuration.Specification, name: String?, description: String, nullable: Boolean): DelegatedProperty<Configuration> {
+
+            // TODO sollecitom maybe merge with the other `required` function, by passing a Configuration.Specification? as param
+            return object : RequiredNestedDelegatedProperty(specification, { propertiesSet.add(it) }, delegate, name, description, nullable) {}
+        }
+
+        fun optional(specification: Configuration.Specification, default: Configuration, name: String?, description: String, nullable: Boolean): DelegatedProperty<Configuration> {
+
+            // TODO sollecitom maybe merge with the other `optional` function, by passing a Configuration.Specification? as param
+            return object : OptionalNestedDelegatedProperty(specification, { propertiesSet.add(it) }, delegate, default, name, description, nullable) {}
         }
     }
 
     // TODO sollecitom refactor
-    sealed class Property<TYPE>(val name: String, val description: String, val nullable: Boolean, val optional: Boolean, val default: TYPE?, internal val item: Item<TYPE>) {
+    sealed class Property<TYPE>(protected val name: String, val description: String, val nullable: Boolean, val optional: Boolean, val default: TYPE?) {
 
-        val path: List<String> get() = item.path
+        abstract val path: List<String>
 
-        val fullPath: List<String> get() = item.spec.prefix.toPath() + path
+        abstract val fullPath: List<String>
 
-        internal class Required<TYPE>(name: String, description: String, nullable: Boolean, item: RequiredItem<TYPE>) : Property<TYPE>(name, description, nullable, false, null, item)
+        // TODO sollecitom refactor!
+        abstract fun valueIn(configuration: Configuration): TYPE
 
-        internal class Optional<TYPE>(default: TYPE, name: String, description: String, nullable: Boolean, item: OptionalItem<TYPE>) : Property<TYPE>(name, description, nullable, true, default, item)
+        // TODO sollecitom refactor!
+        abstract fun valueOrNullIn(configuration: Configuration): TYPE?
+
+        internal class Required<TYPE>(name: String, description: String, nullable: Boolean, private val item: RequiredItem<TYPE>) : Property<TYPE>(name, description, nullable, false, null) {
+
+            override val path: List<String> get() = item.path
+
+            override val fullPath: List<String> get() = item.spec.prefix.toPath() + path
+
+            // TODO sollecitom refactor!
+            override fun valueIn(configuration: Configuration): TYPE {
+
+                return (configuration as Konfiguration).value[item]
+            }
+
+            // TODO sollecitom refactor!
+            override fun valueOrNullIn(configuration: Configuration): TYPE? {
+
+                return (configuration as Konfiguration).value.getOrNull(item)
+            }
+        }
+
+        internal class Optional<TYPE>(default: TYPE, name: String, description: String, nullable: Boolean, private val item: OptionalItem<TYPE>) : Property<TYPE>(name, description, nullable, true, default) {
+
+            override val path: List<String> get() = item.path
+
+            override val fullPath: List<String> get() = item.spec.prefix.toPath() + path
+
+            // TODO sollecitom refactor!
+            override fun valueIn(configuration: Configuration): TYPE {
+
+                return (configuration as Konfiguration).value[item]
+            }
+
+            // TODO sollecitom refactor!
+            override fun valueOrNullIn(configuration: Configuration): TYPE? {
+
+                return (configuration as Konfiguration).value.getOrNull(item)
+            }
+        }
+
+        // TODO sollecitom refactor!
+        internal class RequiredNested(private val specification: Specification, private val parentPath: List<String> = emptyList(), name: String, description: String, nullable: Boolean) : Property<Configuration>(name, description, nullable, false, null) {
+
+            override val path: List<String> get() = listOf(name)
+
+            override val fullPath: List<String> get() = parentPath + path
+
+            // TODO sollecitom refactor!
+            override fun valueIn(configuration: Configuration): Configuration {
+
+                // TODO sollecitom check name vs path
+                return Konfiguration.Builder((configuration as Konfiguration).value.at(name)).build(specification)
+            }
+
+            // TODO sollecitom refactor!
+            override fun valueOrNullIn(configuration: Configuration): Configuration? {
+
+                val config = (configuration as Konfiguration).value
+                // TODO check here nullable vs required/optional
+                // TODO sollecitom check name vs path
+                if (config.contains(name)) {
+                    // TODO sollecitom check name vs path
+                    return Konfiguration.Builder(config.at(name)).build(specification)
+                }
+                return null
+            }
+        }
+
+        // TODO sollecitom refactor!
+        internal class OptionalNested(private val specification: Specification, private val parentPath: List<String> = emptyList(), default: Configuration, name: String, description: String, nullable: Boolean) : Property<Configuration>(name, description, nullable, true, default) {
+
+            override val path: List<String> get() = listOf(name)
+
+            override val fullPath: List<String> get() = parentPath + path
+
+            // TODO sollecitom refactor!
+            override fun valueIn(configuration: Configuration): Configuration {
+
+                // TODO sollecitom check name vs path
+                return Konfiguration.Builder((configuration as Konfiguration).value.at(name)).build(specification)
+            }
+
+            // TODO sollecitom refactor!
+            override fun valueOrNullIn(configuration: Configuration): Configuration? {
+
+                val config = (configuration as Konfiguration).value
+                // TODO check here nullable vs required/optional
+                // TODO sollecitom check name vs path
+                if (config.contains(name)) {
+                    // TODO sollecitom check name vs path
+                    return Konfiguration.Builder(config.at(name)).build(specification)
+                }
+                return null
+            }
+        }
     }
 
     interface Builder {
@@ -175,6 +279,51 @@ open class OptionalDelegatedProperty<T>(
         return object : ReadOnlyProperty<Any?, Configuration.Property<T>> {
 
             override fun getValue(thisRef: Any?, property: KProperty<*>): Configuration.Property<T> = prop
+        }
+    }
+}
+
+// TODO sollecitom perhaps join with `RequiredDelegatedProperty` by adding a field of type Configuration.Specification?
+open class RequiredNestedDelegatedProperty(
+        private val specification: Configuration.Specification,
+        private val addProperty: (Configuration.Property<*>) -> Unit,
+        private val spec: Spec,
+        private val name: String? = null,
+        private val description: String = "",
+        private val nullable: Boolean = false
+) : DelegatedProperty<Configuration> {
+
+    override operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): ReadOnlyProperty<Any?, Configuration.Property<Configuration>> {
+
+        val name = name ?: property.name
+        val prop = Configuration.Property.RequiredNested(specification, spec.prefix.toPath(), name, description, nullable).also(addProperty)
+
+        return object : ReadOnlyProperty<Any?, Configuration.Property<Configuration>> {
+
+            override fun getValue(thisRef: Any?, property: KProperty<*>): Configuration.Property<Configuration> = prop
+        }
+    }
+}
+
+// TODO sollecitom perhaps join with `OptionalDelegatedProperty` by adding a field of type Configuration.Specification?
+open class OptionalNestedDelegatedProperty(
+        private val specification: Configuration.Specification,
+        private val addProperty: (Configuration.Property<*>) -> Unit,
+        private val spec: Spec,
+        private val default: Configuration,
+        private val name: String? = null,
+        private val description: String = "",
+        private val nullable: Boolean = false
+) : DelegatedProperty<Configuration> {
+
+    override operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): ReadOnlyProperty<Any?, Configuration.Property<Configuration>> {
+
+        val name = name ?: property.name
+        val prop = Configuration.Property.OptionalNested(specification, spec.prefix.toPath(), default, name, description, nullable).also(addProperty)
+
+        return object : ReadOnlyProperty<Any?, Configuration.Property<Configuration>> {
+
+            override fun getValue(thisRef: Any?, property: KProperty<*>): Configuration.Property<Configuration> = prop
         }
     }
 }

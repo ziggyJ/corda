@@ -11,19 +11,15 @@ import java.nio.file.Path
 import java.util.*
 
 // TODO sollecitom make value protected again
-internal open class Konfiguration(val value: Config) : Configuration {
+internal open class Konfiguration(val value: Config, final override val specification: Configuration.Specification) : Configuration {
 
-    override fun <VALUE> get(key: String): VALUE = value[key]
+    override fun <VALUE> get(key: Configuration.Property<VALUE>): VALUE = key.valueIn(this)
 
-    override fun <VALUE> getOrNull(key: String): VALUE? = value.getOrNull(key)
+    override fun <VALUE> getOrNull(key: Configuration.Property<VALUE>): VALUE? = key.valueOrNullIn(this)
 
-    override fun <VALUE> get(key: Configuration.Property<VALUE>): VALUE = value[key.item]
+    override fun mutable(): Configuration.Mutable = Konfiguration.Mutable(value, specification)
 
-    override fun <VALUE> getOrNull(key: Configuration.Property<VALUE>): VALUE? = value.getOrNull(key.item)
-
-    override fun mutable() = Konfiguration.Mutable(value)
-
-    class Mutable(value: Config) : Konfiguration(value), Configuration.Mutable {
+    private class Mutable(value: Config, specification: Configuration.Specification) : Konfiguration(value, specification), Configuration.Mutable {
 
         override fun set(key: String, value: Any?) {
 
@@ -40,7 +36,7 @@ internal open class Konfiguration(val value: Config) : Configuration {
         override fun build(specification: Configuration.Specification): Configuration {
 
             value.addSpec(specification.delegate)
-            return Konfiguration(value)
+            return Konfiguration(value, specification)
         }
 
         class SourceSelector(private val from: DefaultLoaders) : Configuration.Builder.SourceSelector {

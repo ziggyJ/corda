@@ -8,17 +8,32 @@ import org.junit.Test
 // TODO sollecitom add more tests, including writing to various formats / media, separate the tests in terms of reading, writing and using.
 class ConfigurationTest {
 
-//    private val nodeConfigSpec = object : Configuration.Specification() {
-//
-//        // TODO sollecitom turn this into a property as well
-//        val rpcSettingsSpec = object : Configuration.Specification("rpcSettings") {
-//
-//            val useSsl by optional(default = false, description = "Whether to use SSL for RPC client-server communication")
-//        }
-//
-//        val myLegalName by required<String>(description = "Legal name of the identity of the Corda node")
-//    }
-//
+    private val nodeConfigSpec = object : Configuration.Specification() {
+
+        val rpcSettingsSpec = object : Configuration.Specification() {
+
+            val useSsl by optional(default = false, description = "Whether to use SSL for RPC client-server communication")
+        }
+
+        val myLegalName by required<String>(description = "Legal name of the identity of the Corda node")
+
+        val rpcSettings by optional<Configuration>(rpcSettingsSpec, Configuration.empty(rpcSettingsSpec), description = "RPC settings")
+    }
+
+    @Test
+    fun nested_config() {
+
+        val configFilePath = ConfigurationTest::class.java.getResource("node.conf").toPath()
+
+        val configuration = Configuration.from.hocon.file(configFilePath).build(nodeConfigSpec)
+
+        val rpcSettings: Configuration = configuration[nodeConfigSpec.rpcSettings]
+
+        val useSslForRpc = rpcSettings[nodeConfigSpec.rpcSettingsSpec.useSsl]
+
+        assertThat(useSslForRpc).isEqualTo(false)
+    }
+
 //    @Test
 //    fun loading_from_specific_file_works() {
 //
@@ -26,43 +41,20 @@ class ConfigurationTest {
 //
 //        val configuration = Configuration.from.hocon.file(configFilePath).build(nodeConfigSpec)
 //
+//        val properties = nodeConfigSpec.properties
+//
 //        val myLegalName = configuration[nodeConfigSpec.myLegalName]
 //        val useSslForRpc: Boolean = configuration[nodeConfigSpec.rpcSettingsSpec.useSsl]
 //
 //        assertThat(myLegalName).isEqualTo("O=Bank A,L=London,C=GB")
 //        assertThat(useSslForRpc).isEqualTo(false)
+//
+//        val rpcSettings: Configuration = configuration[nodeConfigSpec.rpcSettings]
+//
+//        val useSslForRpc2 = rpcSettings[nodeConfigSpec.rpcSettingsSpec.useSsl]
+//
+//        assertThat(useSslForRpc2).isEqualTo(false)
 //    }
-
-    private val nodeConfigSpec = object : Configuration.Specification() {
-
-        // TODO sollecitom turn this into a property as well
-        val rpcSettingsSpec = object : Configuration.Specification("rpcSettings") {
-
-            val useSsl by optional(default = false, description = "Whether to use SSL for RPC client-server communication")
-        }
-
-        val myLegalName by required<String>(description = "Legal name of the identity of the Corda node")
-
-        init {
-            addNestedSpec(rpcSettingsSpec)
-        }
-    }
-
-    @Test
-    fun loading_from_specific_file_works() {
-
-        val configFilePath = ConfigurationTest::class.java.getResource("node.conf").toPath()
-
-        val configuration = Configuration.from.hocon.file(configFilePath).build(nodeConfigSpec)
-
-        val properties = nodeConfigSpec.properties
-
-        val myLegalName = configuration[nodeConfigSpec.myLegalName]
-        val useSslForRpc: Boolean = configuration[nodeConfigSpec.rpcSettingsSpec.useSsl]
-
-        assertThat(myLegalName).isEqualTo("O=Bank A,L=London,C=GB")
-        assertThat(useSslForRpc).isEqualTo(false)
-    }
 
 //    @Test
 //    fun loading_from_resource_works() {
@@ -161,12 +153,8 @@ class ConfigurationTest {
         assertThat(spec.myLegalName.path).isEqualTo(listOf("myLegalName"))
         assertThat(spec.myLegalName.fullPath).isEqualTo(listOf("corda", "configuration", "myLegalName"))
 
-        val legalName: String = config["corda.configuration.myLegalName"]
+        val legalName = config[spec.myLegalName]
 
         assertThat(legalName).isEqualTo("test")
-
-        val legalName2 = config[spec.myLegalName]
-
-        assertThat(legalName2).isEqualTo("test")
     }
 }
