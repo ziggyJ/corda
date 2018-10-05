@@ -1,5 +1,6 @@
 package net.corda.node.services.config
 
+import net.corda.core.internal.inputStream
 import net.corda.core.internal.toPath
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
@@ -70,6 +71,28 @@ class ConfigurationTest {
     }
 
     @Test
+    fun loading_from_input_stream_works() {
+
+        val configuration = ConfigurationTest::class.java.getResource("node.conf").toPath().inputStream().use {
+
+            Configuration.from.hocon.inputStream(it).build(NodeConfigSpec)
+        }
+
+        assertThat(configuration[NodeConfigSpec.myLegalName]).isEqualTo("O=Bank A,L=London,C=GB")
+
+        val rpcSettings: Configuration = configuration[NodeConfigSpec.rpcSettings]
+
+        val useSslForRpc = rpcSettings[RpcSettingsSpec.useSsl]
+
+        assertThat(useSslForRpc).isEqualTo(false)
+
+        val addresses: Configuration = rpcSettings[RpcSettingsSpec.addresses]
+
+        assertThat(addresses[AddressesSpec.main]).isEqualTo("my-corda-node:10003")
+        assertThat(addresses[AddressesSpec.admin]).isEqualTo("my-corda-node:10004")
+    }
+
+    @Test
     fun loading_from_string_works() {
 
         val rawConfig = "\"myLegalName\" = \"O=Bank A,L=London,C=GB\"\n\"rpcSettings\" = {\n\"useSsl\" = false\n\"addresses\" = {\n\"main\" = \"my-corda-node:10003\"\n\"admin\" = \"my-corda-node:10004\"}}"
@@ -113,20 +136,27 @@ class ConfigurationTest {
         assertThat(addresses[AddressesSpec.admin]).isEqualTo("my-corda-node:10004")
     }
 
-//    @Test
-//    fun cascade_order_is_respected() {
-//
-//        System.setProperty("corda.configuration.myLegalName", "O=Bank B,L=London,C=GB")
-//
-//        val configuration = Configuration.from.systemProperties("corda.configuration").from.hocon.resource("node.conf").build(nodeConfigSpec)
-//
-//        val myLegalName: String = configuration["myLegalName"]
-//        val useSslForRpc: Boolean = configuration["rpcSettings.useSsl"]
-//
-//        assertThat(myLegalName).isEqualTo("O=Bank B,L=London,C=GB")
-//        assertThat(useSslForRpc).isEqualTo(false)
-//    }
-//
+    @Test
+    fun cascade_order_is_respected() {
+
+        System.setProperty("corda.configuration.myLegalName", "O=Bank B,L=London,C=GB")
+
+        val configuration = Configuration.from.hocon.resource("net/corda/node/services/config/node.conf").from.systemProperties("corda.configuration").build(NodeConfigSpec)
+
+        assertThat(configuration[NodeConfigSpec.myLegalName]).isEqualTo("O=Bank B,L=London,C=GB")
+
+        val rpcSettings: Configuration = configuration[NodeConfigSpec.rpcSettings]
+
+        val useSslForRpc = rpcSettings[RpcSettingsSpec.useSsl]
+
+        assertThat(useSslForRpc).isEqualTo(false)
+
+        val addresses: Configuration = rpcSettings[RpcSettingsSpec.addresses]
+
+        assertThat(addresses[AddressesSpec.main]).isEqualTo("my-corda-node:10003")
+        assertThat(addresses[AddressesSpec.admin]).isEqualTo("my-corda-node:10004")
+    }
+
 //    @Test
 //    fun mutable_configuration_contract() {
 //
@@ -152,26 +182,4 @@ class ConfigurationTest {
 //        val myLegalNameRetrieved4: String = configuration1["myLegalName"]
 //        assertThat(myLegalNameRetrieved4).isEqualTo(legalName1)
 //    }
-
-    // TODO sollecitom remove
-    @Test
-    fun blah4() {
-
-        System.setProperty("corda.configuration.myLegalName", "test")
-
-        val spec = object : Configuration.Specification.Mutable("corda.configuration") {
-
-            val myLegalName by required<String>(description = "Legal name of the Corda node")
-        }
-
-        val config = Configuration.from.systemProperties().build(spec)
-
-        assertThat(spec.properties).contains(spec.myLegalName)
-        assertThat(spec.myLegalName.path).isEqualTo(listOf("myLegalName"))
-        assertThat(spec.myLegalName.fullPath).isEqualTo(listOf("corda", "configuration", "myLegalName"))
-
-        val legalName = config[spec.myLegalName]
-
-        assertThat(legalName).isEqualTo("test")
-    }
 }
