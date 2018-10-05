@@ -35,45 +35,48 @@ interface Configuration {
 
     val specification: Configuration.Specification
 
-    // TODO sollecitom refactor
-    open class Specification(val prefix: String = "") {
+    // TODO sollecitom refactor - make it private if possible
+    sealed class Specification constructor(val prefix: String = "", internal val delegate: ConfigSpec, val properties: Set<Configuration.Property<*>>) {
 
-        internal val delegate = object : ConfigSpec(prefix) {}
+        // TODO sollecitom make this private if possible
+        open class Mutable private constructor(prefix: String = "", delegate: ConfigSpec, properties: MutableSet<Configuration.Property<*>>) : Specification(prefix, delegate, properties) {
 
-        private val propertiesSet = mutableSetOf<Configuration.Property<*>>()
+            constructor(prefix: String = "") : this(prefix, object : ConfigSpec(prefix) {}, mutableSetOf())
 
-        val properties: Set<Configuration.Property<*>> = propertiesSet
+            // TODO sollecitom refactor
+            private val addProperty: (Configuration.Property<*>) -> Unit = { property: Configuration.Property<*> -> properties.add(property) }
 
-        // TODO sollecitom remove distinction optional/required nullable/non-nullable -> either optional/nullable or required/non-nullable
-        // TODO sollecitom move these into a Builder type and use a receiver function to create the spec - avoids `object : Configuration.Specification("name") { ... }`
-        inline fun <reified T> required(name: String? = null, description: String = ""): DelegatedProperty<T> = required(name, description, null is T)
+            // TODO sollecitom remove distinction optional/required nullable/non-nullable -> either optional/nullable or required/non-nullable
+            // TODO sollecitom move these into a Builder type and use a receiver function to create the spec - avoids `object : Configuration.Specification("name") { ... }`
+            inline fun <reified T> required(name: String? = null, description: String = ""): DelegatedProperty<T> = required(name, description, null is T)
 
-        inline fun <reified T> optional(default: T, name: String? = null, description: String = ""): DelegatedProperty<T> = optional(default, name, description, null is T)
+            inline fun <reified T> optional(default: T, name: String? = null, description: String = ""): DelegatedProperty<T> = optional(default, name, description, null is T)
 
-        fun <TYPE> required(name: String?, description: String, nullable: Boolean): DelegatedProperty<TYPE> {
+            fun <TYPE> required(name: String?, description: String, nullable: Boolean): DelegatedProperty<TYPE> {
 
-            return object : RequiredDelegatedProperty<TYPE>({ propertiesSet.add(it) }, delegate, name, description, nullable) {}
-        }
+                return object : RequiredDelegatedProperty<TYPE>(addProperty, delegate, name, description, nullable) {}
+            }
 
-        fun <TYPE> optional(default: TYPE, name: String?, description: String, nullable: Boolean): DelegatedProperty<TYPE> {
+            fun <TYPE> optional(default: TYPE, name: String?, description: String, nullable: Boolean): DelegatedProperty<TYPE> {
 
-            return object : OptionalDelegatedProperty<TYPE>({ propertiesSet.add(it) }, delegate, default, name, description, nullable) {}
-        }
+                return object : OptionalDelegatedProperty<TYPE>(addProperty, delegate, default, name, description, nullable) {}
+            }
 
-        inline fun <reified T : Configuration?> required(specification: Configuration.Specification, name: String? = null, description: String = ""): DelegatedProperty<Configuration> = required(specification, name, description, null is T)
+            inline fun <reified T : Configuration?> required(specification: Configuration.Specification, name: String? = null, description: String = ""): DelegatedProperty<Configuration> = required(specification, name, description, null is T)
 
-        inline fun <reified T : Configuration?> optional(specification: Configuration.Specification, default: Configuration, name: String? = null, description: String = ""): DelegatedProperty<Configuration> = optional(specification, default, name, description, null is T)
+            inline fun <reified T : Configuration?> optional(specification: Configuration.Specification, default: Configuration, name: String? = null, description: String = ""): DelegatedProperty<Configuration> = optional(specification, default, name, description, null is T)
 
-        fun required(specification: Configuration.Specification, name: String?, description: String, nullable: Boolean): DelegatedProperty<Configuration> {
+            fun required(specification: Configuration.Specification, name: String?, description: String, nullable: Boolean): DelegatedProperty<Configuration> {
 
-            // TODO sollecitom maybe merge with the other `required` function, by passing a Configuration.Specification? as param
-            return object : RequiredNestedDelegatedProperty(specification, { propertiesSet.add(it) }, delegate, name, description, nullable) {}
-        }
+                // TODO sollecitom maybe merge with the other `required` function, by passing a Configuration.Specification? as param
+                return object : RequiredNestedDelegatedProperty(specification, addProperty, delegate, name, description, nullable) {}
+            }
 
-        fun optional(specification: Configuration.Specification, default: Configuration, name: String?, description: String, nullable: Boolean): DelegatedProperty<Configuration> {
+            fun optional(specification: Configuration.Specification, default: Configuration, name: String?, description: String, nullable: Boolean): DelegatedProperty<Configuration> {
 
-            // TODO sollecitom maybe merge with the other `optional` function, by passing a Configuration.Specification? as param
-            return object : OptionalNestedDelegatedProperty(specification, { propertiesSet.add(it) }, delegate, default, name, description, nullable) {}
+                // TODO sollecitom maybe merge with the other `optional` function, by passing a Configuration.Specification? as param
+                return object : OptionalNestedDelegatedProperty(specification, addProperty, delegate, default, name, description, nullable) {}
+            }
         }
     }
 
@@ -235,7 +238,7 @@ interface DelegatedProperty<T> {
 }
 
 open class RequiredDelegatedProperty<T>(
-        private val addProperty: (Configuration.Property<T>) -> Unit,
+        private val addProperty: (Configuration.Property<*>) -> Unit,
         private val spec: Spec,
         private val name: String? = null,
         private val description: String = "",
@@ -259,7 +262,7 @@ open class RequiredDelegatedProperty<T>(
 }
 
 open class OptionalDelegatedProperty<T>(
-        private val addProperty: (Configuration.Property<T>) -> Unit,
+        private val addProperty: (Configuration.Property<*>) -> Unit,
         private val spec: Spec,
         private val default: T,
         private val name: String? = null,

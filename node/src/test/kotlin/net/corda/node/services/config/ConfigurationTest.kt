@@ -8,9 +8,9 @@ import org.junit.Test
 // TODO sollecitom add more tests, including writing to various formats / media, separate the tests in terms of reading, writing and using.
 class ConfigurationTest {
 
-    private val nodeConfigSpec = object : Configuration.Specification() {
+    private val nodeConfigSpec = object : Configuration.Specification.Mutable() {
 
-        val rpcSettingsSpec = object : Configuration.Specification() {
+        val rpcSettingsSpec = object : Configuration.Specification.Mutable() {
 
             val useSsl by optional(default = false, description = "Whether to use SSL for RPC client-server communication")
         }
@@ -142,7 +142,7 @@ class ConfigurationTest {
 
         System.setProperty("corda.configuration.myLegalName", "test")
 
-        val spec = object : Configuration.Specification("corda.configuration") {
+        val spec = object : Configuration.Specification.Mutable("corda.configuration") {
 
             val myLegalName by required<String>(description = "Legal name of the Corda node")
         }
