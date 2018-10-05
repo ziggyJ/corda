@@ -35,16 +35,16 @@ interface Configuration {
 
     val specification: Configuration.Specification
 
-    // TODO sollecitom refactor - make it private if possible
-    sealed class Specification constructor(val prefix: String = "", internal val delegate: ConfigSpec, val properties: Set<Configuration.Property<*>>) {
+    // TODO sollecitom refactor - make it private if possible - make delegate internal again
+    sealed class Specification constructor(val prefix: String = "", val delegate: ConfigSpec, val properties: Set<Configuration.Property<*>>) {
 
         // TODO sollecitom make this private if possible
         open class Mutable private constructor(prefix: String = "", delegate: ConfigSpec, properties: MutableSet<Configuration.Property<*>>) : Specification(prefix, delegate, properties) {
 
             constructor(prefix: String = "") : this(prefix, object : ConfigSpec(prefix) {}, mutableSetOf())
 
-            // TODO sollecitom refactor
-            private val addProperty: (Configuration.Property<*>) -> Unit = { property: Configuration.Property<*> -> properties.add(property) }
+            // TODO sollecitom refactor private
+            val addProperty: (Configuration.Property<*>) -> Unit = { property: Configuration.Property<*> -> properties.add(property) }
 
             // TODO sollecitom remove distinction optional/required nullable/non-nullable -> either optional/nullable or required/non-nullable
             // TODO sollecitom move these into a Builder type and use a receiver function to create the spec - avoids `object : Configuration.Specification("name") { ... }`
@@ -52,12 +52,12 @@ interface Configuration {
 
             inline fun <reified T> optional(default: T, name: String? = null, description: String = ""): DelegatedProperty<T> = optional(default, name, description, null is T)
 
-            fun <TYPE> required(name: String?, description: String, nullable: Boolean): DelegatedProperty<TYPE> {
+            inline fun <reified TYPE> required(name: String?, description: String, nullable: Boolean): DelegatedProperty<TYPE> {
 
                 return object : RequiredDelegatedProperty<TYPE>(addProperty, delegate, name, description, nullable) {}
             }
 
-            fun <TYPE> optional(default: TYPE, name: String?, description: String, nullable: Boolean): DelegatedProperty<TYPE> {
+            inline fun <reified TYPE> optional(default: TYPE, name: String?, description: String, nullable: Boolean): DelegatedProperty<TYPE> {
 
                 return object : OptionalDelegatedProperty<TYPE>(addProperty, delegate, default, name, description, nullable) {}
             }

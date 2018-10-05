@@ -30,11 +30,13 @@ class ConfigurationTest {
     }
 
     @Test
-    fun nested_configs() {
+    fun loading_from_specific_file_works() {
 
         val configFilePath = ConfigurationTest::class.java.getResource("node.conf").toPath()
 
         val configuration = Configuration.from.hocon.file(configFilePath).build(NodeConfigSpec)
+
+        assertThat(configuration[NodeConfigSpec.myLegalName]).isEqualTo("O=Bank A,L=London,C=GB")
 
         val rpcSettings: Configuration = configuration[NodeConfigSpec.rpcSettings]
 
@@ -48,68 +50,69 @@ class ConfigurationTest {
         assertThat(addresses[AddressesSpec.admin]).isEqualTo("my-corda-node:10004")
     }
 
-//    @Test
-//    fun loading_from_specific_file_works() {
-//
-//        val configFilePath = ConfigurationTest::class.java.getResource("node.conf").toPath()
-//
-//        val configuration = Configuration.from.hocon.file(configFilePath).build(nodeConfigSpec)
-//
-//        val properties = nodeConfigSpec.properties
-//
-//        val myLegalName = configuration[nodeConfigSpec.myLegalName]
-//        val useSslForRpc: Boolean = configuration[nodeConfigSpec.RpcSettingsSpec.useSsl]
-//
-//        assertThat(myLegalName).isEqualTo("O=Bank A,L=London,C=GB")
-//        assertThat(useSslForRpc).isEqualTo(false)
-//
-//        val rpcSettings: Configuration = configuration[nodeConfigSpec.rpcSettings]
-//
-//        val useSslForRpc2 = rpcSettings[nodeConfigSpec.RpcSettingsSpec.useSsl]
-//
-//        assertThat(useSslForRpc2).isEqualTo(false)
-//    }
+    @Test
+    fun loading_from_resource_works() {
 
-//    @Test
-//    fun loading_from_resource_works() {
-//
-//        val configuration = Configuration.from.hocon.resource("node.conf").build(nodeConfigSpec)
-//
-//        val myLegalName: String = configuration["myLegalName"]
-//        val useSslForRpc: Boolean = configuration["rpcSettings.useSsl"]
-//
-//        assertThat(myLegalName).isEqualTo("O=Bank A,L=London,C=GB")
-//        assertThat(useSslForRpc).isEqualTo(false)
-//    }
-//
-//    @Test
-//    fun loading_from_string_works() {
-//
-//        val rawConfig = "\"myLegalName\" = \"O=Bank A,L=London,C=GB\"\n\"rpcSettings\" = {\n\"useSsl\" = false\n}"
-//        val configuration = Configuration.from.hocon.string(rawConfig).build(nodeConfigSpec)
-//
-//        val myLegalName: String = configuration["myLegalName"]
-//        val useSslForRpc: Boolean = configuration["rpcSettings.useSsl"]
-//
-//        assertThat(myLegalName).isEqualTo("O=Bank A,L=London,C=GB")
-//        assertThat(useSslForRpc).isEqualTo(false)
-//    }
-//
-//    @Test
-//    fun loading_from_system_properties_works() {
-//
-//        System.setProperty("corda.configuration.myLegalName", "O=Bank A,L=London,C=GB")
-//        System.setProperty("corda.configuration.rpcSettings.useSsl", "false")
-//
-//        val configuration = Configuration.from.systemProperties("corda.configuration").build(nodeConfigSpec)
-//
-//        val myLegalName: String = configuration["myLegalName"]
-//        val useSslForRpc: Boolean = configuration["rpcSettings.useSsl"]
-//
-//        assertThat(myLegalName).isEqualTo("O=Bank A,L=London,C=GB")
-//        assertThat(useSslForRpc).isEqualTo(false)
-//    }
-//
+        val configuration = Configuration.from.hocon.resource("net/corda/node/services/config/node.conf").build(NodeConfigSpec)
+
+        assertThat(configuration[NodeConfigSpec.myLegalName]).isEqualTo("O=Bank A,L=London,C=GB")
+
+        val rpcSettings: Configuration = configuration[NodeConfigSpec.rpcSettings]
+
+        val useSslForRpc = rpcSettings[RpcSettingsSpec.useSsl]
+
+        assertThat(useSslForRpc).isEqualTo(false)
+
+        val addresses: Configuration = rpcSettings[RpcSettingsSpec.addresses]
+
+        assertThat(addresses[AddressesSpec.main]).isEqualTo("my-corda-node:10003")
+        assertThat(addresses[AddressesSpec.admin]).isEqualTo("my-corda-node:10004")
+    }
+
+    @Test
+    fun loading_from_string_works() {
+
+        val rawConfig = "\"myLegalName\" = \"O=Bank A,L=London,C=GB\"\n\"rpcSettings\" = {\n\"useSsl\" = false\n\"addresses\" = {\n\"main\" = \"my-corda-node:10003\"\n\"admin\" = \"my-corda-node:10004\"}}"
+        val configuration = Configuration.from.hocon.string(rawConfig).build(NodeConfigSpec)
+
+        assertThat(configuration[NodeConfigSpec.myLegalName]).isEqualTo("O=Bank A,L=London,C=GB")
+
+        val rpcSettings: Configuration = configuration[NodeConfigSpec.rpcSettings]
+
+        val useSslForRpc = rpcSettings[RpcSettingsSpec.useSsl]
+
+        assertThat(useSslForRpc).isEqualTo(false)
+
+        val addresses: Configuration = rpcSettings[RpcSettingsSpec.addresses]
+
+        assertThat(addresses[AddressesSpec.main]).isEqualTo("my-corda-node:10003")
+        assertThat(addresses[AddressesSpec.admin]).isEqualTo("my-corda-node:10004")
+    }
+
+    @Test
+    fun loading_from_system_properties_works() {
+
+        System.setProperty("corda.configuration.myLegalName", "O=Bank A,L=London,C=GB")
+        System.setProperty("corda.configuration.rpcSettings.useSsl", "false")
+        System.setProperty("corda.configuration.rpcSettings.addresses.main", "my-corda-node:10003")
+        System.setProperty("corda.configuration.rpcSettings.addresses.admin", "my-corda-node:10004")
+
+        val configuration = Configuration.from.systemProperties("corda.configuration").build(NodeConfigSpec)
+
+        assertThat(configuration[NodeConfigSpec.myLegalName]).isEqualTo("O=Bank A,L=London,C=GB")
+
+        val rpcSettings: Configuration = configuration[NodeConfigSpec.rpcSettings]
+
+        val useSslForRpc = rpcSettings[RpcSettingsSpec.useSsl]
+
+        assertThat(useSslForRpc).isEqualTo(false)
+
+        val addresses: Configuration = rpcSettings[RpcSettingsSpec.addresses]
+
+        assertThat(addresses[AddressesSpec.main]).isEqualTo("my-corda-node:10003")
+        assertThat(addresses[AddressesSpec.admin]).isEqualTo("my-corda-node:10004")
+    }
+
 //    @Test
 //    fun cascade_order_is_respected() {
 //

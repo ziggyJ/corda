@@ -103,4 +103,8 @@ private object EnvProvider {
     }
 }
 
-private fun Map<String, String>.onlyWithPrefix(prefix: String) = filterKeys { key -> key.startsWith(prefix) }.mapKeys { (key, _) -> key.removePrefix(prefix) }
+private fun Map<String, String>.onlyWithPrefix(prefix: String): Map<String, String> {
+
+    val prefixValue = if  (prefix.isNotEmpty()) "$prefix." else prefix
+    return filterKeys { key -> key.startsWith(prefixValue) }.mapKeys { (key, _) -> key.removePrefix(prefixValue) }
+}
