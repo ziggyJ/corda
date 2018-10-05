@@ -8,30 +8,44 @@ import org.junit.Test
 // TODO sollecitom add more tests, including writing to various formats / media, separate the tests in terms of reading, writing and using.
 class ConfigurationTest {
 
-    private val nodeConfigSpec = object : Configuration.Specification.Mutable() {
+    private object AddressesSpec : Configuration.Specification.Mutable() {
 
-        val rpcSettingsSpec = object : Configuration.Specification.Mutable() {
+        val main by required<String>(description = "Externally visible address for RPC.")
+        val admin by optional<String?>(default = null, description = "Admin address for RPC, mandatory when `useSsl` is set to `true`.")
+    }
 
-            val useSsl by optional(default = false, description = "Whether to use SSL for RPC client-server communication")
-        }
+    private object RpcSettingsSpec : Configuration.Specification.Mutable() {
+
+        val addresses by required<Configuration>(AddressesSpec, description = "Address configuration for RPC.")
+
+        val useSsl by optional(default = false, description = "Whether to use SSL for RPC client-server communication")
+    }
+
+    private object NodeConfigSpec : Configuration.Specification.Mutable() {
 
         val myLegalName by required<String>(description = "Legal name of the identity of the Corda node")
 
-        val rpcSettings by optional<Configuration>(rpcSettingsSpec, Configuration.empty(rpcSettingsSpec), description = "RPC settings")
+        // TODO sollecitom rename the ones with config to start with `nested` or similar, otherwise is confusing.
+        val rpcSettings by optional<Configuration>(RpcSettingsSpec, Configuration.empty(RpcSettingsSpec), description = "RPC settings")
     }
 
     @Test
-    fun nested_config() {
+    fun nested_configs() {
 
         val configFilePath = ConfigurationTest::class.java.getResource("node.conf").toPath()
 
-        val configuration = Configuration.from.hocon.file(configFilePath).build(nodeConfigSpec)
+        val configuration = Configuration.from.hocon.file(configFilePath).build(NodeConfigSpec)
 
-        val rpcSettings: Configuration = configuration[nodeConfigSpec.rpcSettings]
+        val rpcSettings: Configuration = configuration[NodeConfigSpec.rpcSettings]
 
-        val useSslForRpc = rpcSettings[nodeConfigSpec.rpcSettingsSpec.useSsl]
+        val useSslForRpc = rpcSettings[RpcSettingsSpec.useSsl]
 
         assertThat(useSslForRpc).isEqualTo(false)
+
+        val addresses: Configuration = rpcSettings[RpcSettingsSpec.addresses]
+
+        assertThat(addresses[AddressesSpec.main]).isEqualTo("my-corda-node:10003")
+        assertThat(addresses[AddressesSpec.admin]).isEqualTo("my-corda-node:10004")
     }
 
 //    @Test
@@ -44,14 +58,14 @@ class ConfigurationTest {
 //        val properties = nodeConfigSpec.properties
 //
 //        val myLegalName = configuration[nodeConfigSpec.myLegalName]
-//        val useSslForRpc: Boolean = configuration[nodeConfigSpec.rpcSettingsSpec.useSsl]
+//        val useSslForRpc: Boolean = configuration[nodeConfigSpec.RpcSettingsSpec.useSsl]
 //
 //        assertThat(myLegalName).isEqualTo("O=Bank A,L=London,C=GB")
 //        assertThat(useSslForRpc).isEqualTo(false)
 //
 //        val rpcSettings: Configuration = configuration[nodeConfigSpec.rpcSettings]
 //
-//        val useSslForRpc2 = rpcSettings[nodeConfigSpec.rpcSettingsSpec.useSsl]
+//        val useSslForRpc2 = rpcSettings[nodeConfigSpec.RpcSettingsSpec.useSsl]
 //
 //        assertThat(useSslForRpc2).isEqualTo(false)
 //    }
