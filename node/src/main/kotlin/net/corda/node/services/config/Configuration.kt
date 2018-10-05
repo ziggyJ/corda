@@ -57,10 +57,24 @@ interface Configuration {
 
             return object : OptionalDelegatedProperty<TYPE>({ propertiesSet.add(it) }, delegate, default, name, description, nullable) {}
         }
+
+        // TODO sollecitom check and hopefully remove by turning the sub-specs into properties.
+        protected fun addNestedSpec(nested: Configuration.Specification) {
+
+            nested.properties.forEach {
+
+                delegate.addItem(it.item)
+                propertiesSet.add(it)
+            }
+        }
     }
 
     // TODO sollecitom refactor
     sealed class Property<TYPE>(val name: String, val description: String, val nullable: Boolean, val optional: Boolean, val default: TYPE?, internal val item: Item<TYPE>) {
+
+        val path: List<String> get() = item.path
+
+        val fullPath: List<String> get() = item.spec.prefix.toPath() + path
 
         internal class Required<TYPE>(name: String, description: String, nullable: Boolean, item: RequiredItem<TYPE>) : Property<TYPE>(name, description, nullable, false, null, item)
 
@@ -150,7 +164,7 @@ open class OptionalDelegatedProperty<T>(
 ) : DelegatedProperty<T> {
 
     @Suppress("LeakingThis")
-    private val type: JavaType = TypeFactory.defaultInstance().constructType(this::class.java).findSuperType(OptionalProperty::class.java).bindings.typeParameters[0]
+    private val type: JavaType = TypeFactory.defaultInstance().constructType(this::class.java).findSuperType(OptionalDelegatedProperty::class.java).bindings.typeParameters[0]
 
     override operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): ReadOnlyProperty<Any?, Configuration.Property<T>> {
 
