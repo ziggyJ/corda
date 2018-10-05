@@ -142,8 +142,8 @@ interface Configuration {
             override fun valueIn(configuration: Configuration): Configuration {
 
                 // TODO sollecitom check name vs path
-                return Konfiguration((configuration as Konfiguration).value.at(name), specification)
-//                return Konfiguration.Builder((configuration as Konfiguration).value.at(name)).build(specification)
+//                return Konfiguration((configuration as Konfiguration).value.at(name), specification)
+                return Konfiguration.Builder((configuration as Konfiguration).value.at(name)).build(specification)
             }
 
             // TODO sollecitom refactor!
@@ -154,8 +154,8 @@ interface Configuration {
                 // TODO sollecitom check name vs path
                 if (config.contains(name)) {
                     // TODO sollecitom check name vs path
-                    return Konfiguration(config.at(name), specification)
-//                    return Konfiguration.Builder(config.at(name)).build(specification)
+//                    return Konfiguration(config.at(name), specification)
+                    return Konfiguration.Builder(config.at(name)).build(specification)
                 }
                 return null
             }
@@ -172,8 +172,8 @@ interface Configuration {
             override fun valueIn(configuration: Configuration): Configuration {
 
                 // TODO sollecitom check name vs path
-                return Konfiguration((configuration as Konfiguration).value.at(name), specification)
-//                return Konfiguration.Builder((configuration as Konfiguration).value.at(name)).build(specification)
+//                return Konfiguration((configuration as Konfiguration).value.at(name), specification)
+                return Konfiguration.Builder((configuration as Konfiguration).value.at(name)).build(specification)
             }
 
             // TODO sollecitom refactor!
@@ -184,8 +184,8 @@ interface Configuration {
                 // TODO sollecitom check name vs path
                 if (config.contains(name)) {
                     // TODO sollecitom check name vs path
-                    return Konfiguration(config.at(name), specification)
-//                    return Konfiguration.Builder(config.at(name)).build(specification)
+//                    return Konfiguration(config.at(name), specification)
+                    return Konfiguration.Builder(config.at(name)).build(specification)
                 }
                 return null
             }

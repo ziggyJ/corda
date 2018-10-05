@@ -169,7 +169,7 @@ class ConfigurationTest {
         val legalName2 = "O=Bank B,L=London,C=GB"
         val configuration2 = configuration1.mutable()
 
-        val myLegalNameRetrieved2: String = configuration2[NodeConfigSpec.myLegalName]
+        val myLegalNameRetrieved2 = configuration2[NodeConfigSpec.myLegalName]
         assertThat(myLegalNameRetrieved2).isEqualTo(legalName1)
 
         configuration2[NodeConfigSpec.myLegalName] = legalName2

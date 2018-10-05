@@ -1,6 +1,7 @@
 package net.corda.node.services.config
 
 import com.uchuhimo.konf.Config
+import com.uchuhimo.konf.RepeatedItemException
 import com.uchuhimo.konf.source.DefaultLoaders
 import com.uchuhimo.konf.source.Loader
 import com.uchuhimo.konf.source.Source
@@ -18,14 +19,19 @@ internal open class Konfiguration(val value: Config, final override val specific
     override fun <VALUE> getOrNull(key: Configuration.Property<VALUE>): VALUE? = key.valueOrNullIn(this)
 
     // TODO sollecitom check why it doesn't work
-    override fun mutable(): Configuration.Mutable = Konfiguration.Mutable(Config.invoke { value.items.forEach { this.addItem(it) } }, specification)
+    override fun mutable(): Configuration.Mutable {
+
+        val newConfig = Config.invoke { value.sources.forEach(this::addSource) }
+        newConfig.addSpec(specification.delegate)
+        return Konfiguration.Mutable(newConfig, specification)
+    }
 
     private class Mutable(value: Config, specification: Configuration.Specification) : Konfiguration(value, specification), Configuration.Mutable {
 
         override fun <VALUE> set(key: Configuration.Property<VALUE>, value: VALUE) {
 
             // TODO sollecitom refactor
-            when{
+            when {
                 key is Configuration.Property.Required<VALUE> -> this.value[key.item] = value
                 key is Configuration.Property.Optional<VALUE> -> this.value[key.item] = value
                 // TODO sollecitom check, improve and refactor
@@ -54,7 +60,11 @@ internal open class Konfiguration(val value: Config, final override val specific
 
         override fun build(specification: Configuration.Specification): Configuration {
 
+            try {
             value.addSpec(specification.delegate)
+            } catch (e: RepeatedItemException) {
+                // Ignoring this.
+            }
             return Konfiguration(value, specification)
         }
 
@@ -124,6 +134,6 @@ private object EnvProvider {
 
 private fun Map<String, String>.onlyWithPrefix(prefix: String): Map<String, String> {
 
-    val prefixValue = if  (prefix.isNotEmpty()) "$prefix." else prefix
+    val prefixValue = if (prefix.isNotEmpty()) "$prefix." else prefix
     return filterKeys { key -> key.startsWith(prefixValue) }.mapKeys { (key, _) -> key.removePrefix(prefixValue) }
 }
