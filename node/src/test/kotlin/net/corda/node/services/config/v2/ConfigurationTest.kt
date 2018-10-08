@@ -97,7 +97,9 @@ class ConfigurationTest {
         val rpcSettings = Configuration.Property.ofType.nested("rpcSettings", rpcSettingsSchema)
         val schema = ConfigSchema.withProperties(myLegalName, rpcSettings)
 
-        val configuration = Configuration.withSchema(schema).with.value(myLegalName, myLegalNameValue).with.value(port, portValue).with.value(address, addressValue).build()
+        val rpcSettingsConf = Configuration.withSchema(rpcSettingsSchema).with.value(address, addressValue).with.value(port, portValue).build()
+
+        val configuration = Configuration.withSchema(schema).with.value(myLegalName, myLegalNameValue).with.value(rpcSettings, rpcSettingsConf).build()
 
         assertThat(configuration[myLegalName]).isEqualTo(myLegalNameValue)
 
