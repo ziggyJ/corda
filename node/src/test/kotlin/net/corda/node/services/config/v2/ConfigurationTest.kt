@@ -19,7 +19,7 @@ class ConfigurationTest {
         val myLegalName = Configuration.Property.ofType.string("myLegalName")
         val schema = ConfigSchema.withProperties(myLegalName)
 
-        val configuration = Configuration.withSchema(schema).from().hocon.file(configFilePath).from().systemProperties("corda.configuration").build()
+        val configuration = Configuration.withSchema(schema).from.hocon.file(configFilePath).from.systemProperties("corda.configuration").build()
 
         val myLegalNameValue = configuration[myLegalName]
 
@@ -41,7 +41,7 @@ class ConfigurationTest {
         val rpcSettings = Configuration.Property.ofType.nested("rpcSettings", rpcSettingsSchema)
         val schema = ConfigSchema.withProperties(myLegalName, rpcSettings)
 
-        val configuration = Configuration.withSchema(schema).with().value(myLegalName, myLegalNameValue).with().value(port, portValue).with().value(address, addressValue).build()
+        val configuration = Configuration.withSchema(schema).with.value(myLegalName, myLegalNameValue).with.value(port, portValue).with.value(address, addressValue).build()
 
         assertThat(configuration[myLegalName]).isEqualTo(myLegalNameValue)
     }

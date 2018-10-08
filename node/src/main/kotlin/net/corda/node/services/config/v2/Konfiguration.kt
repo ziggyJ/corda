@@ -39,9 +39,9 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
     class Builder(private val value: Config, private val schema: ConfigSchema) : Configuration.Builder {
 
         // TODO sollecitom make it a `val get() =` perhaps?
-        override fun from() = Konfiguration.Builder.SourceSelector(value.from, schema)
+        override val from get() = Konfiguration.Builder.SourceSelector(value.from, schema)
 
-        override fun with() = Konfiguration.Builder.ValueSelector(value.from, schema)
+        override val with get() = Konfiguration.Builder.ValueSelector(value.from, schema)
 
         override fun build(): Configuration {
 
@@ -54,11 +54,11 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
             private val config = Config.invoke().also { it.addSpec(spec) }
 
             // TODO sollecitom perhaps try to use JvmStatic here
-            override fun from(): Configuration.Builder.SourceSelector = Konfiguration.Builder.SourceSelector(config.from, schema)
+            override val from get(): Configuration.Builder.SourceSelector = Konfiguration.Builder.SourceSelector(config.from, schema)
 
-            override fun with(): Configuration.Builder.ValueSelector = Konfiguration.Builder.ValueSelector(config.from, schema)
+            override val with get(): Configuration.Builder.ValueSelector = Konfiguration.Builder.ValueSelector(config.from, schema)
 
-            override fun empty(): Configuration = Konfiguration(config, schema)
+            override val empty get(): Configuration = Konfiguration(config, schema)
 
             private fun ConfigSchema.toSpec(): Spec {
 

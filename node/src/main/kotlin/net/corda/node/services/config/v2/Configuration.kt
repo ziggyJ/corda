@@ -28,16 +28,16 @@ interface Configuration {
 
         interface Selector {
 
-            fun from(): Builder.SourceSelector
+            val from: Builder.SourceSelector
 
-            fun empty(): Configuration
+            val empty: Configuration
 
-            fun with(): Builder.ValueSelector
+            val with: Builder.ValueSelector
         }
 
-        fun from(): SourceSelector
+        val from: SourceSelector
 
-        fun with(): ValueSelector
+        val with: ValueSelector
 
         // TODO sollecitom maybe get rid of this
         fun build(): Configuration
