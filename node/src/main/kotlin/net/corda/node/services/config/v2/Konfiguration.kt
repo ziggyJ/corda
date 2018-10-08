@@ -4,7 +4,7 @@ import com.uchuhimo.konf.*
 import com.uchuhimo.konf.source.DefaultLoaders
 import com.uchuhimo.konf.source.Loader
 import com.uchuhimo.konf.source.Source
-import com.uchuhimo.konf.source.base.FlatSource
+import com.uchuhimo.konf.source.base.KVSource
 import java.io.InputStream
 import java.io.Reader
 import java.nio.file.Path
@@ -137,14 +137,7 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
 
     private object SystemPropertiesProvider {
 
-        // TODO sollecitom make it not an object
-        fun source(prefixFilter: String = ""): Source = object : FlatSource(System.getProperties().toMap().onlyWithPrefix(prefixFilter), type = "system-properties") {
-
-            override fun get(path: com.uchuhimo.konf.Path): Source {
-
-                return QuotesAwarePropertiesEntrySource(super.get(path))
-            }
-        }
+        fun source(prefixFilter: String = ""): Source = KVSource(System.getProperties().toMap().onlyWithPrefix(prefixFilter), type = "system-properties")
 
         @Suppress("UNCHECKED_CAST")
         private fun Properties.toMap(): Map<String, String> = this as Map<String, String>
@@ -152,25 +145,7 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
 
     private object EnvProvider {
 
-        fun source(prefixFilter: String = ""): Source {
-
-            return object : FlatSource(System.getenv().mapKeys { (key, _) -> key.toLowerCase().replace('_', '.') }.onlyWithPrefix(prefixFilter), type = "system-environment") {
-
-                override fun get(path: com.uchuhimo.konf.Path): Source {
-
-                    return QuotesAwarePropertiesEntrySource(super.get(path))
-                }
-            }
-        }
-    }
-
-    private class QuotesAwarePropertiesEntrySource(private val delegate: Source) : Source by delegate {
-
-        override fun isList() = !delegate.toText().isQuoted() && delegate.isList()
-
-        private fun String.isQuoted() = startsWith("\"") && endsWith("\"")
-
-        override fun toText() = delegate.toText().removePrefix("\"").removeSuffix("\"")
+        fun source(prefixFilter: String = ""): Source = KVSource(System.getenv().mapKeys { (key, _) -> key.toLowerCase().replace('_', '.') }.onlyWithPrefix(prefixFilter), type = "system-environment")
     }
 
     class Property {

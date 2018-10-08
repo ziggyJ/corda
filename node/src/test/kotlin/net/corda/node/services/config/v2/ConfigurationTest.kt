@@ -12,7 +12,7 @@ class ConfigurationTest {
     fun loading_from_specific_file_works() {
 
         val overriddenMyLegalNameValue = "O=Bank B,L=London,C=GB"
-        System.setProperty("corda.configuration.myLegalName", overriddenMyLegalNameValue.quoted())
+        System.setProperty("corda.configuration.myLegalName", overriddenMyLegalNameValue)
 
         val configFilePath = Paths.get("/home/michele/Projects/corda-open-source/node/src/test/resources/net/corda/node/services/config/node.conf")
 
@@ -38,12 +38,10 @@ class ConfigurationTest {
         val rpcSettingsSchema = ConfigSchema.withProperties(address, port)
 
         val myLegalName = Configuration.Property.ofType.string("myLegalName")
-//        val rpcSettings = Configuration.Property.ofType.nested("rpcSettings", rpcSettingsSchema)
-//        val schema = ConfigSchema.withProperties(myLegalName, rpcSettings)
-        val schema = ConfigSchema.withProperties(myLegalName)
+        val rpcSettings = Configuration.Property.ofType.nested("rpcSettings", rpcSettingsSchema)
+        val schema = ConfigSchema.withProperties(myLegalName, rpcSettings)
 
-        val configuration = Configuration.withSchema(schema).with().value(myLegalName, myLegalNameValue).build()
-//        val configuration = Configuration.withSchema(schema).with().value(myLegalName, myLegalNameValue).with().value(port, portValue).with().value(address, addressValue).build()
+        val configuration = Configuration.withSchema(schema).with().value(myLegalName, myLegalNameValue).with().value(port, portValue).with().value(address, addressValue).build()
 
         assertThat(configuration[myLegalName]).isEqualTo(myLegalNameValue)
     }
