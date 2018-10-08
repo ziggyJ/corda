@@ -45,6 +45,4 @@ class ConfigurationTest {
 
         assertThat(configuration[myLegalName]).isEqualTo(myLegalNameValue)
     }
-
-    private fun String.quoted(): String = "\"$this\""
 }
