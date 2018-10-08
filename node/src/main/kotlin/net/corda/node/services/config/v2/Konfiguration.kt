@@ -7,7 +7,6 @@ import com.uchuhimo.konf.source.Source
 import com.uchuhimo.konf.source.base.KVSource
 import java.io.InputStream
 import java.io.Reader
-import java.lang.ClassCastException
 import java.nio.file.Path
 import java.time.Duration
 import java.util.*
@@ -71,16 +70,11 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
 
             override fun <TYPE : Any> value(property: Configuration.Property<TYPE>, value: TYPE): Configuration.Builder {
 
-                // TODO sollecitom check
+                // TODO sollecitom use polymorphism
                 return if (value is Configuration) {
                     val konf = (value as Konfiguration).value
-                    val items = konf.items
-                    val parentItems = from.config.items
-
-                    from.config[property.key] = konf
+                    from.config[property.key] = konf.toMap()
                     Konfiguration.Builder(from.config, schema)
-//                    Konfiguration.Builder(from.config.plus(konf), schema)
-//                    Konfiguration.Builder(from.config.plus(konf.withPrefix(property.key)), schema)
                 } else {
                     Konfiguration.Builder(from.map.kv(mapOf(property.key to value)), schema)
                 }
@@ -220,14 +214,9 @@ private open class NestedKonfigProperty(override val key: String, override val d
 
     override fun valueIn(configuration: Configuration): Configuration {
 
-        return try {
-            val rawValue: Map<String, Any> = (configuration as Konfiguration).value[key]
-            val rawConfig = Config.invoke { addSpec(schema.toSpec()) }.from.map.kv(rawValue)
-            Konfiguration(rawConfig, schema)
-        } catch (e: ClassCastException) {
-            val rawConfig: Config = (configuration as Konfiguration).value[key]
-            Konfiguration(rawConfig, schema)
-        }
+        val rawValue: Map<String, Any> = (configuration as Konfiguration).value[key]
+        val rawConfig = Config.invoke { addSpec(schema.toSpec()) }.from.map.kv(rawValue)
+        return Konfiguration(rawConfig, schema)
     }
 
     override fun isSpecifiedBy(configuration: Configuration): Boolean {
