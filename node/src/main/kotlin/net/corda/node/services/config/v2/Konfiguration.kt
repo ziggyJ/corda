@@ -208,9 +208,9 @@ private open class NestedKonfigProperty(override val key: String, override val d
 
     override fun valueIn(configuration: Configuration): Configuration {
 
-        val konf = (configuration as Konfiguration).value.at(key)
-        // TODO sollecitom here
-        return Konfiguration(konf, schema)
+        val rawValue: Map<String, Any> = (configuration as Konfiguration).value[key]
+        val rawConfig = Config.invoke { addSpec(schema.toSpec()) }.from.map.kv(rawValue)
+        return Konfiguration(rawConfig, schema)
     }
 
     override fun isSpecifiedBy(configuration: Configuration): Boolean {

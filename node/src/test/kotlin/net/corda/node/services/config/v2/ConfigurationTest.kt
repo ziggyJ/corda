@@ -58,7 +58,34 @@ class ConfigurationTest {
     @Test
     fun nested_property_works() {
 
-        val myLegalNameValue = "O=Bank B,L=London,C=GB"
+        val myLegalNameValue = "O=Bank A,L=London,C=GB"
+        val portValue = 8080
+        val addressValue = "localhost"
+
+        val address = Configuration.Property.ofType.string("address")
+        val port = Configuration.Property.ofType.int("port")
+        val rpcSettingsSchema = ConfigSchema.withProperties(address, port)
+
+        val myLegalName = Configuration.Property.ofType.string("myLegalName")
+        val rpcSettings = Configuration.Property.ofType.nested("rpcSettings", rpcSettingsSchema)
+        val schema = ConfigSchema.withProperties(myLegalName, rpcSettings)
+
+        val configFilePath = Paths.get("/home/michele/Projects/corda-open-source/node/src/test/resources/net/corda/node/services/config/nested.conf")
+
+        val configuration = Configuration.withSchema(schema).from.hocon.file(configFilePath).build()
+
+        assertThat(configuration[myLegalName]).isEqualTo(myLegalNameValue)
+
+        val retrievedRpcSettings = configuration[rpcSettings]
+
+        assertThat(retrievedRpcSettings[address]).isEqualTo(addressValue)
+        assertThat(retrievedRpcSettings[port]).isEqualTo(portValue)
+    }
+
+    @Test
+    fun programmatic_nested_property_works() {
+
+        val myLegalNameValue = "O=Bank A,L=London,C=GB"
         val portValue = 8080
         val addressValue = "localhost"
 
@@ -75,6 +102,7 @@ class ConfigurationTest {
         assertThat(configuration[myLegalName]).isEqualTo(myLegalNameValue)
 
         val retrievedRpcSettings = configuration[rpcSettings]
+
         assertThat(retrievedRpcSettings[address]).isEqualTo(addressValue)
         assertThat(retrievedRpcSettings[port]).isEqualTo(portValue)
     }
