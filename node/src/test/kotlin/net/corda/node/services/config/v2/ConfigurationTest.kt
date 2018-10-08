@@ -73,5 +73,9 @@ class ConfigurationTest {
         val configuration = Configuration.withSchema(schema).with.value(myLegalName, myLegalNameValue).with.value(port, portValue).with.value(address, addressValue).build()
 
         assertThat(configuration[myLegalName]).isEqualTo(myLegalNameValue)
+
+        val retrievedRpcSettings = configuration[rpcSettings]
+        assertThat(retrievedRpcSettings[address]).isEqualTo(addressValue)
+        assertThat(retrievedRpcSettings[port]).isEqualTo(portValue)
     }
 }

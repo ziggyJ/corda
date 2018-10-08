@@ -18,7 +18,7 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
     override fun <TYPE> get(property: Configuration.Property<TYPE>): TYPE {
 
         // TODO sollecitom maybe add `prefix` here?
-        return value[property.key]
+        return property.valueIn(this)
     }
 
     override fun <TYPE> get(key: String): TYPE {
@@ -64,23 +64,6 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
             override val with get(): Configuration.Builder.ValueSelector = Konfiguration.Builder.ValueSelector(config.from, schema)
 
             override val empty get(): Configuration.Builder = Konfiguration.Builder(config, schema)
-
-            private fun ConfigSchema.toSpec(): Spec {
-
-                // TODO sollecitom make it not an object
-                return object : ConfigSpec(prefix) {}.also { properties.forEach { property -> property.addAsItem(it) } }
-            }
-
-            private fun <TYPE> Configuration.Property<TYPE>.addAsItem(spec: Spec): Item<TYPE> {
-
-                // TODO sollecitom check
-                //        val type: JavaType? = null
-                return if (this is Configuration.Property.Optional<TYPE>) {
-                    object : OptionalItem<TYPE>(spec, key, defaultValue, description, null, true) {}
-                } else {
-                    object : RequiredItem<TYPE>(spec, key, description, null, false) {}
-                }
-            }
         }
 
         class ValueSelector(private val from: DefaultLoaders, private val schema: ConfigSchema) : Configuration.Builder.ValueSelector {
@@ -179,16 +162,34 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
             override fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<ENUM> = TODO("sollecitom implement")
             override fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<List<ENUM>> = TODO("sollecitom implement")
 
-            override fun nested(key: String, schema: ConfigSchema, description: String): Configuration.Property<Configuration> = TODO("sollecitom implement")
+            override fun nested(key: String, schema: ConfigSchema, description: String): Configuration.Property<Configuration> = NestedKonfigProperty(key, description, schema)
             override fun nestedList(key: String, schema: ConfigSchema, description: String): Configuration.Property<List<Configuration>> = TODO("sollecitom implement")
         }
+    }
+}
+
+private fun ConfigSchema.toSpec(): Spec {
+
+    // TODO sollecitom make it not an object
+    return object : ConfigSpec(prefix) {}.also { properties.forEach { property -> property.addAsItem(it) } }
+}
+
+private fun <TYPE> Configuration.Property<TYPE>.addAsItem(spec: Spec): Item<TYPE> {
+
+    // TODO sollecitom check
+    //        val type: JavaType? = null
+    return if (this is Configuration.Property.Optional<TYPE>) {
+        object : OptionalItem<TYPE>(spec, key, defaultValue, description, null, true) {}
+    } else {
+        object : RequiredItem<TYPE>(spec, key, description, null, false) {}
     }
 }
 
 private open class KonfigProperty<TYPE>(override val key: String, override val description: String, override val type: Class<TYPE>) : Configuration.Property<TYPE> {
 
     override fun valueIn(configuration: Configuration): TYPE {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+
+        return (configuration as Konfiguration).value[key]
     }
 
     override fun isSpecifiedBy(configuration: Configuration): Boolean {
@@ -199,6 +200,42 @@ private open class KonfigProperty<TYPE>(override val key: String, override val d
     override fun optional(defaultValue: TYPE?): Configuration.Property<TYPE?> = KonfigProperty.Optional(key, description, type as Class<TYPE?>, defaultValue)
 
     private class Optional<TYPE>(key: String, description: String, type: Class<TYPE>, override val defaultValue: TYPE) : KonfigProperty<TYPE>(key, description, type), Configuration.Property.Optional<TYPE>
+}
+
+private open class NestedKonfigProperty(override val key: String, override val description: String, val schema: ConfigSchema) : Configuration.Property<Configuration> {
+
+    override val type = Configuration::class.java
+
+    override fun valueIn(configuration: Configuration): Configuration {
+
+        val konf = (configuration as Konfiguration).value.at(key)
+        // TODO sollecitom here
+        return Konfiguration(konf, schema)
+    }
+
+    override fun isSpecifiedBy(configuration: Configuration): Boolean {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    // TODO sollecitom check here
+    override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = NestedKonfigProperty.Optional(key, description, schema, defaultValue)
+
+    private class Optional(override val key: String, override val description: String, val schema: ConfigSchema, override val defaultValue: Configuration?) : Configuration.Property.Optional<Configuration?> {
+
+        override val type: Class<Configuration?> = Configuration::class.java as Class<Configuration?>
+
+        override fun valueIn(configuration: Configuration): Configuration {
+
+            return (configuration as Konfiguration).value[key]
+        }
+
+        override fun isSpecifiedBy(configuration: Configuration): Boolean {
+            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        }
+
+        // TODO sollecitom check here
+        override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = NestedKonfigProperty.Optional(key, description, schema, defaultValue)
+    }
 }
 
 private fun Map<String, String>.onlyWithPrefix(prefix: String): Map<String, String> {
