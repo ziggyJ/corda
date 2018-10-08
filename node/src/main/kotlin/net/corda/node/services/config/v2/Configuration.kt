@@ -31,12 +31,21 @@ interface Configuration {
             fun from(): Builder.SourceSelector
 
             fun empty(): Configuration
+
+            fun with(): Builder.ValueSelector
         }
 
         fun from(): SourceSelector
 
+        fun with(): ValueSelector
+
         // TODO sollecitom maybe get rid of this
         fun build(): Configuration
+
+        interface ValueSelector {
+
+            fun <TYPE : Any> value(property: Configuration.Property<TYPE>, value: TYPE): Configuration.Builder
+        }
 
         interface SourceSelector {
 
@@ -142,8 +151,8 @@ interface Configuration {
             fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String = ""): Configuration.Property<ENUM>
             fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String = ""): Configuration.Property<List<ENUM>>
 
-            fun <TYPE> nested(key: String, type: Class<TYPE>, schema: ConfigSchema, description: String = ""): Configuration.Property<TYPE>
-            fun <TYPE> nestedList(key: String, type: Class<TYPE>, schema: ConfigSchema, description: String = ""): Configuration.Property<List<TYPE>>
+            fun nested(key: String, schema: ConfigSchema, description: String = ""): Configuration.Property<Configuration>
+            fun nestedList(key: String, schema: ConfigSchema, description: String = ""): Configuration.Property<List<Configuration>>
         }
     }
 

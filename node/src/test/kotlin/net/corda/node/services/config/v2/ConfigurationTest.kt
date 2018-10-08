@@ -19,12 +19,33 @@ class ConfigurationTest {
         val myLegalName = Configuration.Property.ofType.string("myLegalName")
         val schema = ConfigSchema.withProperties(myLegalName)
 
-//        val configuration = Configuration.from().hocon.file(configFilePath).build(schema)
         val configuration = Configuration.withSchema(schema).from().hocon.file(configFilePath).from().systemProperties("corda.configuration").build()
 
         val myLegalNameValue = configuration[myLegalName]
 
         assertThat(myLegalNameValue).isEqualTo(overriddenMyLegalNameValue)
+    }
+
+    @Test
+    fun nested_property_works() {
+
+        val myLegalNameValue = "O=Bank B,L=London,C=GB"
+        val portValue = 8080
+        val addressValue = "localhost"
+
+        val address = Configuration.Property.ofType.string("address")
+        val port = Configuration.Property.ofType.int("port")
+        val rpcSettingsSchema = ConfigSchema.withProperties(address, port)
+
+        val myLegalName = Configuration.Property.ofType.string("myLegalName")
+//        val rpcSettings = Configuration.Property.ofType.nested("rpcSettings", rpcSettingsSchema)
+//        val schema = ConfigSchema.withProperties(myLegalName, rpcSettings)
+        val schema = ConfigSchema.withProperties(myLegalName)
+
+        val configuration = Configuration.withSchema(schema).with().value(myLegalName, myLegalNameValue).build()
+//        val configuration = Configuration.withSchema(schema).with().value(myLegalName, myLegalNameValue).with().value(port, portValue).with().value(address, addressValue).build()
+
+        assertThat(configuration[myLegalName]).isEqualTo(myLegalNameValue)
     }
 
     private fun String.quoted(): String = "\"$this\""

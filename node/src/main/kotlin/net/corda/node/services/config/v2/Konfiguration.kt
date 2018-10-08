@@ -41,6 +41,8 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
         // TODO sollecitom make it a `val get() =` perhaps?
         override fun from() = Konfiguration.Builder.SourceSelector(value.from, schema)
 
+        override fun with() = Konfiguration.Builder.ValueSelector(value.from, schema)
+
         override fun build(): Configuration {
 
             return Konfiguration(value, schema)
@@ -54,6 +56,8 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
             // TODO sollecitom perhaps try to use JvmStatic here
             override fun from(): Configuration.Builder.SourceSelector = Konfiguration.Builder.SourceSelector(config.from, schema)
 
+            override fun with(): Configuration.Builder.ValueSelector = Konfiguration.Builder.ValueSelector(config.from, schema)
+
             override fun empty(): Configuration = Konfiguration(config, schema)
 
             private fun ConfigSchema.toSpec(): Spec {
@@ -65,12 +69,21 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
             private fun <TYPE> Configuration.Property<TYPE>.addAsItem(spec: Spec): Item<TYPE> {
 
                 // TODO sollecitom check
-//        val type: JavaType? = null
+                //        val type: JavaType? = null
                 return if (this is Configuration.Property.Optional<TYPE>) {
                     object : OptionalItem<TYPE>(spec, key, defaultValue, description, null, true) {}
                 } else {
                     object : RequiredItem<TYPE>(spec, key, description, null, false) {}
                 }
+            }
+        }
+
+        class ValueSelector(private val from: DefaultLoaders, private val schema: ConfigSchema) : Configuration.Builder.ValueSelector {
+
+            override fun <TYPE : Any> value(property: Configuration.Property<TYPE>, value: TYPE): Configuration.Builder {
+
+                // TODO sollecitom check
+                return Konfiguration.Builder(from.map.kv(mapOf(property.key to value)), schema)
             }
         }
 
@@ -164,7 +177,7 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
 
         class Builder : Configuration.Property.Builder {
 
-            override fun int(key: String, description: String): Configuration.Property<Int> = TODO("sollecitom implement")
+            override fun int(key: String, description: String): Configuration.Property<Int> = KonfigProperty(key, description, Int::class.javaObjectType)
 
             override fun intList(key: String, description: String): Configuration.Property<List<Int>> = TODO("sollecitom implement")
 
@@ -186,8 +199,8 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
             override fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<ENUM> = TODO("sollecitom implement")
             override fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<List<ENUM>> = TODO("sollecitom implement")
 
-            override fun <TYPE> nested(key: String, type: Class<TYPE>, schema: ConfigSchema, description: String): Configuration.Property<TYPE> = TODO("sollecitom implement")
-            override fun <TYPE> nestedList(key: String, type: Class<TYPE>, schema: ConfigSchema, description: String): Configuration.Property<List<TYPE>> = TODO("sollecitom implement")
+            override fun nested(key: String, schema: ConfigSchema, description: String): Configuration.Property<Configuration> = TODO("sollecitom implement")
+            override fun nestedList(key: String, schema: ConfigSchema, description: String): Configuration.Property<List<Configuration>> = TODO("sollecitom implement")
         }
     }
 }

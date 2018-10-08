@@ -14,6 +14,7 @@ interface ConfigSchema : Validator<Configuration, ConfigValidationError> {
 
     companion object {
 
+        // TODO sollecitom maybe remove prefix from the publicly accessible constructors
         fun withProperties(prefix: String = "", strict: Boolean = false, properties: Iterable<Configuration.Property<*>>): ConfigSchema = ConfigPropertySchema(strict, prefix, properties)
 
         fun withProperties(vararg properties: Configuration.Property<*>, prefix: String = "", strict: Boolean = false): ConfigSchema = withProperties(prefix, strict, properties.toSet())
