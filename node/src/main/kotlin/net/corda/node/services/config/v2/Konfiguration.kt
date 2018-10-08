@@ -36,12 +36,17 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
         return value.getOrNull(key)
     }
 
-    class Builder(private val value: Config, private val schema: ConfigSchema) : Configuration.Builder {
+    class Builder(private var value: Config, private val schema: ConfigSchema) : Configuration.Builder {
 
         // TODO sollecitom make it a `val get() =` perhaps?
         override val from get() = Konfiguration.Builder.SourceSelector(value.from, schema)
 
         override val with get() = Konfiguration.Builder.ValueSelector(value.from, schema)
+
+        override operator fun <TYPE : Any> set(property: Configuration.Property<TYPE>, value: TYPE) {
+
+            this.value = this.value.from.map.kv(mapOf(property.key to value))
+        }
 
         override fun build(): Configuration {
 
@@ -58,7 +63,7 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
 
             override val with get(): Configuration.Builder.ValueSelector = Konfiguration.Builder.ValueSelector(config.from, schema)
 
-            override val empty get(): Configuration = Konfiguration(config, schema)
+            override val empty get(): Configuration.Builder = Konfiguration.Builder(config, schema)
 
             private fun ConfigSchema.toSpec(): Spec {
 

@@ -27,6 +27,35 @@ class ConfigurationTest {
     }
 
     @Test
+    fun programmatic_configuration_setup_works() {
+
+        val myLegalNameValue = "O=Bank B,L=London,C=GB"
+
+        val myLegalName = Configuration.Property.ofType.string("myLegalName")
+        val schema = ConfigSchema.withProperties(myLegalName)
+
+        val configuration = Configuration.withSchema(schema).with.value(myLegalName, myLegalNameValue).build()
+
+        assertThat(configuration[myLegalName]).isEqualTo(myLegalNameValue)
+    }
+
+    @Test
+    fun programmatic_configuration_builder_works() {
+
+        val myLegalNameValue = "O=Bank B,L=London,C=GB"
+
+        val myLegalName = Configuration.Property.ofType.string("myLegalName")
+        val schema = ConfigSchema.withProperties(myLegalName)
+
+        val configuration = Configuration.withSchema(schema).empty.apply {
+
+            this[myLegalName] = myLegalNameValue
+        }.build()
+
+        assertThat(configuration[myLegalName]).isEqualTo(myLegalNameValue)
+    }
+
+    @Test
     fun nested_property_works() {
 
         val myLegalNameValue = "O=Bank B,L=London,C=GB"

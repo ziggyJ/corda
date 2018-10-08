@@ -30,7 +30,7 @@ interface Configuration {
 
             val from: Builder.SourceSelector
 
-            val empty: Configuration
+            val empty: Configuration.Builder
 
             val with: Builder.ValueSelector
         }
@@ -38,6 +38,8 @@ interface Configuration {
         val from: SourceSelector
 
         val with: ValueSelector
+
+        operator fun <TYPE : Any> set(property: Property<TYPE>, value: TYPE)
 
         // TODO sollecitom maybe get rid of this
         fun build(): Configuration
