@@ -1,5 +1,7 @@
 package net.corda.node.services.config.v2
 
+import net.corda.node.services.config.ConfigValidationError
+import net.corda.node.services.config.Validator
 import java.io.InputStream
 import java.io.Reader
 import java.nio.file.Path
@@ -11,11 +13,11 @@ interface Configuration {
 
     operator fun <TYPE> get(property: Configuration.Property<TYPE>): TYPE
 
-    operator fun <TYPE> get(key: String): TYPE
-
     fun <TYPE> getOptional(property: Configuration.Property<TYPE>): TYPE?
 
-    fun <TYPE> getOptional(key: String): TYPE?
+    fun toMap(): Map<String, Any>
+
+    fun <TYPE> getRaw(key: String): TYPE
 
     companion object {
 

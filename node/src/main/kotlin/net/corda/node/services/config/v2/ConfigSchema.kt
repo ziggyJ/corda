@@ -1,5 +1,8 @@
 package net.corda.node.services.config.v2
 
+import net.corda.node.services.config.ConfigValidationError
+import net.corda.node.services.config.Validator
+
 // Additional benefits of going this way:
 // - Allows to validate a raw configuration object.
 // - Allows to display the structure of the configuration.

@@ -1,4 +1,4 @@
-package net.corda.node.services.config.v2
+package net.corda.node.services.config
 
 interface Validator<TARGET, ERROR> {
 

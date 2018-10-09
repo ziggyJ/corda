@@ -1,4 +1,4 @@
-package net.corda.node.services.config.v2
+package net.corda.node.services.config
 
 class ConfigValidationError(val keyName: String, val type: Class<*>? = null, val message: String, val containingPath: String? = null) {
 

@@ -23,7 +23,7 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
         return property.valueIn(this)
     }
 
-    override fun <TYPE> get(key: String): TYPE {
+    override fun <TYPE> getRaw(key: String): TYPE {
 
         return value[key]
     }
@@ -33,10 +33,7 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
         return value.getOrNull(property.key)
     }
 
-    override fun <TYPE> getOptional(key: String): TYPE? {
-
-        return value.getOrNull(key)
-    }
+    override fun toMap(): Map<String, Any> = value.toMap()
 
     class Builder(private var value: Config, private val schema: ConfigSchema) : Configuration.Builder {
 
@@ -72,10 +69,9 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
 
             override fun <TYPE : Any> value(property: Configuration.Property<TYPE>, value: TYPE): Configuration.Builder {
 
-                // TODO sollecitom use polymorphism
+                // TODO sollecitom use polymorphism if possible
                 return if (value is Configuration) {
-                    val konf = (value as Konfiguration).value
-                    from.config[property.key] = konf.toMap()
+                    from.config[property.key] = value.toMap()
                     Konfiguration.Builder(from.config, schema)
                 } else {
                     Konfiguration.Builder(from.map.kv(mapOf(property.key to value)), schema)
@@ -195,7 +191,7 @@ private open class KonfigProperty<TYPE>(override val key: String, override val d
 
     override fun valueIn(configuration: Configuration): TYPE {
 
-        return (configuration as Konfiguration).value[key]
+        return configuration.getRaw(key)
     }
 
     override fun isSpecifiedBy(configuration: Configuration): Boolean {
@@ -220,7 +216,7 @@ private open class KonfigProperty<TYPE>(override val key: String, override val d
 
             override fun valueIn(configuration: Configuration): List<TYPE> {
 
-                return (configuration as Konfiguration).value[key]
+                return configuration.getRaw(key)
             }
 
             override fun isSpecifiedBy(configuration: Configuration) = outer.isSpecifiedBy(configuration)
@@ -244,7 +240,7 @@ private open class NestedKonfigProperty(override val key: String, override val d
 
     override fun valueIn(configuration: Configuration): Configuration {
 
-        val rawValue: Map<String, Any> = (configuration as Konfiguration).value[key]
+        val rawValue: Map<String, Any> = configuration.getRaw(key)
         val rawConfig = Config.invoke { addSpec(schema.toSpec()) }.from.map.kv(rawValue)
         return Konfiguration(rawConfig, schema)
     }
@@ -268,7 +264,7 @@ private open class NestedKonfigProperty(override val key: String, override val d
 
             override fun valueIn(configuration: Configuration): List<Configuration> {
 
-                return (configuration as Konfiguration).value[key]
+                return configuration.getRaw(key)
             }
 
             override fun isSpecifiedBy(configuration: Configuration) = outer.isSpecifiedBy(configuration)
@@ -292,7 +288,7 @@ private open class NestedKonfigProperty(override val key: String, override val d
 
         override fun valueIn(configuration: Configuration): Configuration {
 
-            return (configuration as Konfiguration).value[key]
+            return configuration.getRaw(key)
         }
 
         override fun isSpecifiedBy(configuration: Configuration): Boolean {
