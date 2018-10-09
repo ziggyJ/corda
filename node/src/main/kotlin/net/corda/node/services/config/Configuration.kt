@@ -24,9 +24,7 @@ interface Configuration {
 
     companion object {
 
-        // TODO sollecitom perhaps try to use JvmStatic here
-        // TODO sollecitom try to avoid knowing about `Konfiguration` here, perhaps by using a factory
-        fun withSchema(schema: Schema): Builder.Selector = Konfiguration.Builder.Selector(schema)
+        fun withSchema(schema: Schema): Builder.Selector = ConfigurationFactory.builderSelectorFor(schema)
     }
 
     interface Schema : Validator<Configuration, ConfigValidationError> {
@@ -38,13 +36,11 @@ interface Configuration {
         companion object {
 
             // TODO sollecitom try perhaps to reproduce the delegated properties approach to instantiate a Configuration.Schema, so that a reference to the individual properties stays within the object. `object MySchema: Configuration.SchemaImpl() { val myLegalName by string().optional() }`
-            // TODO sollecitom try to avoid knowing about `Konfiguration` here, perhaps by using a factory
-            // TODO sollecitom perhaps try to use JvmStatic here
-            fun withProperties(strict: Boolean = false, properties: Iterable<Property<*>>): Schema = Konfiguration.Schema(strict, properties)
+            fun withProperties(strict: Boolean = false, properties: Iterable<Property<*>>): Schema = ConfigurationFactory.schemaOf(strict, properties)
 
             fun withProperties(vararg properties: Property<*>, strict: Boolean = false): Schema = withProperties(strict, properties.toSet())
 
-            fun withProperties(strict: Boolean = false, builder: Property.Builder.() -> Iterable<Property<*>>): Schema = withProperties(strict, builder.invoke(Konfiguration.Property.Builder()))
+            fun withProperties(strict: Boolean = false, builder: Property.Builder.() -> Iterable<Property<*>>): Schema = withProperties(strict, builder.invoke(ConfigurationFactory.propertyBuilder()))
         }
     }
 
@@ -169,11 +165,11 @@ interface Configuration {
 
         companion object {
 
-            // TODO sollecitom find a way of avoiding this double-linked dependency
-            val ofType: Builder get() = Konfiguration.Property.Builder()
+            val ofType: Builder get() = ConfigurationFactory.propertyBuilder()
         }
 
-        // TODO sollecitom maybe use a facade for type/typeList or to group all single vs list flavours
+        // TODO sollecitom introduce a function `list()` in property to produce a collection-like property
+        // TODO create wrapper properties OptionalProperty and ListProperty, delegating to required single-element ones
         interface Builder {
 
             fun int(key: String, description: String = ""): Property<Int>
