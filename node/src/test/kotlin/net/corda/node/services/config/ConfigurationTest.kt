@@ -142,6 +142,6 @@ class ConfigurationTest {
         val rpcSettingsCollectionValues = listOf(rpcSettingsConf2, rpcSettingsConf1)
         val configuration = Configuration.withSchema(schema).with.value(rpcSettingsCollection, rpcSettingsCollectionValues).build()
 
-        assertThat(configuration[rpcSettingsCollection]).hasSameElementsAs(rpcSettingsCollectionValues)
+        assertThat(configuration[rpcSettingsCollection]).isEqualTo(rpcSettingsCollectionValues)
     }
 }
