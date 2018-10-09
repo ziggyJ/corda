@@ -92,6 +92,10 @@ interface Configuration {
 
             val json: SourceSelector.FormatAware
 
+            val toml: SourceSelector.FormatAware
+
+            val properties: SourceSelector.FormatAware
+
             interface FormatAware {
 
                 fun file(path: Path): Configuration.Builder

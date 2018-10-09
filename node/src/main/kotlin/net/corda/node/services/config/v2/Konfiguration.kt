@@ -111,6 +111,12 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
             override val json: Configuration.Builder.SourceSelector.FormatAware
                 get() = Konfiguration.Builder.SourceSelector.FormatAware(from.json, schema)
 
+            override val toml: Configuration.Builder.SourceSelector.FormatAware
+                get() = Konfiguration.Builder.SourceSelector.FormatAware(from.toml, schema)
+
+            override val properties: Configuration.Builder.SourceSelector.FormatAware
+                get() = Konfiguration.Builder.SourceSelector.FormatAware(from.properties, schema)
+
             class FormatAware(private val loader: Loader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.FormatAware {
 
                 override fun file(path: Path) = Konfiguration.Builder(loader.file(path.toAbsolutePath().toFile()), schema)
