@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory
 import com.uchuhimo.konf.*
 import com.uchuhimo.konf.source.DefaultLoaders
 import com.uchuhimo.konf.source.Loader
+import com.uchuhimo.konf.source.MapLoader
 import com.uchuhimo.konf.source.Source
 import com.uchuhimo.konf.source.base.KVSource
 import net.corda.node.services.config.ConfigValidationError
@@ -36,6 +37,7 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
 
     override fun toMap(): Map<String, Any> = value.toMap()
 
+    // TODO sollecitom create an internal function that creates a new Builder but with current schema e.g., `withValue(value: Config)`
     class Builder(private var value: Config, private val schema: Configuration.Schema) : Configuration.Builder {
 
         // TODO sollecitom make it a `val get() =` perhaps?
@@ -86,19 +88,16 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
 
             override fun environment(prefixFilter: String) = Konfiguration.Builder(from.config.withSource(EnvProvider.source(prefixFilter)), schema)
 
-            // TODO sollecitom perhaps expose a different Selector interface for Map & Properties
             override fun properties(properties: Properties): Configuration.Builder {
 
                 @Suppress("UNCHECKED_CAST")
                 return hierarchicalMap(properties as Map<String, Any>)
             }
 
-            // TODO sollecitom look here at the difference between .kv() and .flat()
-            override fun map(map: Map<String, Any>) = Konfiguration.Builder(from.map.flat(map.mapValues { (_, value) -> value.toString() }), schema)
+            override val map: Configuration.Builder.SourceSelector.MapSpecific get() = Konfiguration.Builder.SourceSelector.MapSpecific(from.map, schema)
 
             override fun hierarchicalMap(map: Map<String, Any>) = Konfiguration.Builder(from.map.hierarchical(map), schema)
 
-            // TODO sollecitom add `properties` as a supported type
             override val hocon: Configuration.Builder.SourceSelector.FormatAware
                 get() = Konfiguration.Builder.SourceSelector.FormatAware(from.hocon, schema)
 
@@ -116,6 +115,15 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
 
             override val properties: Configuration.Builder.SourceSelector.FormatAware
                 get() = Konfiguration.Builder.SourceSelector.FormatAware(from.properties, schema)
+
+            class MapSpecific(private val loader: MapLoader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.MapSpecific {
+
+                override fun hierarchical(map: Map<String, Any>): Configuration.Builder = Konfiguration.Builder(loader.hierarchical(map), schema)
+
+                override fun flat(map: Map<String, String>): Configuration.Builder = Konfiguration.Builder(loader.flat(map), schema)
+
+                override fun keyValue(map: Map<String, Any>): Configuration.Builder = Konfiguration.Builder(loader.kv(map), schema)
+            }
 
             class FormatAware(private val loader: Loader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.FormatAware {
 

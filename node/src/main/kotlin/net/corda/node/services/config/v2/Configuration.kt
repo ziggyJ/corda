@@ -80,7 +80,7 @@ interface Configuration {
 
             fun properties(properties: Properties): Configuration.Builder
 
-            fun map(map: Map<String, Any>): Configuration.Builder
+            val map: SourceSelector.MapSpecific
 
             fun hierarchicalMap(map: Map<String, Any>): Configuration.Builder
 
@@ -95,6 +95,15 @@ interface Configuration {
             val toml: SourceSelector.FormatAware
 
             val properties: SourceSelector.FormatAware
+
+            interface MapSpecific {
+
+                fun hierarchical(map: Map<String, Any>): Configuration.Builder
+
+                fun flat(map: Map<String, String>): Configuration.Builder
+
+                fun keyValue(map: Map<String, Any>): Configuration.Builder
+            }
 
             interface FormatAware {
 
