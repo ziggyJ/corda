@@ -5,7 +5,6 @@ import org.junit.Test
 import java.nio.file.Paths
 
 // TODO sollecitom add more tests, including writing to various formats / media, separate the tests in terms of reading, writing and using.
-// TODO sollecitom perhaps create a way of producing a configuration object from key pairs.
 class ConfigurationTest {
 
     @Test
