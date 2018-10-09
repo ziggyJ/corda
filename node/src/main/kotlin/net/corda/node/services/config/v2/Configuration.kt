@@ -38,7 +38,6 @@ interface Configuration {
 
             // TODO sollecitom try to avoid knowing about `Konfiguration` here, perhaps by using a factory
             // TODO sollecitom perhaps try to use JvmStatic here
-            // TODO sollecitom maybe remove prefix from the publicly accessible constructors
             fun withProperties(strict: Boolean = false, properties: Iterable<Configuration.Property<*>>): Schema = Konfiguration.Schema(strict, properties)
 
             fun withProperties(vararg properties: Configuration.Property<*>, strict: Boolean = false): Schema = withProperties(strict, properties.toSet())
