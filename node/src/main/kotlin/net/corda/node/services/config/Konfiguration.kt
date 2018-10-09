@@ -16,7 +16,7 @@ import java.util.*
 import kotlin.reflect.KClass
 
 // TODO sollecitom perhaps move to a common module
-class Konfiguration(internal val value: Config, override val schema: Configuration.Schema) : Configuration {
+internal class Konfiguration(internal val value: Config, override val schema: Configuration.Schema) : Configuration {
 
     override fun <TYPE> get(property: Configuration.Property<TYPE>): TYPE {
 
@@ -36,25 +36,20 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
 
     override fun toMap(): Map<String, Any> = value.toMap()
 
-    // TODO sollecitom create an internal function that creates a new Builder but with current schema e.g., `withValue(value: Config)`
-    class Builder(private var value: Config, private val schema: Configuration.Schema) : Configuration.Builder {
+    internal class Builder(private var value: Config, private val schema: Configuration.Schema) : Configuration.Builder {
 
-        // TODO sollecitom make it a `val get() =` perhaps?
-        override val from get() = SourceSelector(value.from, schema)
+        override val from: Configuration.Builder.SourceSelector get() = Konfiguration.Builder.SourceSelector(value.from, schema)
 
-        override val with get() = ValueSelector(value.from, schema)
+        override val with: Configuration.Builder.ValueSelector get() = Konfiguration.Builder.ValueSelector(value.from, schema)
 
         override operator fun <TYPE : Any> set(property: Configuration.Property<TYPE>, value: TYPE) {
 
             this.value = this.value.from.map.kv(mapOf(property.key to value))
         }
 
-        override fun build(): Configuration {
+        override fun build(): Configuration = Konfiguration(value, schema)
 
-            return Konfiguration(value, schema)
-        }
-
-        class Selector(private val schema: Configuration.Schema) : Configuration.Builder.Selector {
+        internal class Selector(private val schema: Configuration.Schema) : Configuration.Builder.Selector {
 
             private val spec = schema.toSpec()
             private val config = Config.invoke().also { it.addSpec(spec) }
@@ -67,7 +62,7 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
             override val empty get(): Configuration.Builder = Builder(config, schema)
         }
 
-        class ValueSelector(private val from: DefaultLoaders, private val schema: Configuration.Schema) : Configuration.Builder.ValueSelector {
+        private class ValueSelector(private val from: DefaultLoaders, private val schema: Configuration.Schema) : Configuration.Builder.ValueSelector {
 
             override fun <TYPE : Any> value(property: Configuration.Property<TYPE>, value: TYPE): Configuration.Builder {
 
@@ -81,7 +76,7 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
             }
         }
 
-        class SourceSelector(private val from: DefaultLoaders, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector {
+        private class SourceSelector(private val from: DefaultLoaders, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector {
 
             override fun systemProperties(prefixFilter: String) = Builder(from.config.withSource(SystemPropertiesProvider.source(prefixFilter)), schema)
 
@@ -109,7 +104,7 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
 
             override val properties: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.properties, schema)
 
-            class MapSpecific(private val loader: MapLoader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.MapSpecific {
+            private class MapSpecific(private val loader: MapLoader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.MapSpecific {
 
                 override fun hierarchical(map: Map<String, Any>): Configuration.Builder = Builder(loader.hierarchical(map), schema)
 
@@ -118,7 +113,7 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
                 override fun keyValue(map: Map<String, Any>): Configuration.Builder = Builder(loader.kv(map), schema)
             }
 
-            class FormatAware(private val loader: Loader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.FormatAware {
+            private class FormatAware(private val loader: Loader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.FormatAware {
 
                 override fun file(path: Path) = Builder(loader.file(path.toAbsolutePath().toFile()), schema)
 
@@ -150,9 +145,9 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
         private fun environmentVariables(): Map<String, String> = System.getenv().mapKeys { (key, _) -> key.toLowerCase().replace('_', '.') }
     }
 
-    class Property {
+    internal class Property {
 
-        class Builder : Configuration.Property.Builder {
+        internal class Builder : Configuration.Property.Builder {
 
             override fun int(key: String, description: String): Configuration.Property<Int> = KonfigProperty(key, description, Int::class.javaObjectType)
             override fun intList(key: String, description: String): Configuration.Property<List<Int>> = KonfigProperty(key, description, Int::class.javaObjectType).multiple()
