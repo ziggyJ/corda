@@ -61,7 +61,6 @@ interface Configuration {
 
         operator fun <TYPE : Any> set(property: Property<TYPE>, value: TYPE)
 
-        // TODO sollecitom maybe get rid of this
         fun build(): Configuration
 
         interface ValueSelector {

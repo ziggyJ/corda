@@ -20,7 +20,6 @@ internal class Konfiguration(internal val value: Config, override val schema: Co
 
     override fun <TYPE> get(property: Configuration.Property<TYPE>): TYPE {
 
-        // TODO sollecitom maybe add `prefix` here?
         return property.valueIn(this)
     }
 
@@ -54,12 +53,11 @@ internal class Konfiguration(internal val value: Config, override val schema: Co
             private val spec = schema.toSpec()
             private val config = Config.invoke().also { it.addSpec(spec) }
 
-            // TODO sollecitom perhaps try to use JvmStatic here
-            override val from get(): Configuration.Builder.SourceSelector = SourceSelector(config.from, schema)
+            override val from get(): Configuration.Builder.SourceSelector = Konfiguration.Builder.SourceSelector(config.from, schema)
 
-            override val with get(): Configuration.Builder.ValueSelector = ValueSelector(config.from, schema)
+            override val with get(): Configuration.Builder.ValueSelector = Konfiguration.Builder.ValueSelector(config.from, schema)
 
-            override val empty get(): Configuration.Builder = Builder(config, schema)
+            override val empty get(): Configuration.Builder = Konfiguration.Builder(config, schema)
         }
 
         private class ValueSelector(private val from: DefaultLoaders, private val schema: Configuration.Schema) : Configuration.Builder.ValueSelector {
@@ -78,9 +76,9 @@ internal class Konfiguration(internal val value: Config, override val schema: Co
 
         private class SourceSelector(private val from: DefaultLoaders, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector {
 
-            override fun systemProperties(prefixFilter: String) = Builder(from.config.withSource(SystemPropertiesProvider.source(prefixFilter)), schema)
+            override fun systemProperties(prefixFilter: String) = Konfiguration.Builder(from.config.withSource(SystemPropertiesProvider.source(prefixFilter)), schema)
 
-            override fun environment(prefixFilter: String) = Builder(from.config.withSource(EnvProvider.source(prefixFilter)), schema)
+            override fun environment(prefixFilter: String) = Konfiguration.Builder(from.config.withSource(EnvProvider.source(prefixFilter)), schema)
 
             override fun properties(properties: Properties): Configuration.Builder {
 
@@ -88,44 +86,44 @@ internal class Konfiguration(internal val value: Config, override val schema: Co
                 return hierarchicalMap(properties as Map<String, Any>)
             }
 
-            override val map: Configuration.Builder.SourceSelector.MapSpecific get() = MapSpecific(from.map, schema)
+            override val map: Configuration.Builder.SourceSelector.MapSpecific get() = Konfiguration.Builder.SourceSelector.MapSpecific(from.map, schema)
 
-            override fun hierarchicalMap(map: Map<String, Any>) = Builder(from.map.hierarchical(map), schema)
+            override fun hierarchicalMap(map: Map<String, Any>) = Konfiguration.Builder(from.map.hierarchical(map), schema)
 
-            override val hocon: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.hocon, schema)
+            override val hocon: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.hocon, schema)
 
-            override val yaml: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.yaml, schema)
+            override val yaml: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.yaml, schema)
 
-            override val xml: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.xml, schema)
+            override val xml: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.xml, schema)
 
-            override val json: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.json, schema)
+            override val json: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.json, schema)
 
-            override val toml: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.toml, schema)
+            override val toml: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.toml, schema)
 
-            override val properties: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.properties, schema)
+            override val properties: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.properties, schema)
 
             private class MapSpecific(private val loader: MapLoader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.MapSpecific {
 
-                override fun hierarchical(map: Map<String, Any>): Configuration.Builder = Builder(loader.hierarchical(map), schema)
+                override fun hierarchical(map: Map<String, Any>): Configuration.Builder = Konfiguration.Builder(loader.hierarchical(map), schema)
 
-                override fun flat(map: Map<String, String>): Configuration.Builder = Builder(loader.flat(map), schema)
+                override fun flat(map: Map<String, String>): Configuration.Builder = Konfiguration.Builder(loader.flat(map), schema)
 
-                override fun keyValue(map: Map<String, Any>): Configuration.Builder = Builder(loader.kv(map), schema)
+                override fun keyValue(map: Map<String, Any>): Configuration.Builder = Konfiguration.Builder(loader.kv(map), schema)
             }
 
             private class FormatAware(private val loader: Loader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.FormatAware {
 
-                override fun file(path: Path) = Builder(loader.file(path.toAbsolutePath().toFile()), schema)
+                override fun file(path: Path) = Konfiguration.Builder(loader.file(path.toAbsolutePath().toFile()), schema)
 
-                override fun resource(resourceName: String) = Builder(loader.resource(resourceName), schema)
+                override fun resource(resourceName: String) = Konfiguration.Builder(loader.resource(resourceName), schema)
 
-                override fun reader(reader: Reader) = Builder(loader.reader(reader), schema)
+                override fun reader(reader: Reader) = Konfiguration.Builder(loader.reader(reader), schema)
 
-                override fun inputStream(stream: InputStream) = Builder(loader.inputStream(stream), schema)
+                override fun inputStream(stream: InputStream) = Konfiguration.Builder(loader.inputStream(stream), schema)
 
-                override fun string(rawFormat: String) = Builder(loader.string(rawFormat), schema)
+                override fun string(rawFormat: String) = Konfiguration.Builder(loader.string(rawFormat), schema)
 
-                override fun bytes(bytes: ByteArray) = Builder(loader.bytes(bytes), schema)
+                override fun bytes(bytes: ByteArray) = Konfiguration.Builder(loader.bytes(bytes), schema)
             }
         }
     }
@@ -149,26 +147,26 @@ internal class Konfiguration(internal val value: Config, override val schema: Co
 
         internal class Builder : Configuration.Property.Builder {
 
-            override fun int(key: String, description: String): Configuration.Property<Int> = KonfigProperty(key, description, Int::class.javaObjectType)
-            override fun intList(key: String, description: String): Configuration.Property<List<Int>> = KonfigProperty(key, description, Int::class.javaObjectType).multiple()
+            override fun int(key: String, description: String): Configuration.Property<Int> = TypedProperty(key, description, Int::class.javaObjectType)
+            override fun intList(key: String, description: String): Configuration.Property<List<Int>> = TypedProperty(key, description, Int::class.javaObjectType).multiple()
 
-            override fun boolean(key: String, description: String): Configuration.Property<Boolean> = KonfigProperty(key, description, Boolean::class.javaObjectType)
-            override fun booleanList(key: String, description: String): Configuration.Property<List<Boolean>> = KonfigProperty(key, description, Boolean::class.javaObjectType).multiple()
+            override fun boolean(key: String, description: String): Configuration.Property<Boolean> = TypedProperty(key, description, Boolean::class.javaObjectType)
+            override fun booleanList(key: String, description: String): Configuration.Property<List<Boolean>> = TypedProperty(key, description, Boolean::class.javaObjectType).multiple()
 
-            override fun double(key: String, description: String): Configuration.Property<Double> = KonfigProperty(key, description, Double::class.javaObjectType)
-            override fun doubleList(key: String, description: String): Configuration.Property<List<Double>> = KonfigProperty(key, description, Double::class.javaObjectType).multiple()
+            override fun double(key: String, description: String): Configuration.Property<Double> = TypedProperty(key, description, Double::class.javaObjectType)
+            override fun doubleList(key: String, description: String): Configuration.Property<List<Double>> = TypedProperty(key, description, Double::class.javaObjectType).multiple()
 
-            override fun string(key: String, description: String): Configuration.Property<String> = KonfigProperty(key, description, String::class.java)
-            override fun stringList(key: String, description: String): Configuration.Property<List<String>> = KonfigProperty(key, description, String::class.java).multiple()
+            override fun string(key: String, description: String): Configuration.Property<String> = TypedProperty(key, description, String::class.java)
+            override fun stringList(key: String, description: String): Configuration.Property<List<String>> = TypedProperty(key, description, String::class.java).multiple()
 
-            override fun duration(key: String, description: String): Configuration.Property<Duration> = KonfigProperty(key, description, Duration::class.java)
-            override fun durationList(key: String, description: String): Configuration.Property<List<Duration>> = KonfigProperty(key, description, Duration::class.java).multiple()
+            override fun duration(key: String, description: String): Configuration.Property<Duration> = TypedProperty(key, description, Duration::class.java)
+            override fun durationList(key: String, description: String): Configuration.Property<List<Duration>> = TypedProperty(key, description, Duration::class.java).multiple()
 
-            override fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<ENUM> = KonfigProperty(key, description, enumClass.java)
-            override fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<List<ENUM>> = KonfigProperty(key, description, enumClass.java).multiple()
+            override fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<ENUM> = TypedProperty(key, description, enumClass.java)
+            override fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<List<ENUM>> = TypedProperty(key, description, enumClass.java).multiple()
 
-            override fun nested(key: String, schema: Configuration.Schema, description: String): Configuration.Property<Configuration> = NestedKonfigProperty(key, description, schema)
-            override fun nestedList(key: String, schema: Configuration.Schema, description: String): Configuration.Property<List<Configuration>> = NestedKonfigProperty(key, description, schema).multiple()
+            override fun nested(key: String, schema: Configuration.Schema, description: String): Configuration.Property<Configuration> = NestedTypedProperty(key, description, schema)
+            override fun nestedList(key: String, schema: Configuration.Schema, description: String): Configuration.Property<List<Configuration>> = NestedTypedProperty(key, description, schema).multiple()
         }
     }
 
@@ -280,7 +278,7 @@ private fun <TYPE> Configuration.Property<TYPE>.addAsItem(spec: Spec): Item<TYPE
     }
 }
 
-private open class KonfigProperty<TYPE>(override val key: String, override val description: String, override val type: Class<TYPE>) : Configuration.Property<TYPE> {
+private open class TypedProperty<TYPE>(override val key: String, override val description: String, override val type: Class<TYPE>) : Configuration.Property<TYPE> {
 
     override fun valueIn(configuration: Configuration): TYPE {
 
@@ -291,12 +289,11 @@ private open class KonfigProperty<TYPE>(override val key: String, override val d
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    // TODO sollecitom check here
     override fun optional(defaultValue: TYPE?): Configuration.Property<TYPE?> = Optional(key, description, type as Class<TYPE?>, defaultValue)
 
     override fun multiple(): Configuration.Property.Multiple<TYPE> {
 
-        val outer = this@KonfigProperty
+        val outer = this@TypedProperty
         return object : Configuration.Property.Multiple<TYPE> {
 
             override val key = outer.key
@@ -324,10 +321,10 @@ private open class KonfigProperty<TYPE>(override val key: String, override val d
         }
     }
 
-    private class Optional<TYPE>(key: String, description: String, type: Class<TYPE>, override val defaultValue: TYPE) : KonfigProperty<TYPE>(key, description, type), Configuration.Property.Optional<TYPE>
+    private class Optional<TYPE>(key: String, description: String, type: Class<TYPE>, override val defaultValue: TYPE) : TypedProperty<TYPE>(key, description, type), Configuration.Property.Optional<TYPE>
 }
 
-private open class NestedKonfigProperty(override val key: String, override val description: String, val schema: Configuration.Schema) : Configuration.Property<Configuration> {
+private open class NestedTypedProperty(override val key: String, override val description: String, val schema: Configuration.Schema) : Configuration.Property<Configuration> {
 
     override val type = Configuration::class.java
 
@@ -344,7 +341,7 @@ private open class NestedKonfigProperty(override val key: String, override val d
 
     override fun multiple(): Configuration.Property.Multiple<Configuration> {
 
-        val outer = this@NestedKonfigProperty
+        val outer = this@NestedTypedProperty
         return object : Configuration.Property.Multiple<Configuration> {
 
             override val key = outer.key
@@ -372,7 +369,6 @@ private open class NestedKonfigProperty(override val key: String, override val d
         }
     }
 
-    // TODO sollecitom check here
     override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = Optional(key, description, schema, defaultValue)
 
     private class Optional(override val key: String, override val description: String, val schema: Configuration.Schema, override val defaultValue: Configuration?) : Configuration.Property.Optional<Configuration?> {
@@ -388,7 +384,6 @@ private open class NestedKonfigProperty(override val key: String, override val d
             TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
         }
 
-        // TODO sollecitom check here
         override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = Optional(key, description, schema, defaultValue)
 
         override fun multiple(): Configuration.Property.Multiple<Configuration?> {
