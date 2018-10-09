@@ -147,9 +147,6 @@ interface Configuration {
             fun duration(key: String, description: String = ""): Configuration.Property<Duration>
             fun durationList(key: String, description: String = ""): Configuration.Property<List<Duration>>
 
-            fun value(key: String, description: String = ""): Configuration.Property<Configuration>
-            fun valueList(key: String, description: String = ""): Configuration.Property<List<Configuration>>
-
             fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String = ""): Configuration.Property<ENUM>
             fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String = ""): Configuration.Property<List<ENUM>>
 

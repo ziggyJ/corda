@@ -150,22 +150,19 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
 
             override fun intList(key: String, description: String): Configuration.Property<List<Int>> = TODO("sollecitom implement")
 
-            override fun boolean(key: String, description: String): Configuration.Property<Boolean> = TODO("sollecitom implement")
+            override fun boolean(key: String, description: String): Configuration.Property<Boolean> = KonfigProperty(key, description, Boolean::class.javaObjectType)
             override fun booleanList(key: String, description: String): Configuration.Property<List<Boolean>> = TODO("sollecitom implement")
 
-            override fun double(key: String, description: String): Configuration.Property<Double> = TODO("sollecitom implement")
+            override fun double(key: String, description: String): Configuration.Property<Double> = KonfigProperty(key, description, Double::class.javaObjectType)
             override fun doubleList(key: String, description: String): Configuration.Property<List<Double>> = TODO("sollecitom implement")
 
             override fun string(key: String, description: String): Configuration.Property<String> = KonfigProperty(key, description, String::class.java)
             override fun stringList(key: String, description: String): Configuration.Property<List<String>> = TODO("sollecitom implement")
 
-            override fun duration(key: String, description: String): Configuration.Property<Duration> = TODO("sollecitom implement")
+            override fun duration(key: String, description: String): Configuration.Property<Duration> = KonfigProperty(key, description, Duration::class.java)
             override fun durationList(key: String, description: String): Configuration.Property<List<Duration>> = TODO("sollecitom implement")
 
-            override fun value(key: String, description: String): Configuration.Property<Configuration> = TODO("sollecitom implement")
-            override fun valueList(key: String, description: String): Configuration.Property<List<Configuration>> = TODO("sollecitom implement")
-
-            override fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<ENUM> = TODO("sollecitom implement")
+            override fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<ENUM> = KonfigProperty(key, description, enumClass.java)
             override fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<List<ENUM>> = TODO("sollecitom implement")
 
             override fun nested(key: String, schema: ConfigSchema, description: String): Configuration.Property<Configuration> = NestedKonfigProperty(key, description, schema)
