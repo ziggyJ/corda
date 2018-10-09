@@ -64,12 +64,17 @@ internal class Konfiguration(internal val value: Config, override val schema: Co
 
             override fun <TYPE : Any> value(property: Configuration.Property<TYPE>, value: TYPE): Configuration.Builder {
 
-                // TODO sollecitom use polymorphism if possible
-                return if (value is Configuration) {
-                    from.config[property.key] = value.toMap()
-                    Builder(from.config, schema)
+                // TODO sollecitom use polymorphism here, if possible
+                return if (property is CollectionProperty<*, *> && property.elementType == Configuration::class.java) {
+                    @Suppress("UNCHECKED_CAST")
+                    Builder(from.map.kv(mapOf(property.key to (value as Collection<Configuration>).map(Configuration::toMap))), schema)
                 } else {
-                    Builder(from.map.kv(mapOf(property.key to value)), schema)
+                    if (value is Configuration) {
+                        from.config[property.key] = value.toMap()
+                        Builder(from.config, schema)
+                    } else {
+                        Builder(from.map.kv(mapOf(property.key to value)), schema)
+                    }
                 }
             }
         }
@@ -248,6 +253,27 @@ internal class Konfiguration(internal val value: Config, override val schema: Co
             return properties.hashCode()
         }
     }
+
+    // TODO sollecitom add equals and hashcode to schema, etc.
+    override fun equals(other: Any?): Boolean {
+
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Konfiguration
+
+        if (value != other.value) return false
+        if (schema != other.schema) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+
+        var result = value.hashCode()
+        result = 31 * result + schema.hashCode()
+        return result
+    }
 }
 
 private fun Configuration.Schema.toSpec(): Spec {
@@ -327,11 +353,22 @@ private open class TypedProperty<TYPE>(override val key: String, override val de
     private class Optional<TYPE>(key: String, description: String, type: Class<TYPE>, override val defaultValue: TYPE) : TypedProperty<TYPE>(key, description, type), Configuration.Property.Optional<TYPE>
 }
 
-private class CollectionProperty<COLLECTION : Collection<ELEMENT>, ELEMENT>(override val key: String, override val description: String, override val type: Class<COLLECTION>, private val elementType: Class<ELEMENT>) : Configuration.Property.Required<COLLECTION> {
+private class CollectionProperty<COLLECTION : Collection<ELEMENT>, ELEMENT>(override val key: String, override val description: String, override val type: Class<COLLECTION>, val elementType: Class<ELEMENT>, val elementSchema: Configuration.Schema? = null) : Configuration.Property.Required<COLLECTION> {
 
     override fun valueIn(configuration: Configuration): COLLECTION {
 
-        return configuration.getRaw(key)
+        return if (elementType == Configuration::class.java) {
+            val rawValues: Collection<Map<String, Any>> = configuration.getRaw(key)
+            @Suppress("UNCHECKED_CAST")
+            rawValues.map { rawValue -> rawValue.toConfiguration(elementSchema!!) } as COLLECTION
+        } else {
+            configuration.getRaw(key)
+        }
+    }
+
+    private fun Map<String, Any>.toConfiguration(schema: Configuration.Schema): Configuration {
+
+        return Configuration.withSchema(schema).from.map.keyValue(this).build()
     }
 
     override fun isSpecifiedBy(configuration: Configuration): Boolean {
@@ -366,7 +403,7 @@ private open class NestedTypedProperty(override val key: String, override val de
     override fun list(): Configuration.Property.Required<List<Configuration>> {
 
         @Suppress("UNCHECKED_CAST")
-        return CollectionProperty(key, description, List::class.java as Class<List<Configuration>>, Configuration::class.java)
+        return CollectionProperty(key, description, List::class.java as Class<List<Configuration>>, Configuration::class.java, schema)
     }
 //
 //    override fun multiple(): Configuration.Property.Multiple<Configuration> {
