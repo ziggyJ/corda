@@ -170,9 +170,6 @@ class Konfiguration(internal val value: Config, private val schema: Configuratio
 
     internal class Schema(private val strict: Boolean, unorderedProperties: Iterable<Configuration.Property<*>>) : Configuration.Schema {
 
-        // TODO sollecitom try and remove
-        override val prefix: String = ""
-
         override val properties = unorderedProperties.sortedBy(Configuration.Property<*>::key).toSet()
 
         init {
@@ -262,7 +259,8 @@ class Konfiguration(internal val value: Config, private val schema: Configuratio
 private fun Configuration.Schema.toSpec(): Spec {
 
     // TODO sollecitom make it not an object
-    return object : ConfigSpec(prefix) {}.also { properties.forEach { property -> property.addAsItem(it) } }
+    return object : ConfigSpec() {}.also { properties.forEach { property -> property.addAsItem(it) } }
+//    return object : ConfigSpec(prefix) {}.also { properties.forEach { property -> property.addAsItem(it) } }
 }
 
 private fun <TYPE> Configuration.Property<TYPE>.addAsItem(spec: Spec): Item<TYPE> {

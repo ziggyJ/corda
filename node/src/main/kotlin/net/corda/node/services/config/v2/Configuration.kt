@@ -28,15 +28,13 @@ interface Configuration {
 
     interface Schema : Validator<Configuration, ConfigValidationError> {
 
-        val prefix: String
-
         fun description(): String
 
         val properties: Set<Configuration.Property<*>>
 
         companion object {
 
-            // TODO sollecitom try perhaps to reproduce the delegated properties approach to instantiate a Configuration.Schema, so that a reference to the individual properties stays within the object. `object MySchema: Configuration.SchemaImpl(prefix, description) { val myLegalName by string().optional() }`
+            // TODO sollecitom try perhaps to reproduce the delegated properties approach to instantiate a Configuration.Schema, so that a reference to the individual properties stays within the object. `object MySchema: Configuration.SchemaImpl() { val myLegalName by string().optional() }`
             // TODO sollecitom try to avoid knowing about `Konfiguration` here, perhaps by using a factory
             // TODO sollecitom perhaps try to use JvmStatic here
             fun withProperties(strict: Boolean = false, properties: Iterable<Configuration.Property<*>>): Schema = Konfiguration.Schema(strict, properties)
