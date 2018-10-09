@@ -98,23 +98,17 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
 
             override fun hierarchicalMap(map: Map<String, Any>) = Konfiguration.Builder(from.map.hierarchical(map), schema)
 
-            override val hocon: Configuration.Builder.SourceSelector.FormatAware
-                get() = Konfiguration.Builder.SourceSelector.FormatAware(from.hocon, schema)
+            override val hocon: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.hocon, schema)
 
-            override val yaml: Configuration.Builder.SourceSelector.FormatAware
-                get() = Konfiguration.Builder.SourceSelector.FormatAware(from.yaml, schema)
+            override val yaml: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.yaml, schema)
 
-            override val xml: Configuration.Builder.SourceSelector.FormatAware
-                get() = Konfiguration.Builder.SourceSelector.FormatAware(from.xml, schema)
+            override val xml: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.xml, schema)
 
-            override val json: Configuration.Builder.SourceSelector.FormatAware
-                get() = Konfiguration.Builder.SourceSelector.FormatAware(from.json, schema)
+            override val json: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.json, schema)
 
-            override val toml: Configuration.Builder.SourceSelector.FormatAware
-                get() = Konfiguration.Builder.SourceSelector.FormatAware(from.toml, schema)
+            override val toml: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.toml, schema)
 
-            override val properties: Configuration.Builder.SourceSelector.FormatAware
-                get() = Konfiguration.Builder.SourceSelector.FormatAware(from.properties, schema)
+            override val properties: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.properties, schema)
 
             class MapSpecific(private val loader: MapLoader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.MapSpecific {
 
@@ -144,15 +138,17 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
 
     private object SystemPropertiesProvider {
 
-        fun source(prefixFilter: String = ""): Source = KVSource(System.getProperties().toMap().onlyWithPrefix(prefixFilter), type = "system-properties")
+        fun source(prefixFilter: String = ""): Source = KVSource(systemProperties().onlyWithPrefix(prefixFilter), type = "system-properties")
 
         @Suppress("UNCHECKED_CAST")
-        private fun Properties.toMap(): Map<String, String> = this as Map<String, String>
+        private fun systemProperties(): Map<String, String> = System.getProperties() as Map<String, String>
     }
 
     private object EnvProvider {
 
-        fun source(prefixFilter: String = ""): Source = KVSource(System.getenv().mapKeys { (key, _) -> key.toLowerCase().replace('_', '.') }.onlyWithPrefix(prefixFilter), type = "system-environment")
+        fun source(prefixFilter: String = ""): Source = KVSource(environmentVariables().onlyWithPrefix(prefixFilter), type = "system-environment")
+
+        private fun environmentVariables(): Map<String, String> = System.getenv().mapKeys { (key, _) -> key.toLowerCase().replace('_', '.') }
     }
 
     class Property {
