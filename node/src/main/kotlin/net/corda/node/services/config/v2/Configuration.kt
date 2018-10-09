@@ -11,6 +11,7 @@ import kotlin.reflect.KClass
 
 interface Configuration {
 
+    @Throws(Configuration.Exception.Missing::class, Configuration.Exception.WrongType::class, Configuration.Exception.BadValue::class)
     operator fun <TYPE> get(property: Configuration.Property<TYPE>): TYPE
 
     fun <TYPE> getOptional(property: Configuration.Property<TYPE>): TYPE?
