@@ -16,7 +16,7 @@ import java.util.*
 import kotlin.reflect.KClass
 
 // TODO sollecitom add a constructor which doesn't add the schema to the Config
-class Konfiguration(internal val value: Config, private val schema: Configuration.Schema) : Configuration {
+class Konfiguration(internal val value: Config, override val schema: Configuration.Schema) : Configuration {
 
     override fun <TYPE> get(property: Configuration.Property<TYPE>): TYPE {
 

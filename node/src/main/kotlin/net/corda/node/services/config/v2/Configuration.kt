@@ -19,6 +19,8 @@ interface Configuration {
 
     fun <TYPE> getRaw(key: String): TYPE
 
+    val schema: Configuration.Schema
+
     companion object {
 
         // TODO sollecitom perhaps try to use JvmStatic here
