@@ -1,4 +1,4 @@
-package net.corda.node.services.config.v2
+package net.corda.node.services.config
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test

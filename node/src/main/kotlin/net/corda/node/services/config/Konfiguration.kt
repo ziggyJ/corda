@@ -1,4 +1,4 @@
-package net.corda.node.services.config.v2
+package net.corda.node.services.config
 
 import com.fasterxml.jackson.databind.JavaType
 import com.fasterxml.jackson.databind.type.TypeFactory
@@ -8,7 +8,6 @@ import com.uchuhimo.konf.source.Loader
 import com.uchuhimo.konf.source.MapLoader
 import com.uchuhimo.konf.source.Source
 import com.uchuhimo.konf.source.base.KVSource
-import net.corda.node.services.config.ConfigValidationError
 import java.io.InputStream
 import java.io.Reader
 import java.nio.file.Path
@@ -16,7 +15,7 @@ import java.time.Duration
 import java.util.*
 import kotlin.reflect.KClass
 
-// TODO sollecitom add a constructor which doesn't add the schema to the Config
+// TODO sollecitom perhaps move to a common module
 class Konfiguration(internal val value: Config, override val schema: Configuration.Schema) : Configuration {
 
     override fun <TYPE> get(property: Configuration.Property<TYPE>): TYPE {
@@ -41,9 +40,9 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
     class Builder(private var value: Config, private val schema: Configuration.Schema) : Configuration.Builder {
 
         // TODO sollecitom make it a `val get() =` perhaps?
-        override val from get() = Konfiguration.Builder.SourceSelector(value.from, schema)
+        override val from get() = SourceSelector(value.from, schema)
 
-        override val with get() = Konfiguration.Builder.ValueSelector(value.from, schema)
+        override val with get() = ValueSelector(value.from, schema)
 
         override operator fun <TYPE : Any> set(property: Configuration.Property<TYPE>, value: TYPE) {
 
@@ -61,11 +60,11 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
             private val config = Config.invoke().also { it.addSpec(spec) }
 
             // TODO sollecitom perhaps try to use JvmStatic here
-            override val from get(): Configuration.Builder.SourceSelector = Konfiguration.Builder.SourceSelector(config.from, schema)
+            override val from get(): Configuration.Builder.SourceSelector = SourceSelector(config.from, schema)
 
-            override val with get(): Configuration.Builder.ValueSelector = Konfiguration.Builder.ValueSelector(config.from, schema)
+            override val with get(): Configuration.Builder.ValueSelector = ValueSelector(config.from, schema)
 
-            override val empty get(): Configuration.Builder = Konfiguration.Builder(config, schema)
+            override val empty get(): Configuration.Builder = Builder(config, schema)
         }
 
         class ValueSelector(private val from: DefaultLoaders, private val schema: Configuration.Schema) : Configuration.Builder.ValueSelector {
@@ -75,18 +74,18 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
                 // TODO sollecitom use polymorphism if possible
                 return if (value is Configuration) {
                     from.config[property.key] = value.toMap()
-                    Konfiguration.Builder(from.config, schema)
+                    Builder(from.config, schema)
                 } else {
-                    Konfiguration.Builder(from.map.kv(mapOf(property.key to value)), schema)
+                    Builder(from.map.kv(mapOf(property.key to value)), schema)
                 }
             }
         }
 
         class SourceSelector(private val from: DefaultLoaders, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector {
 
-            override fun systemProperties(prefixFilter: String) = Konfiguration.Builder(from.config.withSource(SystemPropertiesProvider.source(prefixFilter)), schema)
+            override fun systemProperties(prefixFilter: String) = Builder(from.config.withSource(SystemPropertiesProvider.source(prefixFilter)), schema)
 
-            override fun environment(prefixFilter: String) = Konfiguration.Builder(from.config.withSource(EnvProvider.source(prefixFilter)), schema)
+            override fun environment(prefixFilter: String) = Builder(from.config.withSource(EnvProvider.source(prefixFilter)), schema)
 
             override fun properties(properties: Properties): Configuration.Builder {
 
@@ -94,44 +93,44 @@ class Konfiguration(internal val value: Config, override val schema: Configurati
                 return hierarchicalMap(properties as Map<String, Any>)
             }
 
-            override val map: Configuration.Builder.SourceSelector.MapSpecific get() = Konfiguration.Builder.SourceSelector.MapSpecific(from.map, schema)
+            override val map: Configuration.Builder.SourceSelector.MapSpecific get() = MapSpecific(from.map, schema)
 
-            override fun hierarchicalMap(map: Map<String, Any>) = Konfiguration.Builder(from.map.hierarchical(map), schema)
+            override fun hierarchicalMap(map: Map<String, Any>) = Builder(from.map.hierarchical(map), schema)
 
-            override val hocon: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.hocon, schema)
+            override val hocon: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.hocon, schema)
 
-            override val yaml: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.yaml, schema)
+            override val yaml: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.yaml, schema)
 
-            override val xml: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.xml, schema)
+            override val xml: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.xml, schema)
 
-            override val json: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.json, schema)
+            override val json: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.json, schema)
 
-            override val toml: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.toml, schema)
+            override val toml: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.toml, schema)
 
-            override val properties: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.properties, schema)
+            override val properties: Configuration.Builder.SourceSelector.FormatAware get() = FormatAware(from.properties, schema)
 
             class MapSpecific(private val loader: MapLoader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.MapSpecific {
 
-                override fun hierarchical(map: Map<String, Any>): Configuration.Builder = Konfiguration.Builder(loader.hierarchical(map), schema)
+                override fun hierarchical(map: Map<String, Any>): Configuration.Builder = Builder(loader.hierarchical(map), schema)
 
-                override fun flat(map: Map<String, String>): Configuration.Builder = Konfiguration.Builder(loader.flat(map), schema)
+                override fun flat(map: Map<String, String>): Configuration.Builder = Builder(loader.flat(map), schema)
 
-                override fun keyValue(map: Map<String, Any>): Configuration.Builder = Konfiguration.Builder(loader.kv(map), schema)
+                override fun keyValue(map: Map<String, Any>): Configuration.Builder = Builder(loader.kv(map), schema)
             }
 
             class FormatAware(private val loader: Loader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.FormatAware {
 
-                override fun file(path: Path) = Konfiguration.Builder(loader.file(path.toAbsolutePath().toFile()), schema)
+                override fun file(path: Path) = Builder(loader.file(path.toAbsolutePath().toFile()), schema)
 
-                override fun resource(resourceName: String) = Konfiguration.Builder(loader.resource(resourceName), schema)
+                override fun resource(resourceName: String) = Builder(loader.resource(resourceName), schema)
 
-                override fun reader(reader: Reader) = Konfiguration.Builder(loader.reader(reader), schema)
+                override fun reader(reader: Reader) = Builder(loader.reader(reader), schema)
 
-                override fun inputStream(stream: InputStream) = Konfiguration.Builder(loader.inputStream(stream), schema)
+                override fun inputStream(stream: InputStream) = Builder(loader.inputStream(stream), schema)
 
-                override fun string(rawFormat: String) = Konfiguration.Builder(loader.string(rawFormat), schema)
+                override fun string(rawFormat: String) = Builder(loader.string(rawFormat), schema)
 
-                override fun bytes(bytes: ByteArray) = Konfiguration.Builder(loader.bytes(bytes), schema)
+                override fun bytes(bytes: ByteArray) = Builder(loader.bytes(bytes), schema)
             }
         }
     }
@@ -298,7 +297,7 @@ private open class KonfigProperty<TYPE>(override val key: String, override val d
     }
 
     // TODO sollecitom check here
-    override fun optional(defaultValue: TYPE?): Configuration.Property<TYPE?> = KonfigProperty.Optional(key, description, type as Class<TYPE?>, defaultValue)
+    override fun optional(defaultValue: TYPE?): Configuration.Property<TYPE?> = Optional(key, description, type as Class<TYPE?>, defaultValue)
 
     override fun multiple(): Configuration.Property.Multiple<TYPE> {
 
@@ -379,7 +378,7 @@ private open class NestedKonfigProperty(override val key: String, override val d
     }
 
     // TODO sollecitom check here
-    override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = NestedKonfigProperty.Optional(key, description, schema, defaultValue)
+    override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = Optional(key, description, schema, defaultValue)
 
     private class Optional(override val key: String, override val description: String, val schema: Configuration.Schema, override val defaultValue: Configuration?) : Configuration.Property.Optional<Configuration?> {
 
@@ -395,7 +394,7 @@ private open class NestedKonfigProperty(override val key: String, override val d
         }
 
         // TODO sollecitom check here
-        override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = NestedKonfigProperty.Optional(key, description, schema, defaultValue)
+        override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = Optional(key, description, schema, defaultValue)
 
         override fun multiple(): Configuration.Property.Multiple<Configuration?> {
             TODO("not implemented")
