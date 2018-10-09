@@ -124,4 +124,24 @@ class ConfigurationTest {
 
         assertThat(configuration[myLegalName]).isEqualTo(listOf(myLegalNameValue1, myLegalNameValue2))
     }
+
+    @Test
+    fun nested_collection_property_works() {
+
+        val address = Configuration.Property.ofType.string("address")
+        val port = Configuration.Property.ofType.int("port")
+        val rpcSettingsSchema = Configuration.Schema.withProperties(address, port)
+
+        val rpcSettingsCollection = Configuration.Property.ofType.nested("rpcSettingsCollection", rpcSettingsSchema).list()
+
+        val schema = Configuration.Schema.withProperties(rpcSettingsCollection)
+
+        val rpcSettingsConf1 = Configuration.withSchema(rpcSettingsSchema).with.value(address, "address1").with.value(port, 8081).build()
+        val rpcSettingsConf2 = Configuration.withSchema(rpcSettingsSchema).with.value(address, "address2").with.value(port, 8082).build()
+
+        val rpcSettingsCollectionValues = listOf(rpcSettingsConf2, rpcSettingsConf1)
+        val configuration = Configuration.withSchema(schema).with.value(rpcSettingsCollection, rpcSettingsCollectionValues).build()
+
+        assertThat(configuration[rpcSettingsCollection]).isEqualTo(rpcSettingsCollectionValues)
+    }
 }
