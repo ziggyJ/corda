@@ -97,12 +97,19 @@ interface Configuration {
             val defaultValue: TYPE
         }
 
+        interface Multiple<TYPE> : Configuration.Property<List<TYPE>> {
+
+            val elementType: Class<TYPE>
+        }
+
         @Throws(Configuration.Exception.Missing::class, Configuration.Exception.WrongType::class, Configuration.Exception.BadValue::class)
         fun valueIn(configuration: Configuration): TYPE
 
         fun isSpecifiedBy(configuration: Configuration): Boolean
 
         fun optional(defaultValue: TYPE?): Configuration.Property<TYPE?>
+
+        fun multiple(): Configuration.Property.Multiple<TYPE>
 
         // TODO sollecitom see if you need this
         fun contextualize(currentContext: String?): String? = currentContext

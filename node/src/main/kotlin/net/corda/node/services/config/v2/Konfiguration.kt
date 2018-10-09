@@ -1,5 +1,7 @@
 package net.corda.node.services.config.v2
 
+import com.fasterxml.jackson.databind.JavaType
+import com.fasterxml.jackson.databind.type.TypeFactory
 import com.uchuhimo.konf.*
 import com.uchuhimo.konf.source.DefaultLoaders
 import com.uchuhimo.konf.source.Loader
@@ -147,26 +149,25 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
         class Builder : Configuration.Property.Builder {
 
             override fun int(key: String, description: String): Configuration.Property<Int> = KonfigProperty(key, description, Int::class.javaObjectType)
-
-            override fun intList(key: String, description: String): Configuration.Property<List<Int>> = TODO("sollecitom implement")
+            override fun intList(key: String, description: String): Configuration.Property<List<Int>> = KonfigProperty(key, description, Int::class.javaObjectType).multiple()
 
             override fun boolean(key: String, description: String): Configuration.Property<Boolean> = KonfigProperty(key, description, Boolean::class.javaObjectType)
-            override fun booleanList(key: String, description: String): Configuration.Property<List<Boolean>> = TODO("sollecitom implement")
+            override fun booleanList(key: String, description: String): Configuration.Property<List<Boolean>> = KonfigProperty(key, description, Boolean::class.javaObjectType).multiple()
 
             override fun double(key: String, description: String): Configuration.Property<Double> = KonfigProperty(key, description, Double::class.javaObjectType)
-            override fun doubleList(key: String, description: String): Configuration.Property<List<Double>> = TODO("sollecitom implement")
+            override fun doubleList(key: String, description: String): Configuration.Property<List<Double>> = KonfigProperty(key, description, Double::class.javaObjectType).multiple()
 
             override fun string(key: String, description: String): Configuration.Property<String> = KonfigProperty(key, description, String::class.java)
-            override fun stringList(key: String, description: String): Configuration.Property<List<String>> = TODO("sollecitom implement")
+            override fun stringList(key: String, description: String): Configuration.Property<List<String>> = KonfigProperty(key, description, String::class.java).multiple()
 
             override fun duration(key: String, description: String): Configuration.Property<Duration> = KonfigProperty(key, description, Duration::class.java)
-            override fun durationList(key: String, description: String): Configuration.Property<List<Duration>> = TODO("sollecitom implement")
+            override fun durationList(key: String, description: String): Configuration.Property<List<Duration>> = KonfigProperty(key, description, Duration::class.java).multiple()
 
             override fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<ENUM> = KonfigProperty(key, description, enumClass.java)
-            override fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<List<ENUM>> = TODO("sollecitom implement")
+            override fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<List<ENUM>> = KonfigProperty(key, description, enumClass.java).multiple()
 
             override fun nested(key: String, schema: ConfigSchema, description: String): Configuration.Property<Configuration> = NestedKonfigProperty(key, description, schema)
-            override fun nestedList(key: String, schema: ConfigSchema, description: String): Configuration.Property<List<Configuration>> = TODO("sollecitom implement")
+            override fun nestedList(key: String, schema: ConfigSchema, description: String): Configuration.Property<List<Configuration>> = NestedKonfigProperty(key, description, schema).multiple()
         }
     }
 }
@@ -179,12 +180,14 @@ private fun ConfigSchema.toSpec(): Spec {
 
 private fun <TYPE> Configuration.Property<TYPE>.addAsItem(spec: Spec): Item<TYPE> {
 
-    // TODO sollecitom check
-    //        val type: JavaType? = null
+    var type: JavaType? = null
+    if (this is Configuration.Property.Multiple<*>) {
+        type = TypeFactory.defaultInstance().constructCollectionLikeType(List::class.java, this.elementType)
+    }
     return if (this is Configuration.Property.Optional<TYPE>) {
-        object : OptionalItem<TYPE>(spec, key, defaultValue, description, null, true) {}
+        object : OptionalItem<TYPE>(spec, key, defaultValue, description, type, true) {}
     } else {
-        object : RequiredItem<TYPE>(spec, key, description, null, false) {}
+        object : RequiredItem<TYPE>(spec, key, description, type, false) {}
     }
 }
 
@@ -202,6 +205,36 @@ private open class KonfigProperty<TYPE>(override val key: String, override val d
     // TODO sollecitom check here
     override fun optional(defaultValue: TYPE?): Configuration.Property<TYPE?> = KonfigProperty.Optional(key, description, type as Class<TYPE?>, defaultValue)
 
+    override fun multiple(): Configuration.Property.Multiple<TYPE> {
+
+        val outer = this@KonfigProperty
+        return object : Configuration.Property.Multiple<TYPE> {
+
+            override val key = outer.key
+
+            override val description = outer.description
+
+            override val type: Class<List<TYPE>> = List::class.java as Class<List<TYPE>>
+
+            override val elementType: Class<TYPE> = outer.type
+
+            override fun valueIn(configuration: Configuration): List<TYPE> {
+
+                return (configuration as Konfiguration).value[key]
+            }
+
+            override fun isSpecifiedBy(configuration: Configuration) = outer.isSpecifiedBy(configuration)
+
+            override fun optional(defaultValue: List<TYPE>?): Configuration.Property<List<TYPE>?> {
+                TODO("not implemented")
+            }
+
+            override fun multiple(): Configuration.Property.Multiple<List<TYPE>> {
+                TODO("not implemented")
+            }
+        }
+    }
+
     private class Optional<TYPE>(key: String, description: String, type: Class<TYPE>, override val defaultValue: TYPE) : KonfigProperty<TYPE>(key, description, type), Configuration.Property.Optional<TYPE>
 }
 
@@ -218,6 +251,36 @@ private open class NestedKonfigProperty(override val key: String, override val d
 
     override fun isSpecifiedBy(configuration: Configuration): Boolean {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun multiple(): Configuration.Property.Multiple<Configuration> {
+
+        val outer = this@NestedKonfigProperty
+        return object : Configuration.Property.Multiple<Configuration> {
+
+            override val key = outer.key
+
+            override val description = outer.description
+
+            override val type: Class<List<Configuration>> = List::class.java as Class<List<Configuration>>
+
+            override val elementType: Class<Configuration> = outer.type
+
+            override fun valueIn(configuration: Configuration): List<Configuration> {
+
+                return (configuration as Konfiguration).value[key]
+            }
+
+            override fun isSpecifiedBy(configuration: Configuration) = outer.isSpecifiedBy(configuration)
+
+            override fun optional(defaultValue: List<Configuration>?): Configuration.Property<List<Configuration>?> {
+                TODO("not implemented")
+            }
+
+            override fun multiple(): Configuration.Property.Multiple<List<Configuration>> {
+                TODO("not implemented")
+            }
+        }
     }
 
     // TODO sollecitom check here
@@ -238,6 +301,10 @@ private open class NestedKonfigProperty(override val key: String, override val d
 
         // TODO sollecitom check here
         override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = NestedKonfigProperty.Optional(key, description, schema, defaultValue)
+
+        override fun multiple(): Configuration.Property.Multiple<Configuration?> {
+            TODO("not implemented")
+        }
     }
 }
 

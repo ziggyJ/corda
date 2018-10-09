@@ -108,4 +108,21 @@ class ConfigurationTest {
         assertThat(retrievedRpcSettings[address]).isEqualTo(addressValue)
         assertThat(retrievedRpcSettings[port]).isEqualTo(portValue)
     }
+
+    @Test
+    fun collection_property_works() {
+
+        val myLegalNameValue1 = "O=Bank A,L=London,C=GB"
+        val myLegalNameValue2 = "O=Bank B,L=London,C=GB"
+
+        val myLegalName = Configuration.Property.ofType.stringList("myLegalName")
+        val schema = ConfigSchema.withProperties(myLegalName)
+
+        val configuration = Configuration.withSchema(schema).empty.apply {
+
+            this[myLegalName] = listOf(myLegalNameValue1, myLegalNameValue2)
+        }.build()
+
+        assertThat(configuration[myLegalName]).isEqualTo(listOf(myLegalNameValue1, myLegalNameValue2))
+    }
 }
