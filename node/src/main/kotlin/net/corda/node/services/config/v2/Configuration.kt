@@ -23,7 +23,28 @@ interface Configuration {
 
         // TODO sollecitom perhaps try to use JvmStatic here
         // TODO sollecitom try to avoid knowing about `Konfiguration` here, perhaps by using a factory
-        fun withSchema(schema: ConfigSchema): Configuration.Builder.Selector = Konfiguration.Builder.Selector(schema)
+        fun withSchema(schema: Schema): Configuration.Builder.Selector = Konfiguration.Builder.Selector(schema)
+    }
+
+    interface Schema : Validator<Configuration, ConfigValidationError> {
+
+        val prefix: String
+
+        fun description(): String
+
+        val properties: Set<Configuration.Property<*>>
+
+        companion object {
+
+            // TODO sollecitom try to avoid knowing about `Konfiguration` here, perhaps by using a factory
+            // TODO sollecitom perhaps try to use JvmStatic here
+            // TODO sollecitom maybe remove prefix from the publicly accessible constructors
+            fun withProperties(strict: Boolean = false, properties: Iterable<Configuration.Property<*>>): Schema = Konfiguration.Schema(strict, properties)
+
+            fun withProperties(vararg properties: Configuration.Property<*>, strict: Boolean = false): Schema = withProperties(strict, properties.toSet())
+
+            fun withProperties(strict: Boolean = false, builder: Configuration.Property.Builder.() -> Iterable<Configuration.Property<*>>): Schema = withProperties(strict, builder.invoke(Konfiguration.Property.Builder()))
+        }
     }
 
     interface Builder {
@@ -159,8 +180,8 @@ interface Configuration {
             fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String = ""): Configuration.Property<ENUM>
             fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String = ""): Configuration.Property<List<ENUM>>
 
-            fun nested(key: String, schema: ConfigSchema, description: String = ""): Configuration.Property<Configuration>
-            fun nestedList(key: String, schema: ConfigSchema, description: String = ""): Configuration.Property<List<Configuration>>
+            fun nested(key: String, schema: Schema, description: String = ""): Configuration.Property<Configuration>
+            fun nestedList(key: String, schema: Schema, description: String = ""): Configuration.Property<List<Configuration>>
         }
     }
 

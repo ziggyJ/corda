@@ -17,7 +17,7 @@ class ConfigurationTest {
         val configFilePath = Paths.get("/home/michele/Projects/corda-open-source/node/src/test/resources/net/corda/node/services/config/node.conf")
 
         val myLegalName = Configuration.Property.ofType.string("myLegalName")
-        val schema = ConfigSchema.withProperties(myLegalName)
+        val schema = Configuration.Schema.withProperties(myLegalName)
 
         val configuration = Configuration.withSchema(schema).from.hocon.file(configFilePath).from.systemProperties("corda.configuration").build()
 
@@ -32,7 +32,7 @@ class ConfigurationTest {
         val myLegalNameValue = "O=Bank B,L=London,C=GB"
 
         val myLegalName = Configuration.Property.ofType.string("myLegalName")
-        val schema = ConfigSchema.withProperties(myLegalName)
+        val schema = Configuration.Schema.withProperties(myLegalName)
 
         val configuration = Configuration.withSchema(schema).with.value(myLegalName, myLegalNameValue).build()
 
@@ -45,7 +45,7 @@ class ConfigurationTest {
         val myLegalNameValue = "O=Bank B,L=London,C=GB"
 
         val myLegalName = Configuration.Property.ofType.string("myLegalName")
-        val schema = ConfigSchema.withProperties(myLegalName)
+        val schema = Configuration.Schema.withProperties(myLegalName)
 
         val configuration = Configuration.withSchema(schema).empty.apply {
 
@@ -64,11 +64,11 @@ class ConfigurationTest {
 
         val address = Configuration.Property.ofType.string("address")
         val port = Configuration.Property.ofType.int("port")
-        val rpcSettingsSchema = ConfigSchema.withProperties(address, port)
+        val rpcSettingsSchema = Configuration.Schema.withProperties(address, port)
 
         val myLegalName = Configuration.Property.ofType.string("myLegalName")
         val rpcSettings = Configuration.Property.ofType.nested("rpcSettings", rpcSettingsSchema)
-        val schema = ConfigSchema.withProperties(myLegalName, rpcSettings)
+        val schema = Configuration.Schema.withProperties(myLegalName, rpcSettings)
 
         val configFilePath = Paths.get("/home/michele/Projects/corda-open-source/node/src/test/resources/net/corda/node/services/config/nested.conf")
 
@@ -91,11 +91,11 @@ class ConfigurationTest {
 
         val address = Configuration.Property.ofType.string("address")
         val port = Configuration.Property.ofType.int("port")
-        val rpcSettingsSchema = ConfigSchema.withProperties(address, port)
+        val rpcSettingsSchema = Configuration.Schema.withProperties(address, port)
 
         val myLegalName = Configuration.Property.ofType.string("myLegalName")
         val rpcSettings = Configuration.Property.ofType.nested("rpcSettings", rpcSettingsSchema)
-        val schema = ConfigSchema.withProperties(myLegalName, rpcSettings)
+        val schema = Configuration.Schema.withProperties(myLegalName, rpcSettings)
 
         val rpcSettingsConf = Configuration.withSchema(rpcSettingsSchema).with.value(address, addressValue).with.value(port, portValue).build()
 
@@ -116,7 +116,7 @@ class ConfigurationTest {
         val myLegalNameValue2 = "O=Bank B,L=London,C=GB"
 
         val myLegalName = Configuration.Property.ofType.stringList("myLegalName")
-        val schema = ConfigSchema.withProperties(myLegalName)
+        val schema = Configuration.Schema.withProperties(myLegalName)
 
         val configuration = Configuration.withSchema(schema).empty.apply {
 

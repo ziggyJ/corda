@@ -7,6 +7,7 @@ import com.uchuhimo.konf.source.DefaultLoaders
 import com.uchuhimo.konf.source.Loader
 import com.uchuhimo.konf.source.Source
 import com.uchuhimo.konf.source.base.KVSource
+import net.corda.node.services.config.ConfigValidationError
 import java.io.InputStream
 import java.io.Reader
 import java.nio.file.Path
@@ -15,7 +16,7 @@ import java.util.*
 import kotlin.reflect.KClass
 
 // TODO sollecitom add a constructor which doesn't add the schema to the Config
-class Konfiguration(internal val value: Config, private val schema: ConfigSchema) : Configuration {
+class Konfiguration(internal val value: Config, private val schema: Configuration.Schema) : Configuration {
 
     override fun <TYPE> get(property: Configuration.Property<TYPE>): TYPE {
 
@@ -35,7 +36,7 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
 
     override fun toMap(): Map<String, Any> = value.toMap()
 
-    class Builder(private var value: Config, private val schema: ConfigSchema) : Configuration.Builder {
+    class Builder(private var value: Config, private val schema: Configuration.Schema) : Configuration.Builder {
 
         // TODO sollecitom make it a `val get() =` perhaps?
         override val from get() = Konfiguration.Builder.SourceSelector(value.from, schema)
@@ -52,7 +53,7 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
             return Konfiguration(value, schema)
         }
 
-        class Selector(private val schema: ConfigSchema) : Configuration.Builder.Selector {
+        class Selector(private val schema: Configuration.Schema) : Configuration.Builder.Selector {
 
             private val spec = schema.toSpec()
             private val config = Config.invoke().also { it.addSpec(spec) }
@@ -65,7 +66,7 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
             override val empty get(): Configuration.Builder = Konfiguration.Builder(config, schema)
         }
 
-        class ValueSelector(private val from: DefaultLoaders, private val schema: ConfigSchema) : Configuration.Builder.ValueSelector {
+        class ValueSelector(private val from: DefaultLoaders, private val schema: Configuration.Schema) : Configuration.Builder.ValueSelector {
 
             override fun <TYPE : Any> value(property: Configuration.Property<TYPE>, value: TYPE): Configuration.Builder {
 
@@ -79,7 +80,7 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
             }
         }
 
-        class SourceSelector(private val from: DefaultLoaders, private val schema: ConfigSchema) : Configuration.Builder.SourceSelector {
+        class SourceSelector(private val from: DefaultLoaders, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector {
 
             override fun systemProperties(prefixFilter: String) = Konfiguration.Builder(from.config.withSource(SystemPropertiesProvider.source(prefixFilter)), schema)
 
@@ -110,7 +111,7 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
             override val json: Configuration.Builder.SourceSelector.FormatAware
                 get() = Konfiguration.Builder.SourceSelector.FormatAware(from.json, schema)
 
-            class FormatAware(private val loader: Loader, private val schema: ConfigSchema) : Configuration.Builder.SourceSelector.FormatAware {
+            class FormatAware(private val loader: Loader, private val schema: Configuration.Schema) : Configuration.Builder.SourceSelector.FormatAware {
 
                 override fun file(path: Path) = Konfiguration.Builder(loader.file(path.toAbsolutePath().toFile()), schema)
 
@@ -162,13 +163,103 @@ class Konfiguration(internal val value: Config, private val schema: ConfigSchema
             override fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<ENUM> = KonfigProperty(key, description, enumClass.java)
             override fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<List<ENUM>> = KonfigProperty(key, description, enumClass.java).multiple()
 
-            override fun nested(key: String, schema: ConfigSchema, description: String): Configuration.Property<Configuration> = NestedKonfigProperty(key, description, schema)
-            override fun nestedList(key: String, schema: ConfigSchema, description: String): Configuration.Property<List<Configuration>> = NestedKonfigProperty(key, description, schema).multiple()
+            override fun nested(key: String, schema: Configuration.Schema, description: String): Configuration.Property<Configuration> = NestedKonfigProperty(key, description, schema)
+            override fun nestedList(key: String, schema: Configuration.Schema, description: String): Configuration.Property<List<Configuration>> = NestedKonfigProperty(key, description, schema).multiple()
+        }
+    }
+
+    internal class Schema(private val strict: Boolean, unorderedProperties: Iterable<Configuration.Property<*>>) : Configuration.Schema {
+
+        // TODO sollecitom try and remove
+        override val prefix: String = ""
+
+        override val properties = unorderedProperties.sortedBy(Configuration.Property<*>::key).toSet()
+
+        init {
+            val invalid = properties.groupBy(Configuration.Property<*>::key).mapValues { entry -> entry.value.size }.filterValues { propertiesForKey -> propertiesForKey > 1 }
+            if (invalid.isNotEmpty()) {
+                throw IllegalArgumentException("More than one property was found for keys ${invalid.keys}.")
+            }
+        }
+
+        override fun validate(target: Configuration): Set<ConfigValidationError> {
+
+            TODO("sollecitom")
+//        val propertyErrors = properties.flatMap { property -> property.validate(target).map { error -> error.withContainingPath(property.contextualize(error.containingPath)) } }.toSet()
+//        if (strict) {
+//            val unknownKeys = target.root().keys - properties.map(Configuration.Property<*>::key)
+//            return propertyErrors + unknownKeys.map(::unknownPropertyError)
+//        }
+//        return propertyErrors
+        }
+
+        private fun unknownPropertyError(key: String) = ConfigValidationError(key, message = "Unknown configuration key: \"$key\".")
+
+        override fun description(): String {
+
+            TODO("sollecitom")
+//        val description = StringBuilder()
+//        var rootDescription = configObject()
+//        properties.forEach { property ->
+//            rootDescription = rootDescription.withValue(property.key, ConfigValueFactory.fromAnyRef(typeRef(property)))
+//        }
+//        description.append(rootDescription.toConfig().serialize())
+//
+//        val nestedProperties = (properties + properties.flatMap(::nestedProperties)).filterIsInstance<NestedConfiguration.Property<*>>().distinctBy(NestedConfiguration.Property<*>::schema)
+//        nestedProperties.forEach { property ->
+//            description.append(System.lineSeparator())
+//            description.append("${property.typeName}: ")
+//            description.append(property.schema.description())
+//            description.append(System.lineSeparator())
+//        }
+//        return description.toString()
+        }
+
+        private fun nestedProperties(property: Configuration.Property<*>): Set<Configuration.Property<*>> {
+
+            TODO("sollecitom")
+//        return when (property) {
+//            is NestedConfiguration.Property<*> -> (property.schema as ConfigPropertySchema).properties
+//            else -> emptySet()
+//        }
+        }
+
+        private fun typeRef(property: Configuration.Property<*>): String {
+
+            TODO("sollecitom")
+//        return if (property is NestedConfiguration.Property<*>) {
+//            "#${property.typeName}"
+//        } else {
+//            property.typeName
+//        }
+        }
+
+        override fun equals(other: Any?): Boolean {
+
+            if (this === other) {
+                return true
+            }
+            if (javaClass != other?.javaClass) {
+                return false
+            }
+
+            other as Configuration.Schema
+
+            if (properties != other.properties) {
+                return false
+            }
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+
+            return properties.hashCode()
         }
     }
 }
 
-private fun ConfigSchema.toSpec(): Spec {
+private fun Configuration.Schema.toSpec(): Spec {
 
     // TODO sollecitom make it not an object
     return object : ConfigSpec(prefix) {}.also { properties.forEach { property -> property.addAsItem(it) } }
@@ -234,7 +325,7 @@ private open class KonfigProperty<TYPE>(override val key: String, override val d
     private class Optional<TYPE>(key: String, description: String, type: Class<TYPE>, override val defaultValue: TYPE) : KonfigProperty<TYPE>(key, description, type), Configuration.Property.Optional<TYPE>
 }
 
-private open class NestedKonfigProperty(override val key: String, override val description: String, val schema: ConfigSchema) : Configuration.Property<Configuration> {
+private open class NestedKonfigProperty(override val key: String, override val description: String, val schema: Configuration.Schema) : Configuration.Property<Configuration> {
 
     override val type = Configuration::class.java
 
@@ -282,7 +373,7 @@ private open class NestedKonfigProperty(override val key: String, override val d
     // TODO sollecitom check here
     override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = NestedKonfigProperty.Optional(key, description, schema, defaultValue)
 
-    private class Optional(override val key: String, override val description: String, val schema: ConfigSchema, override val defaultValue: Configuration?) : Configuration.Property.Optional<Configuration?> {
+    private class Optional(override val key: String, override val description: String, val schema: Configuration.Schema, override val defaultValue: Configuration?) : Configuration.Property.Optional<Configuration?> {
 
         override val type: Class<Configuration?> = Configuration::class.java as Class<Configuration?>
 
