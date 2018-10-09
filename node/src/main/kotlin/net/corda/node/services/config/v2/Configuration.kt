@@ -16,6 +16,7 @@ interface Configuration {
 
     fun <TYPE> getOptional(property: Configuration.Property<TYPE>): TYPE?
 
+    @Throws(Configuration.Exception.Missing::class, Configuration.Exception.WrongType::class, Configuration.Exception.BadValue::class)
     fun toMap(): Map<String, Any>
 
     fun <TYPE> getRaw(key: String): TYPE
