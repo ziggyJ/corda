@@ -10,14 +10,16 @@ import kotlin.reflect.KClass
 // TODO sollecitom perhaps move to a common module
 interface Configuration {
 
-    @Throws(Exception.Missing::class, Exception.WrongType::class, Exception.BadValue::class)
+    @Throws(Configuration.Exception::class)
     operator fun <TYPE> get(property: Property<TYPE>): TYPE
 
+    @Throws(Configuration.Exception.WrongType::class)
     fun <TYPE> getOptional(property: Property<TYPE>): TYPE?
 
-    @Throws(Exception.Missing::class, Exception.WrongType::class, Exception.BadValue::class)
+    @Throws(Configuration.Exception::class)
     fun toMap(): Map<String, Any>
 
+    @Throws(Configuration.Exception::class)
     fun <TYPE> getRaw(key: String): TYPE
 
     val schema: Schema
@@ -48,16 +50,16 @@ interface Configuration {
 
         interface Selector {
 
-            val from: SourceSelector
+            val from: Configuration.Builder.SourceSelector
 
-            val empty: Builder
+            val empty: Configuration.Builder
 
-            val with: ValueSelector
+            val with: Configuration.Builder.ValueSelector
         }
 
-        val from: SourceSelector
+        val from: Configuration.Builder.SourceSelector
 
-        val with: ValueSelector
+        val with: Configuration.Builder.ValueSelector
 
         operator fun <TYPE : Any> set(property: Property<TYPE>, value: TYPE)
 
@@ -65,55 +67,53 @@ interface Configuration {
 
         interface ValueSelector {
 
-            fun <TYPE : Any> value(property: Property<TYPE>, value: TYPE): Builder
+            fun <TYPE : Any> value(property: Property<TYPE>, value: TYPE): Configuration.Builder
         }
 
         interface SourceSelector {
 
-            fun systemProperties(prefixFilter: String = ""): Builder
+            fun systemProperties(prefixFilter: String = ""): Configuration.Builder
 
-            fun environment(prefixFilter: String = ""): Builder
+            fun environment(prefixFilter: String = ""): Configuration.Builder
 
-            fun properties(properties: Properties): Builder
+            fun properties(properties: Properties): Configuration.Builder
 
-            val map: MapSpecific
+            val map: Configuration.Builder.SourceSelector.MapSpecific
 
-            fun hierarchicalMap(map: Map<String, Any>): Builder
+            val hocon: Configuration.Builder.SourceSelector.FormatAware
 
-            val hocon: FormatAware
+            val yaml: Configuration.Builder.SourceSelector.FormatAware
 
-            val yaml: FormatAware
+            val xml: Configuration.Builder.SourceSelector.FormatAware
 
-            val xml: FormatAware
+            val json: Configuration.Builder.SourceSelector.FormatAware
 
-            val json: FormatAware
+            val toml: Configuration.Builder.SourceSelector.FormatAware
 
-            val toml: FormatAware
-
-            val properties: FormatAware
+            val properties: Configuration.Builder.SourceSelector.FormatAware
 
             interface MapSpecific {
 
-                fun hierarchical(map: Map<String, Any>): Builder
+                fun hierarchical(map: Map<String, Any>): Configuration.Builder
 
-                fun flat(map: Map<String, String>): Builder
+                fun flat(map: Map<String, String>): Configuration.Builder
 
-                fun keyValue(map: Map<String, Any>): Builder
+                fun keyValue(map: Map<String, Any>): Configuration.Builder
             }
 
             interface FormatAware {
 
-                fun file(path: Path): Builder
+                fun file(path: Path): Configuration.Builder
 
-                fun resource(resourceName: String): Builder
+                fun resource(resourceName: String): Configuration.Builder
 
-                fun reader(reader: Reader): Builder
+                fun reader(reader: Reader): Configuration.Builder
 
-                fun inputStream(stream: InputStream): Builder
+                fun inputStream(stream: InputStream): Configuration.Builder
 
-                fun string(rawFormat: String): Builder
+                fun string(rawFormat: String): Configuration.Builder
 
-                fun bytes(bytes: ByteArray): Builder
+                fun bytes(bytes: ByteArray): Configuration.Builder
             }
         }
     }
@@ -124,24 +124,10 @@ interface Configuration {
         val description: String
         val type: Class<TYPE>
 
-        interface Optional<TYPE> : Property<TYPE> {
-
-            val defaultValue: TYPE
-        }
-
-        interface Multiple<TYPE> : Property<List<TYPE>> {
-
-            val elementType: Class<TYPE>
-        }
-
-        @Throws(Exception.Missing::class, Exception.WrongType::class, Exception.BadValue::class)
+        @Throws(Configuration.Exception::class)
         fun valueIn(configuration: Configuration): TYPE
 
         fun isSpecifiedBy(configuration: Configuration): Boolean
-
-        fun optional(defaultValue: TYPE?): Property<TYPE?>
-
-        fun multiple(): Multiple<TYPE>
 
         // TODO sollecitom see if you need this
         fun contextualize(currentContext: String?): String? = currentContext
@@ -167,30 +153,44 @@ interface Configuration {
             val ofType: Builder get() = ConfigurationFactory.propertyBuilder()
         }
 
-        // TODO sollecitom introduce a function `list()` in property to produce a collection-like property
-        // TODO create wrapper properties OptionalProperty and ListProperty, delegating to required single-element ones
         interface Builder {
 
-            fun int(key: String, description: String = ""): Property<Int>
-            fun intList(key: String, description: String = ""): Property<List<Int>>
+            fun int(key: String, description: String = ""): Property.Standard<Int>
 
-            fun boolean(key: String, description: String = ""): Property<Boolean>
-            fun booleanList(key: String, description: String = ""): Property<List<Boolean>>
+            fun boolean(key: String, description: String = ""): Property.Standard<Boolean>
 
-            fun double(key: String, description: String = ""): Property<Double>
-            fun doubleList(key: String, description: String = ""): Property<List<Double>>
+            fun double(key: String, description: String = ""): Property.Standard<Double>
 
-            fun string(key: String, description: String = ""): Property<String>
-            fun stringList(key: String, description: String = ""): Property<List<String>>
+            fun string(key: String, description: String = ""): Property.Standard<String>
 
-            fun duration(key: String, description: String = ""): Property<Duration>
-            fun durationList(key: String, description: String = ""): Property<List<Duration>>
+            fun duration(key: String, description: String = ""): Property.Standard<Duration>
 
-            fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String = ""): Property<ENUM>
-            fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String = ""): Property<List<ENUM>>
+            fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String = ""): Property.Standard<ENUM>
 
-            fun nested(key: String, schema: Schema, description: String = ""): Property<Configuration>
-            fun nestedList(key: String, schema: Schema, description: String = ""): Property<List<Configuration>>
+            fun nested(key: String, schema: Schema, description: String = ""): Property.Standard<Configuration>
+        }
+
+        interface Required<TYPE> : Configuration.Property<TYPE> {
+
+            fun optional(defaultValue: TYPE?): Configuration.Property<TYPE?>
+        }
+
+        interface Single<TYPE> : Configuration.Property<TYPE> {
+
+            // TODO sollecitom expand with other collection types
+            fun list(): Configuration.Property.Required<List<TYPE>>
+        }
+
+        interface Standard<TYPE> : Configuration.Property.Required<TYPE>, Configuration.Property.Single<TYPE>
+
+        interface Optional<TYPE> : Configuration.Property<TYPE> {
+
+            val defaultValue: TYPE
+        }
+
+        interface Multiple<TYPE> : Configuration.Property<List<TYPE>> {
+
+            val elementType: Class<TYPE>
         }
     }
 
@@ -198,12 +198,12 @@ interface Configuration {
     sealed class Exception : kotlin.Exception() {
 
         // TODO sollecitom add fields
-        class Missing : Exception()
+        class Missing : Configuration.Exception()
 
         // TODO sollecitom add fields
-        class WrongType : Exception()
+        class WrongType : Configuration.Exception()
 
         // TODO sollecitom add fields
-        class BadValue : Exception()
+        class BadValue : Configuration.Exception()
     }
 }

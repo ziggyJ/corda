@@ -82,13 +82,12 @@ internal class Konfiguration(internal val value: Config, override val schema: Co
 
             override fun properties(properties: Properties): Configuration.Builder {
 
+                // TODO sollecitom maybe try kv to avoid unchecked cast
                 @Suppress("UNCHECKED_CAST")
-                return hierarchicalMap(properties as Map<String, Any>)
+                return map.hierarchical(properties as Map<String, Any>)
             }
 
             override val map: Configuration.Builder.SourceSelector.MapSpecific get() = Konfiguration.Builder.SourceSelector.MapSpecific(from.map, schema)
-
-            override fun hierarchicalMap(map: Map<String, Any>) = Konfiguration.Builder(from.map.hierarchical(map), schema)
 
             override val hocon: Configuration.Builder.SourceSelector.FormatAware get() = Konfiguration.Builder.SourceSelector.FormatAware(from.hocon, schema)
 
@@ -147,26 +146,19 @@ internal class Konfiguration(internal val value: Config, override val schema: Co
 
         internal class Builder : Configuration.Property.Builder {
 
-            override fun int(key: String, description: String): Configuration.Property<Int> = TypedProperty(key, description, Int::class.javaObjectType)
-            override fun intList(key: String, description: String): Configuration.Property<List<Int>> = TypedProperty(key, description, Int::class.javaObjectType).multiple()
+            override fun int(key: String, description: String): Configuration.Property.Standard<Int> = TypedProperty(key, description, Int::class.javaObjectType)
 
-            override fun boolean(key: String, description: String): Configuration.Property<Boolean> = TypedProperty(key, description, Boolean::class.javaObjectType)
-            override fun booleanList(key: String, description: String): Configuration.Property<List<Boolean>> = TypedProperty(key, description, Boolean::class.javaObjectType).multiple()
+            override fun boolean(key: String, description: String): Configuration.Property.Standard<Boolean> = TypedProperty(key, description, Boolean::class.javaObjectType)
 
-            override fun double(key: String, description: String): Configuration.Property<Double> = TypedProperty(key, description, Double::class.javaObjectType)
-            override fun doubleList(key: String, description: String): Configuration.Property<List<Double>> = TypedProperty(key, description, Double::class.javaObjectType).multiple()
+            override fun double(key: String, description: String): Configuration.Property.Standard<Double> = TypedProperty(key, description, Double::class.javaObjectType)
 
-            override fun string(key: String, description: String): Configuration.Property<String> = TypedProperty(key, description, String::class.java)
-            override fun stringList(key: String, description: String): Configuration.Property<List<String>> = TypedProperty(key, description, String::class.java).multiple()
+            override fun string(key: String, description: String): Configuration.Property.Standard<String> = TypedProperty(key, description, String::class.java)
 
-            override fun duration(key: String, description: String): Configuration.Property<Duration> = TypedProperty(key, description, Duration::class.java)
-            override fun durationList(key: String, description: String): Configuration.Property<List<Duration>> = TypedProperty(key, description, Duration::class.java).multiple()
+            override fun duration(key: String, description: String): Configuration.Property.Standard<Duration> = TypedProperty(key, description, Duration::class.java)
 
-            override fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<ENUM> = TypedProperty(key, description, enumClass.java)
-            override fun <ENUM : Enum<ENUM>> enumList(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property<List<ENUM>> = TypedProperty(key, description, enumClass.java).multiple()
+            override fun <ENUM : Enum<ENUM>> enum(key: String, enumClass: KClass<ENUM>, description: String): Configuration.Property.Standard<ENUM> = TypedProperty(key, description, enumClass.java)
 
-            override fun nested(key: String, schema: Configuration.Schema, description: String): Configuration.Property<Configuration> = NestedTypedProperty(key, description, schema)
-            override fun nestedList(key: String, schema: Configuration.Schema, description: String): Configuration.Property<List<Configuration>> = NestedTypedProperty(key, description, schema).multiple()
+            override fun nested(key: String, schema: Configuration.Schema, description: String): Configuration.Property.Standard<Configuration> = NestedTypedProperty(key, description, schema)
         }
     }
 
@@ -278,7 +270,7 @@ private fun <TYPE> Configuration.Property<TYPE>.addAsItem(spec: Spec): Item<TYPE
     }
 }
 
-private open class TypedProperty<TYPE>(override val key: String, override val description: String, override val type: Class<TYPE>) : Configuration.Property<TYPE> {
+private open class TypedProperty<TYPE>(override val key: String, override val description: String, override val type: Class<TYPE>) : Configuration.Property.Standard<TYPE> {
 
     override fun valueIn(configuration: Configuration): TYPE {
 
@@ -289,42 +281,69 @@ private open class TypedProperty<TYPE>(override val key: String, override val de
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun optional(defaultValue: TYPE?): Configuration.Property<TYPE?> = Optional(key, description, type as Class<TYPE?>, defaultValue)
-
-    override fun multiple(): Configuration.Property.Multiple<TYPE> {
-
-        val outer = this@TypedProperty
-        return object : Configuration.Property.Multiple<TYPE> {
-
-            override val key = outer.key
-
-            override val description = outer.description
-
-            override val type: Class<List<TYPE>> = List::class.java as Class<List<TYPE>>
-
-            override val elementType: Class<TYPE> = outer.type
-
-            override fun valueIn(configuration: Configuration): List<TYPE> {
-
-                return configuration.getRaw(key)
-            }
-
-            override fun isSpecifiedBy(configuration: Configuration) = outer.isSpecifiedBy(configuration)
-
-            override fun optional(defaultValue: List<TYPE>?): Configuration.Property<List<TYPE>?> {
-                TODO("not implemented")
-            }
-
-            override fun multiple(): Configuration.Property.Multiple<List<TYPE>> {
-                TODO("not implemented")
-            }
-        }
+    override fun optional(defaultValue: TYPE?): Configuration.Property.Single<TYPE?> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
+
+    override fun list(): Configuration.Property.Required<List<TYPE>> {
+
+        // TODO sollecitom check
+        @Suppress("UNCHECKED_CAST")
+        return CollectionProperty(key, description, List::class.java as Class<List<TYPE>>, type)
+    }
+
+//    override fun optional(defaultValue: TYPE?): Configuration.Property<TYPE?> = Optional(key, description, type as Class<TYPE?>, defaultValue)
+//
+//    override fun multiple(): Configuration.Property.Multiple<TYPE> {
+//
+//        val outer = this@TypedProperty
+//        return object : Configuration.Property.Multiple<TYPE> {
+//
+//            override val key = outer.key
+//
+//            override val description = outer.description
+//
+//            override val type: Class<List<TYPE>> = List::class.java as Class<List<TYPE>>
+//
+//            override val elementType: Class<TYPE> = outer.type
+//
+//            override fun valueIn(configuration: Configuration): List<TYPE> {
+//
+//                return configuration.getRaw(key)
+//            }
+//
+//            override fun isSpecifiedBy(configuration: Configuration) = outer.isSpecifiedBy(configuration)
+//
+//            override fun optional(defaultValue: List<TYPE>?): Configuration.Property<List<TYPE>?> {
+//                TODO("not implemented")
+//            }
+//
+//            override fun multiple(): Configuration.Property.Multiple<List<TYPE>> {
+//                TODO("not implemented")
+//            }
+//        }
+//    }
 
     private class Optional<TYPE>(key: String, description: String, type: Class<TYPE>, override val defaultValue: TYPE) : TypedProperty<TYPE>(key, description, type), Configuration.Property.Optional<TYPE>
 }
 
-private open class NestedTypedProperty(override val key: String, override val description: String, val schema: Configuration.Schema) : Configuration.Property<Configuration> {
+private class CollectionProperty<COLLECTION : Collection<ELEMENT>, ELEMENT>(override val key: String, override val description: String, override val type: Class<COLLECTION>, private val elementType: Class<ELEMENT>) : Configuration.Property.Required<COLLECTION> {
+
+    override fun valueIn(configuration: Configuration): COLLECTION {
+
+        return configuration.getRaw(key)
+    }
+
+    override fun isSpecifiedBy(configuration: Configuration): Boolean {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun optional(defaultValue: COLLECTION?): Configuration.Property<COLLECTION?> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+}
+
+private open class NestedTypedProperty(override val key: String, override val description: String, val schema: Configuration.Schema) : Configuration.Property.Standard<Configuration> {
 
     override val type = Configuration::class.java
 
@@ -339,56 +358,60 @@ private open class NestedTypedProperty(override val key: String, override val de
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun multiple(): Configuration.Property.Multiple<Configuration> {
-
-        val outer = this@NestedTypedProperty
-        return object : Configuration.Property.Multiple<Configuration> {
-
-            override val key = outer.key
-
-            override val description = outer.description
-
-            override val type: Class<List<Configuration>> = List::class.java as Class<List<Configuration>>
-
-            override val elementType: Class<Configuration> = outer.type
-
-            override fun valueIn(configuration: Configuration): List<Configuration> {
-
-                return configuration.getRaw(key)
-            }
-
-            override fun isSpecifiedBy(configuration: Configuration) = outer.isSpecifiedBy(configuration)
-
-            override fun optional(defaultValue: List<Configuration>?): Configuration.Property<List<Configuration>?> {
-                TODO("not implemented")
-            }
-
-            override fun multiple(): Configuration.Property.Multiple<List<Configuration>> {
-                TODO("not implemented")
-            }
-        }
+    override fun optional(defaultValue: Configuration?): Configuration.Property.Single<Configuration?> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = Optional(key, description, schema, defaultValue)
+    // TODO sollecitom this is the same implementation, join NestedTypedProperty and TypedProperty in one hierarchy
+    override fun list(): Configuration.Property.Required<List<Configuration>> {
 
-    private class Optional(override val key: String, override val description: String, val schema: Configuration.Schema, override val defaultValue: Configuration?) : Configuration.Property.Optional<Configuration?> {
+        @Suppress("UNCHECKED_CAST")
+        return CollectionProperty(key, description, List::class.java as Class<List<Configuration>>, Configuration::class.java)
+    }
+//
+//    override fun multiple(): Configuration.Property.Multiple<Configuration> {
+//
+//        val outer = this@NestedTypedProperty
+//        return object : Configuration.Property.Multiple<Configuration> {
+//
+//            override val key = outer.key
+//
+//            override val description = outer.description
+//
+//            override val type: Class<List<Configuration>> = List::class.java as Class<List<Configuration>>
+//
+//            override val elementType: Class<Configuration> = outer.type
+//
+//            override fun valueIn(configuration: Configuration): List<Configuration> {
+//
+//                return configuration.getRaw(key)
+//            }
+//
+//            override fun isSpecifiedBy(configuration: Configuration) = outer.isSpecifiedBy(configuration)
+//
+//            override fun optional(defaultValue: List<Configuration>?): Configuration.Property<List<Configuration>?> {
+//                TODO("not implemented")
+//            }
+//
+//            override fun multiple(): Configuration.Property.Multiple<List<Configuration>> {
+//                TODO("not implemented")
+//            }
+//        }
+}
 
-        override val type: Class<Configuration?> = Configuration::class.java as Class<Configuration?>
+//    override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = Optional(key, description, schema, defaultValue)
 
-        override fun valueIn(configuration: Configuration): Configuration {
+private class Optional(override val key: String, override val description: String, val schema: Configuration.Schema, override val defaultValue: Configuration?) : Configuration.Property.Optional<Configuration?> {
 
-            return configuration.getRaw(key)
-        }
+    override val type: Class<Configuration?> = Configuration::class.java as Class<Configuration?>
 
-        override fun isSpecifiedBy(configuration: Configuration): Boolean {
-            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-        }
+    override fun valueIn(configuration: Configuration): Configuration {
 
-        override fun optional(defaultValue: Configuration?): Configuration.Property<Configuration?> = Optional(key, description, schema, defaultValue)
+        return configuration.getRaw(key)
+    }
 
-        override fun multiple(): Configuration.Property.Multiple<Configuration?> {
-            TODO("not implemented")
-        }
+    override fun isSpecifiedBy(configuration: Configuration): Boolean {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 }
 

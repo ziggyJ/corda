@@ -114,7 +114,7 @@ class ConfigurationTest {
         val myLegalNameValue1 = "O=Bank A,L=London,C=GB"
         val myLegalNameValue2 = "O=Bank B,L=London,C=GB"
 
-        val myLegalName = Configuration.Property.ofType.stringList("myLegalName")
+        val myLegalName = Configuration.Property.ofType.string("myLegalName").list()
         val schema = Configuration.Schema.withProperties(myLegalName)
 
         val configuration = Configuration.withSchema(schema).empty.apply {
