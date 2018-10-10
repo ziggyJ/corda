@@ -6,7 +6,6 @@ import net.corda.testing.node.internal.classesForPackage
 import net.corda.testing.node.internal.packageToJarPath
 import java.io.File
 import java.net.URL
-import java.nio.file.Path
 
 /**
  * Represents information about a CorDapp. Used to generate CorDapp JARs in tests.
@@ -22,11 +21,9 @@ interface TestCorDapp {
 
     val classes: Set<Class<*>>
 
-    val resources: Set<URL>
+    val resources: Map<String, URL>
 
-    fun packageAsJarInDirectory(parentDirectory: Path): Path
-
-    fun packageAsJarWithPath(jarFilePath: Path)
+    val allResourceUrls: Set<URL>
 
     // TODO sollecitom make it work with defaults
     // TODO sollecitom maybe just TestCorDapp is enough
@@ -34,12 +31,12 @@ interface TestCorDapp {
 
         constructor(name: String, version: String) : this(name, version, "R3")
 
-        private companion object {
+        internal companion object {
 
             private val productionPathSegments = setOf<(String) -> String>({ "out${File.separator}production${File.separator}classes" }, { fullyQualifiedName -> "main${File.separator}${fullyQualifiedName.packageToJarPath()}" })
             private val excludedCordaPackages = setOf("net.corda.core", "net.corda.node")
 
-            private fun filterTestCorDappClass(fullyQualifiedName: String, url: URL): Boolean {
+            internal fun filterTestCorDappClass(fullyQualifiedName: String, url: URL): Boolean {
 
                 return isTestResource(fullyQualifiedName, url) || !isInExcludedCordaPackage(fullyQualifiedName)
             }

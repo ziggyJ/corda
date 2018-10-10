@@ -6,11 +6,16 @@ import java.net.URL
 import java.nio.file.Path
 
 // TODO sollecitom move to the internal package at same level of TestCorDapp
-internal class TestCorDappImpl private constructor(override val name: String, override val version: String, override val vendor: String, override val title: String, private val willResourceBeAddedToCorDapp: (String, URL) -> Boolean, private val jarEntries: Set<JarEntryInfo>) : TestCorDapp {
+internal class TestCorDappImpl internal constructor(override val name: String, override val version: String, override val vendor: String, override val title: String, override val classes: Set<Class<*>>, override val resources: Map<String, URL>, val willResourceBeAddedToCorDapp: (String, URL) -> Boolean) : TestCorDapp {
 
-    constructor(name: String, version: String, vendor: String, title: String, classes: Set<Class<*>>, resources: Map<String, URL>, willResourceBeAddedToCorDapp: (String, URL) -> Boolean) : this(name, version, vendor, title, willResourceBeAddedToCorDapp, jarEntriesFromClasses(classes) + jarEntriesFromResources(resources))
+    internal val jarEntries: Set<JarEntryInfo> = TestCorDappPackager.jarEntries(classes, resources)
 
-    companion object {
+    override val allResourceUrls: Set<URL> = jarEntries.asSequence().map(JarEntryInfo::url).toSet()
+}
+
+internal class TestCorDappPackager {
+
+    internal companion object {
 
         // TODO sollecitom move these
         private const val jarExtension = ".jar"
@@ -27,23 +32,23 @@ internal class TestCorDappImpl private constructor(override val name: String, ov
             return classes.asSequence().map(Class<*>::jarEntryInfo).toSet()
         }
 
-        // TODO sollecitom move
         private fun jarEntriesFromResources(resources: Map<String, URL>): Set<JarEntryInfo> {
 
             return resources.asSequence().map { (name, url) -> JarEntryInfo.ResourceJarEntryInfo(name, url) }.toSet()
         }
+
+        internal fun packageAsJarWithPath(jarFilePath: Path, cordapp: TestCorDapp) {
+
+            val jarEntries = (cordapp as? TestCorDappImpl)?.jarEntries ?: jarEntries(cordapp.classes, cordapp.resources)
+            val willResourceBeAddedToCorDapp: (fullyQualifiedName: String, url: URL) -> Boolean = (cordapp as? TestCorDappImpl)?.willResourceBeAddedToCorDapp
+                    ?: TestCorDapp.Builder.Companion::filterTestCorDappClass
+            jarEntries.packageToCorDapp(jarFilePath, cordapp.name, cordapp.version, cordapp.vendor, cordapp.title, willResourceBeAddedToCorDapp)
+        }
+
+        internal fun packageAsJarInDirectory(parentDirectory: Path, cordapp: TestCorDapp): Path = (parentDirectory / cordapp.defaultJarName()).also { packageAsJarWithPath(it, cordapp) }
+
+        internal fun jarEntries(classes: Set<Class<*>>, resources: Map<String, URL>): Set<JarEntryInfo> = jarEntriesFromClasses(classes) + jarEntriesFromResources(resources)
+
+        private fun TestCorDapp.defaultJarName(): String = "${name}_$version$jarExtension".replace(whitespace, whitespaceReplacement)
     }
-
-    override val classes: Set<Class<*>> = jarEntries.asSequence().filterIsInstance(JarEntryInfo.ClassJarEntryInfo::class.java).map(JarEntryInfo.ClassJarEntryInfo::clazz).toSet()
-
-    override val resources: Set<URL> = jarEntries.asSequence().map(JarEntryInfo::url).toSet()
-
-    // TODO sollecitom move
-    override fun packageAsJarWithPath(jarFilePath: Path) = jarEntries.packageToCorDapp(jarFilePath, name, version, vendor, title, willResourceBeAddedToCorDapp)
-
-    // TODO sollecitom move
-    override fun packageAsJarInDirectory(parentDirectory: Path): Path = (parentDirectory / defaultJarName()).also { packageAsJarWithPath(it) }
-
-    // TODO sollecitom move
-    private fun defaultJarName(): String = "${name}_$version$jarExtension".replace(whitespace, whitespaceReplacement)
 }

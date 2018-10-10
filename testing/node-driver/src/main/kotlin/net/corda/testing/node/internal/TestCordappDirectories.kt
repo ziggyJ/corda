@@ -29,7 +29,7 @@ internal object TestCordappDirectories {
     internal fun cached(cordapp: TestCorDapp, replaceExistingOnes: Boolean = false, cordappsDirectory: Path = defaultCordappsDirectory): Path {
 
         cordappsDirectory.toFile().deleteOnExit()
-        val cacheKey = cordapp.resources.map { it.toExternalForm() }.sorted()
+        val cacheKey = cordapp.allResourceUrls.map { it.toExternalForm() }.sorted()
         return if (replaceExistingOnes) {
             cordappsCache.remove(cacheKey)
             cordappsCache.getOrPut(cacheKey) {
