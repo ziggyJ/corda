@@ -50,8 +50,8 @@ class AsymmetricCorDappsTests {
 
         driver(DriverParameters(startNodesInProcess = false, cordappsForAllNodes = emptySet())) {
 
-            val nodeA = startNode(providedName = ALICE_NAME, additionalCordapps = setOf(TestCorDapp.Factory.create("Szymon CorDapp", "1.0", classes = setOf(Ping::class.java)))).getOrThrow()
-            val nodeB = startNode(providedName = BOB_NAME, additionalCordapps = setOf(TestCorDapp.Factory.create("Szymon CorDapp", "1.0", classes = setOf(Ping::class.java, Pong::class.java)))).getOrThrow()
+            val nodeA = startNode(providedName = ALICE_NAME, additionalCordapps = setOf(TestCorDapp.Builder("Szymon CorDapp", "1.0").plusClasses(Ping::class.java).build())).getOrThrow()
+            val nodeB = startNode(providedName = BOB_NAME, additionalCordapps = setOf(TestCorDapp.Builder("Szymon CorDapp", "1.0").plusClasses(Ping::class.java, Pong::class.java).build())).getOrThrow()
             nodeA.rpc.startFlow(::Ping, nodeB.nodeInfo.singleIdentity(), 1).returnValue.getOrThrow()
         }
     }
@@ -61,8 +61,8 @@ class AsymmetricCorDappsTests {
 
         val resourceName = "cordapp.properties"
         val cordappPropertiesResource = this::class.java.getResource(resourceName)
-        val sharedCordapp = TestCorDapp.Factory.create("shared", "1.0", classes = setOf(Ping::class.java)).plusResource("${AsymmetricCorDappsTests::class.java.packageName}.$resourceName", cordappPropertiesResource)
-        val cordappForNodeB = TestCorDapp.Factory.create("nodeB_only", "1.0", classes = setOf(Pong::class.java))
+        val sharedCordapp = TestCorDapp.Builder("shared", "1.0").plusClasses(Ping::class.java).plusResources("${AsymmetricCorDappsTests::class.java.packageName}.$resourceName" to cordappPropertiesResource).build()
+        val cordappForNodeB = TestCorDapp.Builder("nodeB_only", "1.0").plusClasses(Pong::class.java).build()
         driver(DriverParameters(startNodesInProcess = false, cordappsForAllNodes = setOf(sharedCordapp))) {
 
             val (nodeA, nodeB) = listOf(startNode(providedName = ALICE_NAME), startNode(providedName = BOB_NAME, additionalCordapps = setOf(cordappForNodeB))).transpose().getOrThrow()
@@ -75,8 +75,8 @@ class AsymmetricCorDappsTests {
 
         val resourceName = "cordapp.properties"
         val cordappPropertiesResource = this::class.java.getResource(resourceName)
-        val sharedCordapp = TestCorDapp.Factory.create("shared", "1.0", classes = setOf(Ping::class.java)).plusResource("${AsymmetricCorDappsTests::class.java.packageName}.$resourceName", cordappPropertiesResource)
-        val cordappForNodeB = TestCorDapp.Factory.create("nodeB_only", "1.0", classes = setOf(Pong::class.java))
+        val sharedCordapp = TestCorDapp.Builder("shared", "1.0").plusClasses(Ping::class.java).plusResources("${AsymmetricCorDappsTests::class.java.packageName}.$resourceName" to cordappPropertiesResource).build()
+        val cordappForNodeB = TestCorDapp.Builder("nodeB_only", "1.0").plusClasses(Pong::class.java).build()
         driver(DriverParameters(startNodesInProcess = true, cordappsForAllNodes = setOf(sharedCordapp))) {
 
             val (nodeA, nodeB) = listOf(startNode(providedName = ALICE_NAME), startNode(providedName = BOB_NAME, additionalCordapps = setOf(cordappForNodeB))).transpose().getOrThrow()

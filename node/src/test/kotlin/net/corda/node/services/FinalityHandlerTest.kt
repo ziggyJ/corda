@@ -38,7 +38,7 @@ class FinalityHandlerTest {
         // CorDapp. Bob's FinalityHandler will error when validating the tx.
         mockNet = InternalMockNetwork()
 
-        val assertCordapp = TestCorDapp.Factory.create("net.corda.finance.contracts.asset", "1.0").plusPackage("net.corda.finance.contracts.asset")
+        val assertCordapp = TestCorDapp.Builder("net.corda.finance.contracts.asset", "1.0").plusPackages("net.corda.finance.contracts.asset").build()
         val alice = mockNet.createNode(InternalMockNodeParameters(legalName = ALICE_NAME, additionalCordapps = setOf(assertCordapp)))
 
         var bob = mockNet.createNode(InternalMockNodeParameters(legalName = BOB_NAME))

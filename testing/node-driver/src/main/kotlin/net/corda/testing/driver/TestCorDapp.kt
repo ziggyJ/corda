@@ -1,7 +1,10 @@
 package net.corda.testing.driver
 
 import net.corda.core.DoNotImplement
-import net.corda.testing.node.internal.MutableTestCorDapp
+import net.corda.testing.node.internal.TestCorDappImpl
+import net.corda.testing.node.internal.classesForPackage
+import net.corda.testing.node.internal.packageToJarPath
+import java.io.File
 import java.net.URL
 import java.nio.file.Path
 
@@ -11,6 +14,7 @@ import java.nio.file.Path
 @DoNotImplement
 interface TestCorDapp {
 
+    // TODO sollecitom use a TestCorDapp.Info instead
     val name: String
     val title: String
     val version: String
@@ -24,62 +28,82 @@ interface TestCorDapp {
 
     fun packageAsJarWithPath(jarFilePath: Path)
 
-    /**
-     * Responsible of creating [TestCorDapp]s.
-     */
-    class Factory {
-        companion object {
+    // TODO sollecitom make it work with defaults
+    // TODO sollecitom maybe just TestCorDapp is enough
+    class Builder(val name: String, val version: String, val vendor: String) {
 
-            /**
-             * Returns a builder-style [TestCorDapp] to easily generate different [TestCorDapp]s that have something in common.
-             */
-            @JvmStatic
-            fun create(name: String, version: String, vendor: String = "R3", title: String = name, classes: Set<Class<*>> = emptySet(), willResourceBeAddedBeToCorDapp: (fullyQualifiedName: String, url: URL) -> Boolean = MutableTestCorDapp.Companion::filterTestCorDappClass): TestCorDapp.Mutable {
+        constructor(name: String, version: String) : this(name, version, "R3")
 
-                return MutableTestCorDapp(name, version, vendor, title, classes, willResourceBeAddedBeToCorDapp)
+        private companion object {
+
+            private val productionPathSegments = setOf<(String) -> String>({ "out${File.separator}production${File.separator}classes" }, { fullyQualifiedName -> "main${File.separator}${fullyQualifiedName.packageToJarPath()}" })
+            private val excludedCordaPackages = setOf("net.corda.core", "net.corda.node")
+
+            private fun filterTestCorDappClass(fullyQualifiedName: String, url: URL): Boolean {
+
+                return isTestResource(fullyQualifiedName, url) || !isInExcludedCordaPackage(fullyQualifiedName)
+            }
+
+            private fun isTestResource(fullyQualifiedName: String, url: URL): Boolean {
+
+                return productionPathSegments.asSequence().map { it.invoke(fullyQualifiedName) }.none { url.toString().contains(it) }
+            }
+
+            private fun isInExcludedCordaPackage(packageName: String): Boolean {
+
+                return excludedCordaPackages.any { packageName.startsWith(it) }
             }
         }
-    }
 
-    @DoNotImplement
-    interface Mutable : TestCorDapp {
+        private val packages = mutableSetOf<String>()
+        private val classes = mutableSetOf<Class<*>>()
+        private val resources = mutableMapOf<String, URL>()
 
-        fun withName(name: String): TestCorDapp.Mutable
+        private var resourceFilter: (fullyQualifiedName: String, url: URL) -> Boolean = ::filterTestCorDappClass
 
-        fun withTitle(title: String): TestCorDapp.Mutable
+        fun plusPackages(firstPackage: String, vararg packages: String): TestCorDapp.Builder {
 
-        fun withVersion(version: String): TestCorDapp.Mutable
+            return plusPackages(setOf(firstPackage, *packages))
+        }
 
-        fun withVendor(vendor: String): TestCorDapp.Mutable
+        fun plusPackages(packages: Iterable<String>): TestCorDapp.Builder {
 
-        fun withClasses(classes: Set<Class<*>>): TestCorDapp.Mutable
+            this.packages += packages
+            return this
+        }
 
-        fun plusPackages(pckgs: Set<String>): TestCorDapp.Mutable
+        fun plusClasses(firstClass: Class<*>, vararg classes: Class<*>): TestCorDapp.Builder {
 
-        fun minusPackages(pckgs: Set<String>): TestCorDapp.Mutable
+            return plusClasses(setOf(firstClass, *classes))
+        }
 
-        fun plusPackage(pckg: String): TestCorDapp.Mutable = plusPackages(setOf(pckg))
+        fun plusClasses(classes: Iterable<Class<*>>): TestCorDapp.Builder {
 
-        fun minusPackage(pckg: String): TestCorDapp.Mutable = minusPackages(setOf(pckg))
+            this.classes += classes
+            return this
+        }
 
-        fun plusPackage(pckg: Package): TestCorDapp.Mutable = plusPackages(pckg.name)
+        fun plusResources(firstResource: Pair<String, URL>, vararg resources: Pair<String, URL>): TestCorDapp.Builder {
 
-        fun minusPackage(pckg: Package): TestCorDapp.Mutable = minusPackages(pckg.name)
+            return plusResources(setOf(firstResource, *resources))
+        }
 
-        operator fun plus(clazz: Class<*>): TestCorDapp.Mutable = withClasses(classes + clazz)
+        fun plusResources(resources: Iterable<Pair<String, URL>>): TestCorDapp.Builder {
 
-        operator fun minus(clazz: Class<*>): TestCorDapp.Mutable = withClasses(classes - clazz)
+            this.resources += resources.toMap()
+            return this
+        }
 
-        fun plusPackages(pckg: String, vararg pckgs: String): TestCorDapp.Mutable = plusPackages(setOf(pckg, *pckgs))
+        fun withResourceFilter(resourceFilter: (fullyQualifiedName: String, url: URL) -> Boolean): TestCorDapp.Builder {
 
-        fun plusPackages(pckg: Package, vararg pckgs: Package): TestCorDapp.Mutable = minusPackages(setOf(pckg, *pckgs).map { it.name }.toSet())
+            this.resourceFilter = resourceFilter
+            return this
+        }
 
-        fun minusPackages(pckg: String, vararg pckgs: String): TestCorDapp.Mutable = minusPackages(setOf(pckg, *pckgs))
+        fun build(): TestCorDapp {
 
-        fun minusPackages(pckg: Package, vararg pckgs: Package): TestCorDapp.Mutable = minusPackages(setOf(pckg, *pckgs).map { it.name }.toSet())
-
-        fun plusResource(fullyQualifiedName: String, url: URL): TestCorDapp.Mutable
-
-        fun minusResource(fullyQualifiedName: String, url: URL): TestCorDapp.Mutable
+            val classesFromPackages = packages.flatMap(::classesForPackage).toSet()
+            return TestCorDappImpl(name, version, vendor, name, classes + classesFromPackages, resources, resourceFilter)
+        }
     }
 }

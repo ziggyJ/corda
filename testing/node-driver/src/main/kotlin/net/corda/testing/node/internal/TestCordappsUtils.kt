@@ -65,10 +65,11 @@ fun Iterable<TestCorDapp>.packageInDirectory(directory: Path) {
     forEach { cordapp -> cordapp.packageAsJarInDirectory(directory) }
 }
 
+// TODO sollecitom move
 /**
  * Returns all classes within the [targetPackage].
  */
-fun allClassesForPackage(targetPackage: String): Set<Class<*>> {
+fun classesForPackage(targetPackage: String): Set<Class<*>> {
 
     val scanResult = FastClasspathScanner(targetPackage).strictWhitelist().scan()
     return scanResult.namesOfAllClasses.filter { className -> className.startsWith(targetPackage) }.map(scanResult::classNameToClassRef).toSet()
@@ -110,12 +111,13 @@ fun getCallerPackage(directCallerClass: KClass<*>): String? {
 /**
  * Returns a [TestCorDapp] containing resources found in [packageName].
  */
+// TODO sollecitom remove?
 internal fun testCorDapp(packageName: String): TestCorDapp {
 
     val uuid = UUID.randomUUID()
     val name = "$packageName-$uuid"
     val version = "$uuid"
-    return TestCorDapp.Factory.create(name, version).plusPackage(packageName)
+    return TestCorDapp.Builder(name, version).plusPackages(packageName).build()
 }
 
 /**
