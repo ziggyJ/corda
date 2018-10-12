@@ -264,23 +264,33 @@ abstract class VaultQueryTestsBase : VaultQueryParties {
 
             // build custom contract and store in vault
             val me = services.myInfo.chooseIdentity()
+
+            // store Child class in vault
             val state = MyState("myState", listOf(me))
             val stateAndContract = StateAndContract(state, MYCONTRACT_ID)
-            val utx = TransactionBuilder(notary = notaryServices.myInfo.singleIdentity()).withItems(stateAndContract).withItems(dummyCommand())
-            services.recordTransactions(services.signInitialTransaction(utx))
+            val utxChild = TransactionBuilder(notary = notaryServices.myInfo.singleIdentity()).withItems(stateAndContract).withItems(dummyCommand())
+            services.recordTransactions(services.signInitialTransaction(utxChild))
 
             // query vault by Child class
             val criteria = VaultQueryCriteria() // default is UNCONSUMED
             val queryByMyState = vaultService.queryBy<MyState>(criteria)
             assertThat(queryByMyState.states).hasSize(1)
 
+            // store Parent class in vault
+            val baseState = BaseState(listOf(me))
+            val baseStateAndContract = StateAndContract(baseState, MYCONTRACT_ID)
+            val utxParent = TransactionBuilder(notary = notaryServices.myInfo.singleIdentity()).withItems(baseStateAndContract).withItems(dummyCommand())
+            services.recordTransactions(services.signInitialTransaction(utxParent))
+
             // query vault by Parent class
             val queryByBaseState = vaultService.queryBy<BaseState>(criteria)
-            assertThat(queryByBaseState.states).hasSize(1)
+            assertThat(queryByBaseState.states).hasSize(2)
+            val queryByMyStateAgain = vaultService.queryBy<MyState>(criteria)
+            assertThat(queryByMyStateAgain.states).hasSize(1)
 
             // query vault by extended Contract Interface
             val queryByContract = vaultService.queryBy<MyContractInterface>(criteria)
-            assertThat(queryByContract.states).hasSize(1)
+            assertThat(queryByContract.states).hasSize(2)
         }
     }
 
