@@ -215,6 +215,11 @@
       <module name="testing-test-utils_test" target="1.8" />
       <module name="testing_main" target="1.8" />
       <module name="testing_test" target="1.8" />
+      <module name="tokens-sdk_integrationTest" target="1.8" />
+      <module name="tokens-sdk_main" target="1.8" />
+      <module name="tokens-sdk_test" target="1.8" />
+      <module name="tokens_main" target="1.8" />
+      <module name="tokens_test" target="1.8" />
       <module name="tools-blobinspector_main" target="1.8" />
       <module name="tools-blobinspector_test" target="1.8" />
       <module name="tools_main" target="1.8" />
