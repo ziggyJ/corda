@@ -7,9 +7,9 @@ This paper describes a new approach to modelling financial things on Corda. Ther
 
 ## Modelling financial instruments
 
-**TL;DR Currency and securities are agreements but we model them as OwnableState s for technical reasons.**
+**TL;DR Money and securities are agreements but we model them as `OwnableState`s for legacy reasons.**
 
-All "legacy" financial instruments are agreements (or contracts, but here we won't use the term "contract" as it is too heavily overloaded in the DLT world); this includes all forms of fiat currency and securities.
+All "legacy" financial instruments are agreements (or contracts, but here we won't use the term "contract" as it is too heavily overloaded in the DLT world); this includes all forms of fiat money and securities.
 
 Indeed, if you "look" at a financial instrument, you'll most likely be looking at some form of legal document:
 
@@ -61,11 +61,11 @@ Things which are "ownable" (not in the `OwnableState` sense) and have no counter
 | --------------------- | ------------------------------------------------------------ | ------------------------- | --------- |
 | Physical commodities  | Commodities are dug out of the ground.                       | No                        | Yes       |
 | Freehold real- estate | Freehold real-estate can be thought of as being owned out-right. Technically speaking, the Crown is the only absolute owner of land in England and Wales. When land/property is bought/sold, titles to the land change hands rather than the land, itself. This is why ownership is ultimately determined by the land registry and not based on a sales contract. | No                        | Yes       |
-| Chattels              | Stuff in your house which you have bought. Also, antiques.   | No                        | Yes       |
+| Chattels              | Stuff in your house which is owned out-right. Also, antiques. | No                        | Yes       |
 | Cryptocurrency        | Permissionless, pseudo-anonymous crypto-currencies like Bitcoin whivh have unidentifiable issuers. There is no-one to sue if you lose your coins! | Unidentifiable            | Yes       |
 | Utility tokens        | Utility tokens which confer no rights to owners              | Yes but has no obligation | Yes       |
 
-To complicate things more, it is worth noting that physical commodities, freehold real-estate and chattels, etc. cannot exist on Corda in material form, hence the need for "tokenization"— tokens are created by an issuer to represent claims on themselves to deliver a specific amount of the off-ledger thing in return for redemption of the token. In other words, the token is an agreement!
+To complicate things more, it is worth noting that physical commodities, freehold real-estate and chattels, etc. **cannot exist on Corda in material form**, hence the need for "tokenization"— tokens are created by an issuer to represent claims on themselves to deliver a specific amount of the off-ledger thing in return for redemption of the token. In other words, the token is an agreement!
 
 The nature of the issuer, whether they are a custodian or bank, for example, is out of scope for the purposes of this paper.
 
@@ -92,7 +92,9 @@ interface FungibleState<T : Any> : ContractState {
 }
 ```
 
-Where `T` is some type of token or a reference to a type of token defined elsewhere. `T` deliberately has no upper-bound to maintain flexibility going forward. Note that Issuer is omitted and the interface implements `ContractState` as opposed to `OwnableState` , again, this is to provide flexibility.
+Where `T` is some type of token or a reference to a type of token defined elsewhere. `T` deliberately has no upper-bound to maintain flexibility going forward. Note that Issuer is omitted and the interface implements `ContractState` as opposed to `OwnableState`, again, this is to provide flexibility.
+
+**Note:** This has already been added to Corda core. See [here](https://github.com/corda/corda/blob/dd60ae27f2dadd12d121d3ecbb951bdaf2725272/core/src/main/kotlin/net/corda/core/contracts/FungibleState.kt).
 
 ## The foundational state types
 
@@ -287,11 +289,6 @@ We cannot link the `TokenType.Definition` by `StateRef` as the `FungibleState` w
 
 ![pointer](pointer.png)
 
-**TODO:**
-
-* Add a point about coin selection. The `linearId` is all that is required to select `TokenType.Pointer` s. The pointer only needs to be resolved when developers need access to data contained within the `TokenType.Definition`. E.g. if the token info needs displaying in the front-end of an app, or if the issuer `Party` is required for whatever reason. As such, no joins need to be performed for simple coin selection, where X amount of a set of `TokenType` needs to be selected. If the selection needs to be more complicated. When querying, the token symbol can be resolved to a `linearId` which will be used by the vault to select the coins.
-* Need to benchmark coin selection with use of `TokenType.Pointer`.
-
 #### Representing non-fungible tokens
 
 Although not covered in the state hierarchy diagram, a non-fungible token can be implemented by using a `FungibleToken` with only one of (the smallest unit of) the specified `TokenType` . Specifically, the way to do this would be to create a `TokenType.Definition` then issue a `FungibleToken` with amount set to the smallest unit of the desired `TokenType.Definition`. If further units are issued, then the assumption is that these units are all fungible, implying fractional ownership in a single entity.
@@ -314,11 +311,19 @@ Although not included in the type hierarchy diagram above, it would be trivial t
 
 An example would be integrating the ISDA common domain model ("CDM") with this proposal. All the CDM types would be encapsulated within a `LinearState` .
 
+## Acknowledgements
+
+* Farzad Pezeshkpour for his detailed review of this proposal. See his review [here](https://gist.github.com/dazraf/87c56a6039391f0613066ee2d6fe6c0e). 
+* Jose Col
+* Matthew Nesbit
+* Mike Hearn
+* Richard Brown
+
 ## Appendix
 
 ### Financial instrument taxonomy
 
-These tables explain how common financial instruments and things map to the four state types defined above.
+These tables explain how common financial instruments and things map to the state types defined above; `FungibleToken`, `NonFungibleToken` and `LinearState`.
 
 ![taxonomy](taxonomy.png)
 
@@ -390,5 +395,6 @@ When used in `FungibleToken`s, `TokenDescription`s are composed into `TokenType.
 
 **TODO:**
 
-* Explain how other types of composition would work. For example, where a `TokenDescription` comprises multiple other `TokenDescription`s. What are some good examples? Are there any?
-* Explain how "acceptable contracts" will work for the obligation contract. "I'll accept payment in any of the specified `TokenType`s".
+* Investigate how linar pointers affect coin seelction. Looks at denormalising data to reduce the time needed for selecting coins.
+* Explain how other types of composition would work. For example, where a `TokenDescription` comprises multiple other `TokenDescription`s. For example: Mortgage securitisation.
+* Introduce the concept of obligations and how it fits in with Token types. "An obligation to deliver 10 of X token type".
