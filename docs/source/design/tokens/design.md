@@ -313,11 +313,13 @@ An example would be integrating the ISDA common domain model ("CDM") with this p
 
 ## Acknowledgements
 
+* David Nicol
 * Farzad Pezeshkpour for his detailed review of this proposal. See his review [here](https://gist.github.com/dazraf/87c56a6039391f0613066ee2d6fe6c0e). 
-* Jose Col
+* Jose Coll
 * Matthew Nesbit
 * Mike Hearn
 * Richard Brown
+* Todd McDonald
 
 ## Appendix
 
