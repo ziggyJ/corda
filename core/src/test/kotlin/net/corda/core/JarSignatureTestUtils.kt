@@ -4,11 +4,21 @@ import net.corda.core.internal.JarSignatureCollector
 import net.corda.core.internal.div
 import net.corda.nodeapi.internal.crypto.loadKeyStore
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.security.PublicKey
-import java.util.jar.JarInputStream
+import java.util.jar.*
+import java.util.zip.ZipEntry
 import kotlin.test.assertEquals
+import jdk.nashorn.internal.codegen.ObjectClassGenerator.pack
+import java.util.jar.Pack200
+import java.util.jar.Pack200.Packer
+
+
+
+
+
 
 object JarSignatureTestUtils {
     val bin = Paths.get(System.getProperty("java.home")).let { if (it.endsWith("jre")) it.parent else it } / "bin"
@@ -42,4 +52,97 @@ object JarSignatureTestUtils {
 
     fun Path.getJarSigners(fileName: String) =
             JarInputStream(FileInputStream((this / fileName).toFile())).use(JarSignatureCollector::collectSigners)
+
+    fun Path.printJar(fileName: String) {
+        JarInputStream(FileInputStream((this / fileName).toFile())).use {
+            var count = 0
+            while (true) {
+                val entry = it.nextJarEntry ?: break
+                println(entry)
+                count++
+            }
+            println("\n$fileName has $count entries\n")
+        }
+    }
+
+    fun Path.copyJar(inputFileName: String, outputFileName: String) {
+        JarInputStream(FileInputStream((this / inputFileName).toFile())).use { input ->
+            val output = JarOutputStream(FileOutputStream((this / outputFileName).toFile()))
+
+            if (input.manifest != null) {
+                // Bizarrely the META-INF directory does not get recreated upon copying an unsigned jar ???
+//                output.putNextEntry(JarEntry("META-INF"))
+                val me = ZipEntry(JarFile.MANIFEST_NAME)
+                output.putNextEntry(me)
+                input.manifest.write(output)
+                output.closeEntry()
+            }
+
+            val buffer = ByteArray(1 shl 14)
+            while (true) {
+                val entry = input.nextJarEntry ?: break
+                println(entry)
+                output.putNextEntry(entry)
+                var nr: Int
+                while (true) {
+                    nr = input.read(buffer)
+                    if (nr < 0) break
+                    output.write(buffer, 0, nr)
+                }
+            }
+            output.close()
+        }
+    }
+
+
+    fun Path.stripJarSigners(inputFileName: String, outputFileName: String) {
+       JarInputStream(FileInputStream((this / inputFileName).toFile())).use { input ->
+            val output = JarOutputStream(FileOutputStream((this / outputFileName).toFile()))
+
+            if (input.manifest != null) {
+                val me = ZipEntry(JarFile.MANIFEST_NAME)
+                val newManifest = Manifest()
+                input.manifest.mainAttributes.forEach { entry ->
+                    if (entry.key.toString() != "Sealed")
+                        newManifest.mainAttributes.putValue(entry.key.toString(), entry.value.toString())
+                    else
+                        println("Skipping main attribute: $entry")
+                }
+                output.putNextEntry(me)
+                newManifest.write(output)
+                output.closeEntry()
+            }
+
+            val buffer = ByteArray(1 shl 14)
+            while (true) {
+                val entry = input.nextJarEntry ?: break
+                val name = entry.name
+                if (name.endsWith(".SF") ||
+                        name.endsWith(".EC") ||
+                        name.endsWith(".DSA") ||
+                        name.endsWith(".RSA") ||
+                        name.contains("SIG-*")) {
+                    println("Skipping certificate entry: $entry")
+                    continue
+                }
+                println(entry)
+                output.putNextEntry(entry)
+                var nr: Int
+                while (true) {
+                    nr = input.read(buffer)
+                    if (nr < 0) break
+                    output.write(buffer, 0, nr)
+                }
+            }
+            output.close()
+
+//           val packer = Pack200.newPacker()
+//           val jarFile = JarFile((this / outputFileName).toString())
+//           val fos = FileOutputStream("/tmp/test.pack")
+//           // Call the packer
+//           packer.pack(jarFile, fos)
+//           jarFile.close()
+//           fos.close()
+        }
+    }
 }

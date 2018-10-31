@@ -115,6 +115,9 @@ jar {
 }
 
 cordapp {
+    signing {
+        enabled false
+    }
     info {
         name "net/corda/samples/bank-of-corda-demo"
         vendor "Corda Open Source"

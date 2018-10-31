@@ -1,12 +1,15 @@
 package net.corda.node.internal.cordapp
 
 import co.paralleluniverse.fibers.Suspendable
+import net.corda.core.JarSignatureTestUtils.copyJar
+import net.corda.core.JarSignatureTestUtils.printJar
+import net.corda.core.JarSignatureTestUtils.stripJarSigners
 import net.corda.core.flows.*
 import net.corda.core.internal.packageName
 import net.corda.node.VersionInfo
+import net.corda.nodeapi.internal.DEV_PUB_KEY_HASHES
 import net.corda.testing.node.internal.TestCordappDirectories
 import net.corda.testing.node.internal.cordappForPackages
-import net.corda.nodeapi.internal.DEV_PUB_KEY_HASHES
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 import java.nio.file.Paths
@@ -149,6 +152,29 @@ class JarScanningCordappLoaderTest {
         val jar = JarScanningCordappLoaderTest::class.java.getResource("signed/signed-by-dev-key.jar")!!
         val loader = JarScanningCordappLoader.fromJarUrls(listOf(jar), cordappsSignerKeyFingerprintBlacklist = emptyList())
         assertThat(loader.cordapps).hasSize(1)
+    }
+
+    @Test
+    fun `compare hash of unsigned cordapp with signed cordapp stripped of certs`() {
+        val jarUnsigned = JarScanningCordappLoaderTest::class.java.getResource("boc-unsigned.jar")!!
+        val jarSigned = JarScanningCordappLoaderTest::class.java.getResource("boc-signed.jar")!!
+        val jarStripped = JarScanningCordappLoaderTest::class.java.getResource("boc-stripped.jar")!!
+
+        val dir = Paths.get(jarSigned.toURI()).parent
+        dir.printJar("boc-signed.jar")
+        dir.printJar("boc-unsigned.jar")
+        dir.printJar("boc-stripped.jar")
+
+        dir.copyJar("boc-signed.jar", "boc-signed-copy.jar")
+        dir.copyJar("boc-unsigned.jar", "boc-unsigned-copy.jar")
+
+        dir.stripJarSigners("boc-signed.jar", "boc-stripped.jar")
+
+        val loader = JarScanningCordappLoader.fromJarUrls(listOf(jarUnsigned, jarSigned, jarStripped), cordappsSignerKeyFingerprintBlacklist = emptyList())
+        assertThat(loader.cordapps).hasSize(3)
+        loader.cordapps.forEach { cordapp ->
+            println("${cordapp.jarPath} => ${cordapp.jarHash}")
+        }
     }
 
     @Test
