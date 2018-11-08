@@ -2,17 +2,31 @@ package net.corda.node.internal.cordapp
 
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.JarSignatureTestUtils.copyJar
+import net.corda.core.JarSignatureTestUtils.generateKey
 import net.corda.core.JarSignatureTestUtils.printJar
 import net.corda.core.JarSignatureTestUtils.stripJarSigners
+import net.corda.core.JarSignatureTestUtils.manifest
+import net.corda.core.JarSignatureTestUtils.jarEntry
+import net.corda.core.JarSignatureTestUtils.signJar
 import net.corda.core.flows.*
-import net.corda.core.internal.packageName
+import net.corda.core.internal.*
 import net.corda.node.VersionInfo
+import net.corda.node.services.persistence.NodeAttachmentServiceTest
 import net.corda.nodeapi.internal.DEV_PUB_KEY_HASHES
+import net.corda.testing.core.ALICE_NAME
 import net.corda.testing.node.internal.TestCordappDirectories
 import net.corda.testing.node.internal.cordappForPackages
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
+import java.io.FileInputStream
+import java.io.IOException
+import java.net.URL
 import java.nio.file.Paths
+import java.util.jar.JarEntry
+import java.util.jar.JarInputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import kotlin.test.assertTrue
 
 @InitiatingFlow
 class DummyFlow : FlowLogic<Unit>() {
@@ -155,26 +169,177 @@ class JarScanningCordappLoaderTest {
     }
 
     @Test
+    fun `compare jar manifests`() {
+        val jar1 = JarScanningCordappLoaderTest::class.java.getResource("boc-signed.jar")!!
+        val jar2 = JarScanningCordappLoaderTest::class.java.getResource("boc-signed-copy.jar")!!
+        val dir = Paths.get(jar1.toURI()).parent
+
+        assertThat(dir.manifest(jar1.path)).isEqualTo(dir.manifest(jar2.path))
+    }
+
+    @Test
+    fun `compare first jar entry`() {
+//        val jar1 = JarScanningCordappLoaderTest::class.java.getResource("boc-signed.jar")!!
+//        val jar2 = JarScanningCordappLoaderTest::class.java.getResource("boc-signed-copy.jar")!!
+        val jar1 = JarScanningCordappLoaderTest::class.java.getResource("boc-unsigned.jar")!!
+        val jar2 = JarScanningCordappLoaderTest::class.java.getResource("boc-stripped.jar")!!
+        val dir = Paths.get(jar1.toURI()).parent
+
+        val jarEntry1 = MyJarEntry(dir.jarEntry(jar1.path))
+        val jarEntry2 = MyJarEntry(dir.jarEntry(jar2.path))
+        jarEntry1.print()
+        jarEntry2.print()
+        assertTrue(jarEntry1.equals(jarEntry2))
+    }
+
+    @Test
+    fun `display jar contents and metadata`() {
+//        val jar = JarScanningCordappLoaderTest::class.java.getResource("boc-unsigned.jar")!!
+        val jar = JarScanningCordappLoaderTest::class.java.getResource("boc-signed.jar")!!
+        JarInputStream(FileInputStream(jar.toPath().toFile())).use { input ->
+            while (true) {
+                val entry = input.nextJarEntry ?: break
+                MyJarEntry(entry).print()
+            }
+        }
+    }
+
+    class MyJarEntry(val ie: JarEntry) : JarEntry(ie) {
+        constructor(ie: ZipEntry) : this(JarEntry(ie))
+
+        override fun equals(other: Any?): Boolean {
+            if (other is JarEntry) {
+                return !((ie.creationTime != other.creationTime) ||
+                        (ie.lastAccessTime != other.lastAccessTime) ||
+                        (ie.lastModifiedTime != other.lastModifiedTime) ||
+                        (ie.comment != other.comment) ||
+                        (ie.compressedSize != other.compressedSize) ||
+                        (ie.crc != other.crc) ||
+                        (ie.name != other.name) ||
+                        (ie.size != other.size) ||
+                        (ie.time != other.time) ||
+                        (ie.extra != other.extra))
+            }
+            return false
+        }
+
+        fun print() {
+            println(""""JarEntry $ie =>
+            name: ${ie.name}
+            method: ${ie.method}
+            creationTime: ${ie.creationTime}
+            lastAccessTime: ${ie.lastAccessTime}
+            lastModifiedTime: ${ie.lastModifiedTime}
+            comment: ${ie.comment}
+            compressedSize: ${ie.compressedSize}
+            crc: ${ie.crc}
+            size: ${ie.size}
+            time: ${ie.time}
+            extra: ${ie.extra}
+        """.trimIndent())
+        }
+    }
+
+    @Test
+    fun `copy jar and verify same hashcode`() {
+        val jarSigned = JarScanningCordappLoaderTest::class.java.getResource("boc-signed.jar")!!
+        val dir = Paths.get(jarSigned.toURI()).parent
+
+        dir.copyJar("boc-signed.jar", "boc-signed-copy.jar")
+        val jarSignedCopy = (dir / "boc-signed-copy.jar").toUri().toURL()
+        dir.copyJar("boc-signed.jar", "boc-signed-copy2.jar")
+        val jarSignedCopy2 = (dir / "boc-signed-copy2.jar").toUri().toURL()
+
+        val loader = JarScanningCordappLoader.fromJarUrls(listOf(jarSigned, jarSignedCopy, jarSignedCopy2), cordappsSignerKeyFingerprintBlacklist = emptyList())
+//        assertThat(loader.cordapps).hasSize(2)
+        loader.cordapps.forEach { cordapp ->
+            println("${cordapp.jarPath} => ${cordapp.jarHash}")
+        }
+
+
+    }
+
+    @Test
     fun `compare hash of unsigned cordapp with signed cordapp stripped of certs`() {
         val jarUnsigned = JarScanningCordappLoaderTest::class.java.getResource("boc-unsigned.jar")!!
         val jarSigned = JarScanningCordappLoaderTest::class.java.getResource("boc-signed.jar")!!
-        val jarStripped = JarScanningCordappLoaderTest::class.java.getResource("boc-stripped.jar")!!
 
         val dir = Paths.get(jarSigned.toURI()).parent
-        dir.printJar("boc-signed.jar")
-        dir.printJar("boc-unsigned.jar")
-        dir.printJar("boc-stripped.jar")
-
-        dir.copyJar("boc-signed.jar", "boc-signed-copy.jar")
-        dir.copyJar("boc-unsigned.jar", "boc-unsigned-copy.jar")
-
         dir.stripJarSigners("boc-signed.jar", "boc-stripped.jar")
+
+        val jarStripped = JarScanningCordappLoaderTest::class.java.getResource("boc-stripped.jar")!!
 
         val loader = JarScanningCordappLoader.fromJarUrls(listOf(jarUnsigned, jarSigned, jarStripped), cordappsSignerKeyFingerprintBlacklist = emptyList())
         assertThat(loader.cordapps).hasSize(3)
         loader.cordapps.forEach { cordapp ->
             println("${cordapp.jarPath} => ${cordapp.jarHash}")
         }
+
+        val jarEntry1 = MyJarEntry(dir.jarEntry("boc-unsigned.jar"))
+        val jarEntry2 = MyJarEntry(dir.jarEntry("boc-stripped.jar"))
+        jarEntry1.print()
+        jarEntry2.print()
+        assertTrue(jarEntry1.equals(jarEntry2))
+    }
+
+    private fun print(jar: URL) {
+        JarInputStream(FileInputStream(jar.toPath().toFile())).use { input ->
+            var count = 0
+            while (true) {
+                val entry = input.nextJarEntry ?: break
+                MyJarEntry(entry).print()
+                count++
+            }
+            println("\n$jar has $count entries\n")
+        }
+    }
+
+    private fun printAsZip(jar: URL) {
+        ZipInputStream(FileInputStream(jar.toPath().toFile())).use { input ->
+            var count = 0
+            while (true) {
+                val entry = input.nextEntry ?: break
+                MyJarEntry(entry).print()
+                count++
+            }
+            println("\n$jar has $count entries\n")
+        }
+    }
+
+    @Test
+    fun `printme hashcodes`() {
+        val jarStripped = JarScanningCordappLoaderTest::class.java.getResource("boc-stripped.jar")!!
+        printAsZip(jarStripped)
+    }
+
+    @Test
+    fun `sign, strip and compare hashcodes`() {
+        val jarUnsigned = JarScanningCordappLoaderTest::class.java.getResource("boc-unsigned.jar")!!
+        printAsZip(jarUnsigned)
+
+        val dir = Paths.get(jarUnsigned.toURI()).parent
+
+        val jarSigned = JarScanningCordappLoaderTest::class.java.getResource("boc-signed.jar")!!
+        dir.copyJar(jarUnsigned.path, jarSigned.path)
+        printAsZip(jarSigned)
+
+        val alias = "testAlias"
+        val pwd = "testPassword"
+        (dir / "_shredder").delete()
+        (dir / "_teststore").delete()
+        dir.generateKey(alias, pwd, ALICE_NAME.toString())
+        val signer = dir.signJar(jarSigned.path, alias, pwd)
+        printAsZip(jarSigned)
+
+        val jarStripped = JarScanningCordappLoaderTest::class.java.getResource("boc-stripped.jar")!!
+        dir.stripJarSigners(jarSigned.path, jarStripped.path)
+        printAsZip(jarStripped)
+
+//        val loader = JarScanningCordappLoader.fromJarUrls(listOf(jarUnsigned, jarSigned, jarStripped), cordappsSignerKeyFingerprintBlacklist = emptyList())
+//        assertThat(loader.cordapps).hasSize(3)
+//        loader.cordapps.forEach { cordapp ->
+//            println("${cordapp.jarPath} => ${cordapp.jarHash}")
+//        }
     }
 
     @Test

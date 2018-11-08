@@ -116,7 +116,7 @@ jar {
 
 cordapp {
     signing {
-        enabled false
+        enabled true
     }
     info {
         name "net/corda/samples/bank-of-corda-demo"
