@@ -8,6 +8,7 @@ import net.corda.core.JarSignatureTestUtils.stripJarSigners
 import net.corda.core.JarSignatureTestUtils.manifest
 import net.corda.core.JarSignatureTestUtils.jarEntry
 import net.corda.core.JarSignatureTestUtils.signJar
+import net.corda.core.JarSignatureTestUtils.testJar
 import net.corda.core.flows.*
 import net.corda.core.internal.*
 import net.corda.node.VersionInfo
@@ -288,6 +289,7 @@ class JarScanningCordappLoaderTest {
             while (true) {
                 val entry = input.nextJarEntry ?: break
                 MyJarEntry(entry).print()
+                println("COMPRESSED: ${entry.compressedSize}")
                 count++
             }
             println("\n$jar has $count entries\n")
@@ -300,6 +302,7 @@ class JarScanningCordappLoaderTest {
             while (true) {
                 val entry = input.nextEntry ?: break
                 MyJarEntry(entry).print()
+                println("COMPRESSED: ${entry.compressedSize}")
                 count++
             }
             println("\n$jar has $count entries\n")
@@ -310,6 +313,19 @@ class JarScanningCordappLoaderTest {
     fun `printme hashcodes`() {
         val jarStripped = JarScanningCordappLoaderTest::class.java.getResource("boc-stripped.jar")!!
         printAsZip(jarStripped)
+    }
+
+    @Test
+    fun `test jar`() {
+        val jarUnsigned = JarScanningCordappLoaderTest::class.java.getResource("boc-unsigned.jar")!!
+        val dir = Paths.get(jarUnsigned.toURI()).parent
+
+        dir.testJar()
+        println("================= TEST ==============")
+        print((dir / "test.jar").toUri().toURL())
+
+        println("================= TEST AS ZIP ==============")
+        printAsZip((dir / "test.jar").toUri().toURL())
     }
 
     @Test
