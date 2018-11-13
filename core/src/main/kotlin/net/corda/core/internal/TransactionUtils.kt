@@ -14,9 +14,10 @@ import java.io.ByteArrayOutputStream
 /** Constructs a [NotaryChangeWireTransaction]. */
 class NotaryChangeTransactionBuilder(val inputs: List<StateRef>,
                                      val notary: Party,
-                                     val newNotary: Party) {
+                                     val newNotary: Party,
+                                     val networkParametersHash: SecureHash) {
     fun build(): NotaryChangeWireTransaction {
-        val components = listOf(inputs, notary, newNotary).map { it.serialize() }
+        val components = listOf(inputs, notary, newNotary, networkParametersHash).map { it.serialize() }
         return NotaryChangeWireTransaction(components)
     }
 }
@@ -28,9 +29,10 @@ class ContractUpgradeTransactionBuilder(
         val legacyContractAttachmentId: SecureHash,
         val upgradedContractClassName: ContractClassName,
         val upgradedContractAttachmentId: SecureHash,
-        val privacySalt: PrivacySalt = PrivacySalt()) {
+        val privacySalt: PrivacySalt = PrivacySalt(),
+        val networkParametersHash: SecureHash) {
     fun build(): ContractUpgradeWireTransaction {
-        val components = listOf(inputs, notary, legacyContractAttachmentId, upgradedContractClassName, upgradedContractAttachmentId).map { it.serialize() }
+        val components = listOf(inputs, notary, legacyContractAttachmentId, upgradedContractClassName, upgradedContractAttachmentId, networkParametersHash).map { it.serialize() }
         return ContractUpgradeWireTransaction(components, privacySalt)
     }
 }

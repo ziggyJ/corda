@@ -45,7 +45,8 @@ data class LedgerTransaction @JvmOverloads constructor(
         override val notary: Party?,
         val timeWindow: TimeWindow?,
         val privacySalt: PrivacySalt,
-        private val networkParameters: NetworkParameters? = null,
+        /** Network parameters that were in force when the trasnaction was notarised. */
+        override val networkParameters: NetworkParameters? = null,
         override val references: List<StateAndRef<ContractState>> = emptyList()
 ) : FullTransaction() {
     //DOCEND 1

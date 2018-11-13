@@ -10,6 +10,7 @@ import net.corda.core.internal.declaredField
 import net.corda.core.internal.toWireTransaction
 import net.corda.core.node.ServiceHub
 import net.corda.core.node.services.AttachmentStorage
+import net.corda.core.node.services.NetworkParametersStorage
 import net.corda.core.serialization.*
 import net.corda.core.utilities.ByteSequence
 import net.corda.core.utilities.OpaqueBytes
@@ -63,10 +64,15 @@ class AttachmentsClassLoaderTests {
     private val cordapp get() = cordappProvider.cordapps.first()
     private val attachmentId get() = cordappProvider.getCordappAttachmentId(cordapp)!!
     private val appContext get() = cordappProvider.getAppContext(cordapp)
-    private val serviceHub = rigorousMock<ServiceHub>().also {
+    private val networkParametersStorage get() = rigorousMock<NetworkParametersStorage>().also {
+        doReturn(networkParameters.serialize().hash).whenever(it).currentParametersHash
+    }
+
+    private val serviceHub get() = rigorousMock<ServiceHub>().also {
         doReturn(attachments).whenever(it).attachments
         doReturn(cordappProvider).whenever(it).cordappProvider
         doReturn(networkParameters).whenever(it).networkParameters
+        doReturn(networkParametersStorage).whenever(it).networkParametersStorage
     }
 
     // These ClassLoaders work together to load 'AnotherDummyContract' in a disposable way, such that even though

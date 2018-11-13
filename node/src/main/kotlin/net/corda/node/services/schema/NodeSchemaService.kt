@@ -7,6 +7,7 @@ import net.corda.core.contracts.LinearState
 import net.corda.core.schemas.*
 import net.corda.core.schemas.MappedSchemaValidator.crossReferencesToOtherMappedSchema
 import net.corda.core.serialization.SingletonSerializeAsToken
+import net.corda.node.internal.NodeParametersStorage
 import net.corda.node.internal.schemas.NodeInfoSchemaV1
 import net.corda.node.services.api.SchemaService
 import net.corda.node.services.api.SchemaService.SchemaOptions
@@ -42,7 +43,8 @@ class NodeSchemaService(private val extraSchemas: Set<MappedSchema> = emptySet()
                     P2PMessageDeduplicator.ProcessedMessage::class.java,
                     PersistentIdentityService.PersistentIdentity::class.java,
                     PersistentIdentityService.PersistentIdentityNames::class.java,
-                    ContractUpgradeServiceImpl.DBContractUpgrade::class.java
+                    ContractUpgradeServiceImpl.DBContractUpgrade::class.java,
+                    NodeParametersStorage.PersistentNetworkParameters::class.java
             )) {
         override val migrationResource = "node-core.changelog-master"
     }

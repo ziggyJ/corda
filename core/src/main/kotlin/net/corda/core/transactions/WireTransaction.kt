@@ -100,7 +100,7 @@ class WireTransaction(componentGroups: List<ComponentGroup>, val privacySalt: Pr
                 resolveIdentity = { services.identityService.partyFromKey(it) },
                 resolveAttachment = { services.attachments.openAttachment(it) },
                 resolveStateRef = { services.loadState(it) },
-                networkParameters = services.networkParameters
+                resolveParameters = { it?.let { services.networkParametersStorage.readParametersFromHash(it) } ?: services.networkParametersStorage.defaultParameters }
         )
     }
 
@@ -117,16 +117,17 @@ class WireTransaction(componentGroups: List<ComponentGroup>, val privacySalt: Pr
             resolveIdentity: (PublicKey) -> Party?,
             resolveAttachment: (SecureHash) -> Attachment?,
             resolveStateRef: (StateRef) -> TransactionState<*>?,
-            @Suppress("UNUSED_PARAMETER") resolveContractAttachment: (TransactionState<ContractState>) -> AttachmentId?
+            @Suppress("UNUSED_PARAMETER") resolveContractAttachment: (TransactionState<ContractState>) -> AttachmentId?,
+            resolveParameters: (SecureHash?) -> NetworkParameters?
     ): LedgerTransaction {
-        return toLedgerTransactionInternal(resolveIdentity, resolveAttachment, resolveStateRef, null)
+        return toLedgerTransactionInternal(resolveIdentity, resolveAttachment, resolveStateRef, resolveParameters)
     }
 
     private fun toLedgerTransactionInternal(
             resolveIdentity: (PublicKey) -> Party?,
             resolveAttachment: (SecureHash) -> Attachment?,
             resolveStateRef: (StateRef) -> TransactionState<*>?,
-            networkParameters: NetworkParameters?
+            resolveParameters: (SecureHash?) -> NetworkParameters?
     ): LedgerTransaction {
         // Look up public keys to authenticated identities.
         val authenticatedArgs = commands.lazyMapped { cmd, _ ->
@@ -142,8 +143,9 @@ class WireTransaction(componentGroups: List<ComponentGroup>, val privacySalt: Pr
         val attachments = attachments.lazyMapped { att, _ ->
             resolveAttachment(att) ?: throw AttachmentResolutionException(att)
         }
-        val ltx = LedgerTransaction(resolvedInputs, outputs, authenticatedArgs, attachments, id, notary, timeWindow, privacySalt, networkParameters, resolvedReferences)
-        checkTransactionSize(ltx, networkParameters?.maxTransactionSize ?: 10485760)
+        val resolvedNetworkParameters = resolveParameters(networkParametersHash) ?: throw TransactionResolutionException(id)
+        val ltx = LedgerTransaction(resolvedInputs, outputs, authenticatedArgs, attachments, id, notary, timeWindow, privacySalt, resolvedNetworkParameters, resolvedReferences)
+        checkTransactionSize(ltx, resolvedNetworkParameters.maxTransactionSize)
         return ltx
     }
 
@@ -265,7 +267,8 @@ class WireTransaction(componentGroups: List<ComponentGroup>, val privacySalt: Pr
                                   attachments: List<SecureHash>,
                                   notary: Party?,
                                   timeWindow: TimeWindow?,
-                                  references: List<StateRef> = emptyList()): List<ComponentGroup> {
+                                  references: List<StateRef> = emptyList(),
+                                  networkParametersHash: SecureHash? = null): List<ComponentGroup> {
             val serialize = { value: Any, _: Int -> value.serialize() }
             val componentGroupMap: MutableList<ComponentGroup> = mutableListOf()
             if (inputs.isNotEmpty()) componentGroupMap.add(ComponentGroup(INPUTS_GROUP.ordinal, inputs.lazyMapped(serialize)))
@@ -279,6 +282,7 @@ class WireTransaction(componentGroups: List<ComponentGroup>, val privacySalt: Pr
             // Adding signers to their own group. This is required for command visibility purposes: a party receiving
             // a FilteredTransaction can now verify it sees all the commands it should sign.
             if (commands.isNotEmpty()) componentGroupMap.add(ComponentGroup(SIGNERS_GROUP.ordinal, commands.map { it.signers }.lazyMapped(serialize)))
+            if (networkParametersHash != null) componentGroupMap.add(ComponentGroup(PARAMETERS_GROUP.ordinal, listOf(networkParametersHash.serialize())))
             return componentGroupMap
         }
     }
@@ -292,6 +296,7 @@ class WireTransaction(componentGroups: List<ComponentGroup>, val privacySalt: Pr
         for ((data) in outputs) buf.appendln("${Emoji.leftArrow}OUTPUT:     $data")
         for (command in commands) buf.appendln("${Emoji.diamond}COMMAND:    $command")
         for (attachment in attachments) buf.appendln("${Emoji.paperclip}ATTACHMENT: $attachment")
+        // TODO The most important question is what emoji should I choose for network parameters hash
         return buf.toString()
     }
 

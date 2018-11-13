@@ -146,7 +146,8 @@ open class TransactionBuilder @JvmOverloads constructor(
                             attachments + makeContractAttachments(services.cordappProvider),
                             notary,
                             window,
-                            referenceStates
+                            referenceStates,
+                            services.networkParametersStorage.currentParametersHash
                     ),
                     privacySalt
             )

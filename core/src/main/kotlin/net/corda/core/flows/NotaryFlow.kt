@@ -2,8 +2,10 @@ package net.corda.core.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.DoNotImplement
+import net.corda.core.contracts.ComponentGroupEnum
 import net.corda.core.contracts.StateRef
 import net.corda.core.contracts.TimeWindow
+import net.corda.core.crypto.SecureHash
 import net.corda.core.crypto.TransactionSignature
 import net.corda.core.identity.Party
 import net.corda.core.internal.FetchDataFlow
@@ -28,7 +30,8 @@ class NotaryFlow {
      * signatures will be returned – one from each replica that accepted the input state commit.
      *
      * @throws NotaryException in case the any of the inputs to the transaction have been consumed
-     *                         by another transaction or the time-window is invalid.
+     *                         by another transaction or the time-window is invalid or
+     *                         the parameters used for this transaction are no longer in force in the network.
      */
     @DoNotImplement
     @InitiatingFlow
@@ -97,7 +100,9 @@ class NotaryFlow {
             val ctx = stx.coreTransaction
             val tx = when (ctx) {
                 is ContractUpgradeWireTransaction -> ctx.buildFilteredTransaction()
-                is WireTransaction -> ctx.buildFilteredTransaction(Predicate { it is StateRef || it is TimeWindow || it == notaryParty })
+                // TODO networkParametersHash type overlaps with the attachments - it is problematic in filtering.
+                //  Also, we want to be sure in this case that we always include the componentGroup for the parameters hash.
+                is WireTransaction -> ctx.buildFilteredTransaction(Predicate { it is StateRef || it is TimeWindow || it == notaryParty || it is Pair<*, *> && it.first is SecureHash && it.second == ComponentGroupEnum.PARAMETERS_GROUP.ordinal })
                 else -> ctx
             }
             return session.sendAndReceiveWithRetry(NotarisationPayload(tx, signature))

@@ -7,6 +7,7 @@ import net.corda.core.crypto.SecureHash
 import net.corda.core.crypto.TransactionSignature
 import net.corda.core.crypto.sha256
 import net.corda.core.identity.Party
+import net.corda.core.node.NetworkParameters
 import net.corda.core.node.ServiceHub
 import net.corda.core.node.ServicesForResolution
 import net.corda.core.serialization.CordaSerializable
@@ -35,6 +36,15 @@ data class NotaryChangeWireTransaction(
     override val inputs: List<StateRef> = serializedComponents[INPUTS.ordinal].deserialize()
     override val references: List<StateRef> = emptyList()
     override val notary: Party = serializedComponents[NOTARY.ordinal].deserialize()
+    override val networkParametersHash: SecureHash?
+        get() {
+            return try {
+                serializedComponents[PARAMETERS_HASH.ordinal].deserialize()
+            } catch (e: IndexOutOfBoundsException) {
+                null
+            }
+        }
+
     /** Identity of the notary service to reassign the states to.*/
     val newNotary: Party = serializedComponents[NEW_NOTARY.ordinal].deserialize()
 
@@ -64,11 +74,13 @@ data class NotaryChangeWireTransaction(
         }
     }
 
-    /** Resolves input states and builds a [NotaryChangeLedgerTransaction]. */
+    /** Resolves input states and network parameters and builds a [NotaryChangeLedgerTransaction]. */
     @DeleteForDJVM
     fun resolve(services: ServicesForResolution, sigs: List<TransactionSignature>): NotaryChangeLedgerTransaction {
         val resolvedInputs = services.loadStates(inputs.toSet()).toList()
-        return NotaryChangeLedgerTransaction(resolvedInputs, notary, newNotary, id, sigs)
+        val resolvedParameters = networkParametersHash?.let { services.networkParametersStorage.readParametersFromHash(it) }
+                ?: services.networkParametersStorage.defaultParameters
+        return NotaryChangeLedgerTransaction(resolvedInputs, notary, newNotary, id, sigs, resolvedParameters)
     }
 
     /** Resolves input states and builds a [NotaryChangeLedgerTransaction]. */
@@ -76,7 +88,7 @@ data class NotaryChangeWireTransaction(
     fun resolve(services: ServiceHub, sigs: List<TransactionSignature>) = resolve(services as ServicesForResolution, sigs)
 
     enum class Component {
-        INPUTS, NOTARY, NEW_NOTARY
+        INPUTS, NOTARY, NEW_NOTARY, PARAMETERS_HASH
     }
 
     @Deprecated("Required only for backwards compatibility purposes. This type of transaction should not be constructed outside Corda code.", ReplaceWith("NotaryChangeTransactionBuilder"), DeprecationLevel.WARNING)
@@ -94,7 +106,8 @@ data class NotaryChangeLedgerTransaction(
         override val notary: Party,
         val newNotary: Party,
         override val id: SecureHash,
-        override val sigs: List<TransactionSignature>
+        override val sigs: List<TransactionSignature>,
+        override val networkParameters: NetworkParameters
 ) : FullTransaction(), TransactionWithSignatures {
     init {
         checkEncumbrances()
