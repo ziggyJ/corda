@@ -1,0 +1,111 @@
+0. Summary
+
+It's not possible to reliable recreate an JAR as it was before signing form a signed JAR due to:
+
+- timestamp of META-INF/MANIFEST.MF, this file is modified while signing, the original timestap before singing might be taken from "META-INF/" directory,
+however  while creating the original unsiged JAR any other file inside META-INF could be modified added and the timestamp of MANIFEST.MF be different for the one of "META-INF/" dir.
+
+- Signing seems to create extended local headers, regardless the original JAR has them or not, this information is lost (see case 2)
+
+- Specific field "minimum software version required to extract" is bumped up by jarsigner, so the orginal version is unsure
+
+- Corda specific - an original JAR could be sleald, so is the signed JAR was also seald we don't know what was in the original JAR, the fix for this would be not to seal and only sign the Cordapp
+
+
+The second anf tird problems could be "hardcoded" given that the Cordapp was created by gradle-plugins, as check on 3 cordapps would suggest this
+(the cordapp is zipped without use of extended local headers with minimum software version required to extract set to 1.0) but it may not be the case in general.
+
+
+1. Normal JAR file zipped by "JAR Archive Tool":
+
+On all stages the correct ZIP metadata is propagated,  the original JAR uses extended local header, as the signed one and stripped one.
+
+Run unit test:  `simple unsigned jar compare hash unsigned with signed one stripped of certs`, wil generate all files mentioned below.
+
+1.1 Original JAR
+
+To simplify shown only parts for "META-INF/' file, but the same results holds for other entries.
+
+zipinfo -mv ./node/out/test/resources/net/corda/node/internal/cordapp/MainUnsigned.jar | grep -E "META-INF|class|version|extended|extra|.class"
+  META-INF/
+  version of encoding software:                   2.0
+  minimum software version required to extract:   2.0
+  extended local header:                          yes
+  length of extra field:                          4 bytes
+  The central-directory extra field contains:
+  There are an extra 16 bytes preceding this file.
+
+1.2 Signed JAR
+
+zipinfo -mv .node/out/test/resources/net/corda/node/internal/cordapp/MainSigned.jar | grep -E "META-INF|class|version|extended|extra|.class"
+META-INF/
+  version of encoding software:                   2.0
+  minimum software version required to extract:   2.0
+  extended local header:                          yes
+  length of extra field:                          4 bytes
+  The central-directory extra field contains:
+  There are an extra 16 bytes preceding this file.
+
+1.3 JAR without signing data
+
+zipinfo -mv /Users/szymonsztuka/IdeaProjects/corda3/node/out/test/resources/net/corda/node/internal/cordapp/MainStripped.jar | grep -E "META-INF|class|version|extended|extra|.class"
+  META-INF/
+  version of encoding software:                   2.0
+  minimum software version required to extract:   2.0
+  extended local header:                          yes
+  length of extra field:                          4 bytes
+  The central-directory extra field contains:
+  There are an extra 16 bytes preceding this file.
+
+
+2. A regular Cordapp from Bank-Of_Corda demo:
+
+Run `bank of corda cordapp compare hash unsigned with signed one stripped of certs` test for files 2.2-2.3, then run `fix bank of corda after unsiging` to get 2.4.
+
+This JAR doesn't use extended local header to store CRC and sizes, however signer add them (2.2) and also  minimum software version required to extract
+is uplifted. At this stage we don't know what was the correct version in the original JAR.
+We also don't know if the original JAR uses extended local header or not.
+
+Assuming we know it wasn't using extended local header we can rewrite JAR to bring the info upfron (2.4), however Java API
+doesn't have a way to change "minimum software version required to extract", in ZIpOutputStrem the field has the same value as "version of encoding software"
+ and cannot be customized, I also couldnt find a way to change it from Java level.
+
+ The final file (2.4) differs at least for  those " minimum software version required to extract" versions.
+
+2.1 Original JAR
+
+zipinfo -mv ./node/out/test/resources/net/corda/node/internal/cordapp/boc-unsigned.jar | grep -E "META-INF|class|version|extended|extra"
+  META-INF/
+  version of encoding software:                   2.0
+  minimum software version required to extract:   1.0
+  extended local header:                          no
+  length of extra field:                          0 bytes
+
+2.2 Signed JAR
+
+zipinfo -mv ./node/out/test/resources/net/corda/node/internal/cordapp/boc-signed.jar | grep -E "META-INF|class|version|extended|extra"
+  META-INF/
+  version of encoding software:                   2.0
+  minimum software version required to extract:   2.0
+  extended local header:                          yes
+  length of extra field:                          0 bytes
+  There are an extra 16 bytes preceding this file.
+
+2.3 JAR without signing data
+
+zipinfo -mv ./node/out/test/resources/net/corda/node/internal/cordapp/boc-stripped.jar | grep -E "META-INF|class|version|extended|extra"
+  META-INF/
+  version of encoding software:                   2.0
+  minimum software version required to extract:   2.0
+  extended local header:                          yes
+  length of extra field:                          0 bytes
+  There are an extra 16 bytes preceding this file.
+
+2.4 Rewritten JAR to move data from extended local file headers upfront and remove extene local file header.
+
+zipinfo -mv ./node/out/test/resources/net/corda/node/internal/cordapp/boc-fixed.jar | grep -E "META-INF|class|version|extended|extra"
+  META-INF/
+  version of encoding software:                   2.0
+  minimum software version required to extract:   2.0
+  extended local header:                          no
+  length of extra field:                          0 bytes

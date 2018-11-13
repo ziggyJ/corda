@@ -1,9 +1,10 @@
 package net.corda.node.internal.cordapp
 
 import co.paralleluniverse.fibers.Suspendable
+import junit.framework.Assert.assertEquals
 import net.corda.core.JarSignatureTestUtils.copyJar
+import net.corda.core.JarSignatureTestUtils.copyRemoveExtendedLocalHeader
 import net.corda.core.JarSignatureTestUtils.generateKey
-import net.corda.core.JarSignatureTestUtils.printJar
 import net.corda.core.JarSignatureTestUtils.stripJarSigners
 import net.corda.core.JarSignatureTestUtils.manifest
 import net.corda.core.JarSignatureTestUtils.jarEntry
@@ -12,7 +13,6 @@ import net.corda.core.JarSignatureTestUtils.testJar
 import net.corda.core.flows.*
 import net.corda.core.internal.*
 import net.corda.node.VersionInfo
-import net.corda.node.services.persistence.NodeAttachmentServiceTest
 import net.corda.nodeapi.internal.DEV_PUB_KEY_HASHES
 import net.corda.testing.core.ALICE_NAME
 import net.corda.testing.node.internal.TestCordappDirectories
@@ -20,7 +20,6 @@ import net.corda.testing.node.internal.cordappForPackages
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 import java.io.FileInputStream
-import java.io.IOException
 import java.net.URL
 import java.nio.file.Paths
 import java.util.jar.JarEntry
@@ -283,6 +282,76 @@ class JarScanningCordappLoaderTest {
         assertTrue(jarEntry1.equals(jarEntry2))
     }
 
+    @Test
+    fun `simple unsigned jar compare hash unsigned with signed one stripped of certs`() {
+        val unsiged = "MainUnsigned.jar"
+        val signed = "MainSigned.jar"
+        val stripped= "MainStripped.jar"
+        signStripCompare(unsiged, signed, stripped)
+    }
+
+    @Test
+    fun `bank of corda cordapp compare hash unsigned with signed one stripped of certs`() {
+        val unsiged = "boc-unsigned.jar"
+        val signed = "boc-signed.jar"
+        val stripped= "boc-stripped.jar"
+        signStripCompare(unsiged, signed, stripped)
+    }
+
+    //RUN `bank of corda cordapp compare hash unsigned with signed one stripped of certs` test first to generate files
+    @Test
+    fun `fix bank of corda after unsiging`() {
+        val jarUnsigned = JarScanningCordappLoaderTest::class.java.getResource("boc-stripped.jar")!!
+        val dir = Paths.get(jarUnsigned.toURI()).parent
+        dir.copyRemoveExtendedLocalHeader("boc-stripped.jar", "boc-fixed.jar")
+    }
+
+    fun signStripCompare(unsiged : String, signed : String, stripped : String) {
+
+        val jarUnsigned = JarScanningCordappLoaderTest::class.java.getResource(unsiged)!!
+        val dir = Paths.get(jarUnsigned.toURI()).parent
+        (dir / signed).deleteIfExists()
+        (dir / stripped).deleteIfExists()
+        (dir / unsiged).copyTo((dir / signed))
+        val jarSigned = JarScanningCordappLoaderTest::class.java.getResource(signed)!!
+
+        val alias = "testAlias"
+        val pwd = "testPassword"
+        (dir / "_shredder").deleteIfExists()
+        (dir / "_teststore").deleteIfExists()
+        dir.generateKey(alias, pwd, ALICE_NAME.toString())
+        dir.signJar(jarSigned.path, alias, pwd)
+
+        dir.stripJarSigners(signed, stripped)
+
+        val jarStripped = JarScanningCordappLoaderTest::class.java.getResource(stripped)!!
+
+        //signed jar differs with unsigned
+        with(JarScanningCordappLoader.fromJarUrls(listOf(jarUnsigned, jarSigned), cordappsSignerKeyFingerprintBlacklist = emptyList())) {
+            assertThat(cordapps).hasSize(2)
+            assertThat(cordapps[0].jarHash != cordapps[1].jarHash)
+            assertThat(cordapps[0].jarPath != cordapps[1].jarPath)
+        }
+
+        //signed jar equals stripped one
+        with(JarScanningCordappLoader.fromJarUrls(listOf(jarUnsigned, jarStripped), cordappsSignerKeyFingerprintBlacklist = emptyList())) {
+            assertThat(cordapps).hasSize(2)
+            assertThat(cordapps[0].jarHash == cordapps[1].jarHash)
+            assertThat(cordapps[0].jarPath != cordapps[1].jarPath)
+        }
+
+        with(JarScanningCordappLoader.fromJarUrls(listOf(jarUnsigned, jarSigned, jarStripped), cordappsSignerKeyFingerprintBlacklist = emptyList())) {
+            cordapps.forEach { cordapp -> println("${cordapp.jarPath} => ${cordapp.jarHash}") }
+        }
+
+        val jarEntry1 = MyJarEntry(dir.jarEntry(unsiged))
+        val jarEntry2 = MyJarEntry(dir.jarEntry(stripped))
+        //jarEntry1.print()
+        //jarEntry2.print()
+        assertEquals(jarEntry1, jarEntry2)
+    }
+
+
     private fun print(jar: URL) {
         JarInputStream(FileInputStream(jar.toPath().toFile())).use { input ->
             var count = 0
@@ -304,6 +373,27 @@ class JarScanningCordappLoaderTest {
                 MyJarEntry(entry).print()
                 println("COMPRESSED: ${entry.compressedSize}")
                 count++
+            }
+            println("\n$jar has $count entries\n")
+        }
+    }
+
+    private fun printAsZip2(jar: URL) {
+        ZipInputStream(FileInputStream(jar.toPath().toFile())).use { input ->
+            var count = 0
+            var prev : ZipEntry? = null
+            while (true) {
+                val entry = input.nextEntry ?: break
+                if(prev!=null) {
+                    MyJarEntry(prev).print()
+                    println("COMPRESSED: ${prev?.compressedSize}")
+                }
+                prev = entry
+                count++
+            }
+            if(prev!=null) {
+                MyJarEntry(prev).print()
+                println("COMPRESSED: ${prev?.compressedSize}")
             }
             println("\n$jar has $count entries\n")
         }

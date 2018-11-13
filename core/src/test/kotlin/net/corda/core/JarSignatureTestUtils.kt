@@ -2,7 +2,6 @@ package net.corda.core
 
 import net.corda.core.internal.JarSignatureCollector
 import net.corda.core.internal.div
-import net.corda.core.internal.readFully
 import net.corda.finance.contracts.asset.Cash
 import net.corda.nodeapi.internal.crypto.loadKeyStore
 import java.io.FileInputStream
@@ -11,10 +10,7 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.file.attribute.FileTime
 import java.security.PublicKey
-import java.time.LocalDateTime
-import java.time.ZoneOffset
 import java.util.jar.*
 import java.util.zip.*
 import java.util.zip.Deflater.DEFAULT_COMPRESSION
@@ -75,6 +71,51 @@ object JarSignatureTestUtils {
 
             val buffer = ByteArray(1 shl 14)
             while (true) {
+                output.putNextEntry(entry)
+                var nr: Int
+                while (true) {
+                    nr = input.read(buffer)
+                    if (nr < 0) break
+                    output.write(buffer, 0, nr)
+                }
+                output.closeEntry()
+                entry = input.nextEntry ?: break
+            }
+            output.close()
+        }
+    }
+
+    fun Path.copyRemoveExtendedLocalHeader(inputFileName: String, outputFileName: String) {
+        val info = mutableMapOf<String,ZipEntry>()
+        ZipInputStream(FileInputStream((this / inputFileName).toFile())).use { input ->
+            var entry= input.nextEntry
+            val buffer = ByteArray(1 shl 14)
+            while (true) {
+                var nr: Int
+                while (true) {
+                    nr = input.read(buffer)
+                    if (nr < 0) break
+                }
+                info.put(entry.name, entry)
+                entry = input.nextEntry ?: break
+            }
+        }
+
+        ZipInputStream(FileInputStream((this / inputFileName).toFile())).use { input ->
+            val output = ZipOutputStream(FileOutputStream((this / outputFileName).toFile()))
+            var entry= input.nextEntry
+            val buffer = ByteArray(1 shl 14)
+            while (true) {
+                val original = info[entry.name]
+                if(original!=null) {
+                    entry.crc = original.crc
+                    entry.size = original.size
+                    entry.compressedSize = original.compressedSize
+                    entry.method = original.method
+                    entry.extra = original.extra
+                    entry.time = original.time
+                    entry.comment = original.comment
+                }
                 output.putNextEntry(entry)
                 var nr: Int
                 while (true) {
@@ -180,7 +221,21 @@ object JarSignatureTestUtils {
 
     fun Path.stripJarSigners(inputFileName: String, outputFileName: String) {
 
-//        val output = JarOutputStream(FileOutputStream((this / outputFileName).toFile()))
+        val info = mutableMapOf<String, ZipEntry>()
+        ZipInputStream(FileInputStream((this / inputFileName).toFile())).use { input ->
+            var entry = input.nextEntry
+            val buffer = ByteArray(1 shl 14)
+            while (true) {
+                var nr: Int
+                while (true) {
+                    nr = input.read(buffer)
+                    if (nr < 0) break
+                }
+                info.put(entry.name, entry)
+                entry = input.nextEntry ?: break
+            }
+        }
+
         val output = ZipOutputStream(FileOutputStream((this / outputFileName).toFile()))
         output.setMethod(DEFLATED)
 
@@ -192,20 +247,30 @@ object JarSignatureTestUtils {
 
             if (input.manifest != null) {
                 val metaInf = JarEntry("META-INF/")
-                metaInf.lastModifiedTime = FileTime.from(LocalDateTime.parse("2018-10-31T13:27:28").toInstant(ZoneOffset.UTC))
+                val original = (info["META-INF/"])
+                if (original != null) {
+                    metaInf.method = original.method
+                    metaInf.time = original.time
+                    metaInf.comment = original.comment
+                    metaInf.extra = original.extra
+                    if (original.method == ZipEntry.STORED) {
+                        metaInf.size = original.size
+                        metaInf.crc = original.crc
+                    }
+                }
+
                 output.putNextEntry(metaInf)
                 output.closeEntry()
 
                 val me = ZipEntry(JarFile.MANIFEST_NAME)
+
+                if (original != null) {
+                    me.setTime(original.getTime())
+                }
                 val newManifest = Manifest()
                 input.manifest.mainAttributes.forEach { entry ->
-                    if (entry.key.toString() != "Sealed")
-                        newManifest.mainAttributes.putValue(entry.key.toString(), entry.value.toString())
-                    else
-                        println("Skipping main attribute: $entry")
+                    newManifest.mainAttributes.putValue(entry.key.toString(), entry.value.toString())
                 }
-//                me.lastModifiedTime = entry!!.lastModifiedTime
-                me.lastModifiedTime = FileTime.from(LocalDateTime.parse("2018-10-31T13:27:28").toInstant(ZoneOffset.UTC))
                 output.putNextEntry(me)
                 newManifest.write(output)
                 output.closeEntry()
@@ -216,30 +281,40 @@ object JarSignatureTestUtils {
 
                 while (true) {
                     val name = entry.name
-                    if (name.endsWith(".SF") ||
+                    val isSigningArtifact = name.endsWith(".SF") ||
                             name.endsWith(".EC") ||
                             name.endsWith(".DSA") ||
                             name.endsWith(".RSA") ||
-                            name.contains("SIG-*")) {
+                            name.contains("SIG-*")
+
+                    if (isSigningArtifact) {
                         println("Skipping certificate entry: $entry")
                         entry = input.nextEntry ?: break
                         continue
-                    }
-
-                    if ((name == "META-INF/bank-of-corda-demo.kotlin_module") ||
-                            (name == "META-INF/services/") ||
-                            (name == "META-INF/services/net.corda.webserver.services.WebServerPluginRegistry")) {
+                    } else if (name == "META-INF/" ||
+                            name == "META-INF/MANIFEST.MF") {
+                        entry = input.nextEntry ?: break
+                        continue
+                    } else if (name.startsWith("META-INF/")) {
+                        //eg.g "META-INF/services/net.corda.webserver.services.WebServerPluginRegistry"
                         appendEntries.add(name)
                         entry = input.nextEntry ?: break
                         continue
-                    } else if ((name == "META-INF/") ||
-                            (name == "META-INF/MANIFEST.MF")) {
-                        entry = input.nextEntry ?: break
-                        continue
                     }
 
-                    entry.lastModifiedTime = FileTime.from(LocalDateTime.parse("2018-10-31T13:27:28").toInstant(ZoneOffset.UTC))
                     val newEntry = JarEntry(entry.name)
+                    val original = (info[entry.name])
+                    if (original != null) {
+                        newEntry.method = original.method
+                        newEntry.time = original.time
+                        newEntry.comment = original.comment
+                        newEntry.extra = original.extra
+                        if (original.method == ZipEntry.STORED) {
+                            newEntry.size = original.size
+                            newEntry.crc = original.crc
+                        }
+                    }
+
                     output.putNextEntry(newEntry)
 
                     var nr: Int
@@ -256,71 +331,23 @@ object JarSignatureTestUtils {
             println("Rewinding and appending ...")
 
             // 2nd pass
-        ZipInputStream(FileInputStream((this / inputFileName).toFile())).use { input ->
-            var entry = input.nextEntry
-            while (true) {
-                if (appendEntries.contains(entry.name)) {
-                    entry.lastModifiedTime = FileTime.from(LocalDateTime.parse("2018-10-31T13:27:28").toInstant(ZoneOffset.UTC))
-                    output.putNextEntry(entry.asCompressed())
-                    var nr: Int
-                    while (true) {
-                        nr = input.read(buffer)
-                        if (nr < 0) break
-                        output.write(buffer, 0, nr)
+            ZipInputStream(FileInputStream((this / inputFileName).toFile())).use { input ->
+                var entry = input.nextEntry
+                while (true) {
+                    if (appendEntries.contains(entry.name)) {
+                        output.putNextEntry(entry)
+                        var nr: Int
+                        while (true) {
+                            nr = input.read(buffer)
+                            if (nr < 0) break
+                            output.write(buffer, 0, nr)
+                        }
                     }
+                    entry = input.nextEntry ?: break
                 }
-                entry = input.nextEntry ?: break
             }
-        }
 
             output.close()
-        }
-
-        fun Path.stripJarSigners2(inputFileName: String, outputFileName: String) {
-            JarInputStream(FileInputStream((this / inputFileName).toFile())).use { input ->
-                val output = JarOutputStream(FileOutputStream((this / outputFileName).toFile()))
-
-                var entry = input.nextJarEntry
-
-                if (input.manifest != null) {
-                    val me = ZipEntry(JarFile.MANIFEST_NAME)
-                    val newManifest = Manifest()
-                    input.manifest.mainAttributes.forEach { entry ->
-                        if (entry.key.toString() != "Sealed")
-                            newManifest.mainAttributes.putValue(entry.key.toString(), entry.value.toString())
-                        else
-                            println("Skipping main attribute: $entry")
-                    }
-                    me.lastModifiedTime = entry!!.lastModifiedTime
-                    output.putNextEntry(me)
-                    newManifest.write(output)
-                    output.closeEntry()
-                }
-
-                val buffer = ByteArray(1 shl 14)
-                while (true) {
-                    val name = entry.name
-                    if (name.endsWith(".SF") ||
-                            name.endsWith(".EC") ||
-                            name.endsWith(".DSA") ||
-                            name.endsWith(".RSA") ||
-                            name.contains("SIG-*")) {
-                        println("Skipping certificate entry: $entry")
-                        entry = input.nextJarEntry ?: break
-                        continue
-                    }
-                    println(entry)
-                    output.putNextEntry(entry)
-                    var nr: Int
-                    while (true) {
-                        nr = input.read(buffer)
-                        if (nr < 0) break
-                        output.write(buffer, 0, nr)
-                    }
-                    entry = input.nextJarEntry ?: break
-                }
-                output.close()
-            }
         }
     }
 }
