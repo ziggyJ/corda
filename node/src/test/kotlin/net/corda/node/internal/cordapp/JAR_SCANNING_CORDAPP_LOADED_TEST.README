@@ -3,13 +3,13 @@
 It's not possible to reliable recreate an JAR as it was before signing form a signed JAR due to:
 
 - timestamp of META-INF/MANIFEST.MF, this file is modified while signing, the original timestap before singing might be taken from "META-INF/" directory,
-however  while creating the original unsiged JAR any other file inside META-INF could be modified added and the timestamp of MANIFEST.MF be different for the one of "META-INF/" dir.
+however  while creating the original unsigned JAR any other file inside META-INF could be modified added and the timestamp of MANIFEST.MF be different for the one of "META-INF/" dir.
 
 - Signing seems to create extended local headers, regardless the original JAR has them or not, this information is lost (see case 2)
 
 - Specific field "minimum software version required to extract" is bumped up by jarsigner, so the orginal version is unsure
 
-- Corda specific - an original JAR could be sleald, so is the signed JAR was also seald we don't know what was in the original JAR, the fix for this would be not to seal and only sign the Cordapp
+- Corda specific - an original JAR could be sealed, so is the signed JAR was also sealed we don't know what was in the original JAR, the fix for this would be not to seal and only sign the Cordapp
 
 
 The second anf tird problems could be "hardcoded" given that the Cordapp was created by gradle-plugins, as check on 3 cordapps would suggest this
@@ -60,7 +60,7 @@ zipinfo -mv /Users/szymonsztuka/IdeaProjects/corda3/node/out/test/resources/net/
 
 2. A regular Cordapp from Bank-Of_Corda demo:
 
-Run `bank of corda cordapp compare hash unsigned with signed one stripped of certs` test for files 2.2-2.3, then run `fix bank of corda after unsiging` to get 2.4.
+Run `bank of corda cordapp compare hash unsigned with signed one stripped of certs` test for files 2.2-2.3, then run `fix bank of corda after unsigning` to get 2.4.
 
 This JAR doesn't use extended local header to store CRC and sizes, however signer add them (2.2) and also  minimum software version required to extract
 is uplifted. At this stage we don't know what was the correct version in the original JAR.
@@ -109,3 +109,9 @@ zipinfo -mv ./node/out/test/resources/net/corda/node/internal/cordapp/boc-fixed.
   minimum software version required to extract:   2.0
   extended local header:                          no
   length of extra field:                          0 bytes
+
+3.0 Useful links:
+http://petlibrary.tripod.com/ZIP.HTM
+https://users.cs.jmu.edu/buchhofp/forensics/formats/pkzip.html
+http://hg.openjdk.java.net/jdk8/jdk8/jdk/file/9f57d2774603/src/share/classes/sun/security/tools/jarsigner/Main.java
+https://en.wikipedia.org/wiki/Zip_(file_format)

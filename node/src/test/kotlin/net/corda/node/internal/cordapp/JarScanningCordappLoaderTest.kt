@@ -300,7 +300,7 @@ class JarScanningCordappLoaderTest {
 
     //RUN `bank of corda cordapp compare hash unsigned with signed one stripped of certs` test first to generate files
     @Test
-    fun `fix bank of corda after unsiging`() {
+    fun `fix bank of corda after unsigning`() {
         val jarUnsigned = JarScanningCordappLoaderTest::class.java.getResource("boc-stripped.jar")!!
         val dir = Paths.get(jarUnsigned.toURI()).parent
         dir.copyRemoveExtendedLocalHeader("boc-stripped.jar", "boc-fixed.jar")
