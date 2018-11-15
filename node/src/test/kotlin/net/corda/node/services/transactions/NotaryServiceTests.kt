@@ -19,7 +19,6 @@ import net.corda.testing.core.DUMMY_NOTARY_NAME
 import net.corda.testing.core.singleIdentity
 import net.corda.testing.node.MockNetworkNotarySpec
 import net.corda.testing.node.internal.*
-import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
 import org.junit.Before
@@ -38,7 +37,7 @@ class NotaryServiceTests {
         mockNet = InternalMockNetwork(
                 cordappsForAllNodes = cordappsForPackages("net.corda.testing.contracts"),
                 notarySpecs = listOf(MockNetworkNotarySpec(DUMMY_NOTARY_NAME, validating = false)),
-                networkParameters = testNetworkParameters(minimumPlatformVersion = 4)
+                initialNetworkParameters = testNetworkParameters(minimumPlatformVersion = 4)
         )
         aliceNode = mockNet.createNode(InternalMockNodeParameters(legalName = ALICE_NAME))
         notaryServices = mockNet.defaultNotaryNode.services //TODO get rid of that

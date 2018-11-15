@@ -122,7 +122,7 @@ class WithReferencedStatesFlowTests {
         private val mockNet = InternalMockNetwork(
                 cordappsForAllNodes = cordappsForPackages("net.corda.core.flows", "net.corda.testing.contracts"),
                 threadPerNode = true,
-                networkParameters = testNetworkParameters(minimumPlatformVersion = 4)
+                initialNetworkParameters = testNetworkParameters(minimumPlatformVersion = 4)
         )
     }
 

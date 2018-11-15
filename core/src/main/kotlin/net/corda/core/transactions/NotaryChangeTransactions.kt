@@ -111,6 +111,20 @@ data class NotaryChangeLedgerTransaction(
 ) : FullTransaction(), TransactionWithSignatures {
     init {
         checkEncumbrances()
+        checkNewNotaryWhitelisted()
+    }
+
+    /**
+     * Check that the output notary is whitelisted.
+     *
+     * Note that for this transaction type we do not require the input notary to be whitelisted to support network merging.
+     * For all other transaction types this is enforced.
+     */
+    private fun checkNewNotaryWhitelisted() {
+        val notaryWhitelist = networkParameters.notaries.map { it.identity }
+        check(newNotary in notaryWhitelist) {
+            "The output notary $newNotary is not whitelisted in the attached network parameters."
+        }
     }
 
     override val references: List<StateAndRef<ContractState>> = emptyList()

@@ -43,4 +43,14 @@ abstract class FullTransaction : BaseTransaction() {
         check(notaries.size == 1) { "All inputs and reference inputs must point to the same notary" }
         check(notaries.single() == notary) { "The specified notary must be the one specified by all inputs and input references" }
     }
+
+    /** Make sure the assigned notary is part of the network parameter whitelist. */
+    protected fun checkNotaryWhitelisted() {
+        if (notary != null) {
+            val notaryWhitelist = networkParameters!!.notaries.map { it.identity }
+            check(notary!! in notaryWhitelist) {
+                "Notary ($notary) specified by the transaction is not on the network parameter whitelist: [${notaryWhitelist.joinToString()}]"
+            }
+        }
+    }
 }

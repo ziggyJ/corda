@@ -29,6 +29,8 @@ class NotaryFlow {
      * In case of a single-node or Raft notary, the flow will return a single signature. For the BFT notary multiple
      * signatures will be returned – one from each replica that accepted the input state commit.
      *
+     * The transaction to be notarised, [stx], should be fully verified before calling this flow.
+     *
      * @throws NotaryException in case the any of the inputs to the transaction have been consumed
      *                         by another transaction or the time-window is invalid or
      *                         the parameters used for this transaction are no longer in force in the network.
@@ -52,27 +54,19 @@ class NotaryFlow {
         @Throws(NotaryException::class)
         override fun call(): List<TransactionSignature> {
             stx.pushToLoggingContext()
-            val notaryParty = checkTransaction()
-            progressTracker.currentStep = REQUESTING
+            val notaryParty = stx.notary ?: throw IllegalStateException("Transaction does not specify a Notary")
             logger.info("Sending transaction to notary: ${notaryParty.name}.")
+            checkEnoughSignatures(notaryParty)
+            progressTracker.currentStep = REQUESTING
             val response = notarise(notaryParty)
             logger.info("Notary responded.")
             progressTracker.currentStep = VALIDATING
             return validateResponse(response, notaryParty)
         }
 
-        /**
-         * Checks that the transaction specifies a valid notary, and verifies that it contains all required signatures
-         * apart from the notary's.
-         */
-        protected fun checkTransaction(): Party {
-            val notaryParty = stx.notary ?: throw IllegalStateException("Transaction does not specify a Notary")
-            check(serviceHub.networkMapCache.isNotary(notaryParty)) { "$notaryParty is not a notary on the network" }
-            check(serviceHub.loadStates(stx.inputs.toSet() + stx.references.toSet()).all { it.state.notary == notaryParty }) {
-                "Input states and reference input states must have the same Notary"
-            }
+        /** Checks that the transaction contains all required signatures apart from the notary's. */
+        protected fun checkEnoughSignatures(notaryParty: Party) {
             stx.resolveTransactionWithSignatures(serviceHub).verifySignaturesExcept(notaryParty.owningKey)
-            return notaryParty
         }
 
         /** Notarises the transaction with the [notaryParty], obtains the notary's signature(s). */
@@ -81,7 +75,7 @@ class NotaryFlow {
         protected fun notarise(notaryParty: Party): UntrustworthyData<NotarisationResponse> {
             val session = initiateFlow(notaryParty)
             val requestSignature = NotarisationRequest(stx.inputs, stx.id).generateSignature(serviceHub)
-            return if (serviceHub.networkMapCache.isValidatingNotary(notaryParty)) {
+            return if (serviceHub.networkParametersStorage.isValidatingNotary(notaryParty)) {
                 sendAndReceiveValidating(session, requestSignature)
             } else {
                 sendAndReceiveNonValidating(notaryParty, session, requestSignature)

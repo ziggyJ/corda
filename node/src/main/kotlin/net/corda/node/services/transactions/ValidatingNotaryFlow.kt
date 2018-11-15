@@ -37,7 +37,7 @@ open class ValidatingNotaryFlow(otherSideSession: FlowSession, service: SinglePa
             resolveAndContractVerify(stx)
             verifySignatures(stx)
         } catch (e: Exception) {
-            throw  NotaryInternalException(NotaryError.TransactionInvalid(e))
+            throw NotaryInternalException(NotaryError.TransactionInvalid(e))
         }
     }
 

@@ -1,8 +1,10 @@
 package net.corda.node.internal
 
 import net.corda.core.crypto.SecureHash
+import net.corda.core.identity.Party
 import net.corda.core.internal.*
 import net.corda.core.node.NetworkParameters
+import net.corda.core.node.NotaryInfo
 import net.corda.core.node.services.NetworkParametersStorage
 import net.corda.core.serialization.SerializedBytes
 import net.corda.core.serialization.SingletonSerializeAsToken
@@ -117,13 +119,18 @@ class NetworkParametersReader(private val trustRoot: X509Certificate,
 }
 
 // TODO NetworkParametersReader + NodeParametersStorage refactor
+
+interface NodeParametersStorageInternal : NetworkParametersStorage {
+    fun setCurrentParameters(currentSignedParameters: SignedDataWithCert<NetworkParameters>, trustRoot: X509Certificate)
+}
+
 class NodeParametersStorage(
         cacheFactory: NamedCacheFactory,
         private val database: CordaPersistence,
         // TODO It's very inefficient solution (at least at the beginning when node joins without historical data)
         // We could have historic parameters endpoint or always add parameters as an attachment to the transaction.
         private val networkMapClient: NetworkMapClient?
-) : NetworkParametersStorage, SingletonSerializeAsToken() {
+) : NodeParametersStorageInternal, SingletonSerializeAsToken() {
     private lateinit var trustRoot: X509Certificate
 
     companion object {
@@ -149,7 +156,7 @@ class NodeParametersStorage(
         }
     }
 
-    fun start(currentSignedParameters: SignedDataWithCert<NetworkParameters>, trustRoot: X509Certificate) {
+    override fun setCurrentParameters(currentSignedParameters: SignedDataWithCert<NetworkParameters>, trustRoot: X509Certificate) {
         this.trustRoot = trustRoot
         saveParameters(currentSignedParameters)
         _currentHash = currentSignedParameters.raw.hash
@@ -184,6 +191,32 @@ class NodeParametersStorage(
         val hash = signedNetworkParameters.raw.hash
         log.trace { "Parameters to save $networkParameters with hash $hash" }
         hashToParameters.addWithDuplicatesAllowed(hash, signedNetworkParameters)
+    }
+
+    override fun isNotary(party: Party): Boolean {
+        return getNotaryInfo(party) != null
+    }
+
+    /**
+     * Try to obtain notary info from the current network parameters. If not found, look through historical ones.
+     *
+     * Note that the only scenario where it's acceptable to use a notary not in the current network parameter whitelist is
+     * when performing a notary change transaction after a network merge – the old notary won't be on the whitelist of the new network,
+     * and can't be used for regular transactions.
+     */
+    private fun getNotaryInfo(party: Party): NotaryInfo? {
+        val inCurrentParams = currentParameters.notaries.singleOrNull { it.identity == party }
+        if (inCurrentParams == null) {
+            val inOldParams = hashToParameters.allPersisted().flatMap { (_, signedParams) ->
+                val parameters = signedParams.raw.deserialize()
+                parameters.notaries.asSequence()
+            }.singleOrNull { it.identity == party }
+            return inOldParams
+        } else return inCurrentParams
+    }
+
+    override fun isValidatingNotary(party: Party): Boolean {
+        return getNotaryInfo(party)?.validating ?: throw IllegalStateException("Party $party is not a notary on the network")
     }
 
     // TODO For the future we could get them also as signed (by network operator) attachments on transactions.

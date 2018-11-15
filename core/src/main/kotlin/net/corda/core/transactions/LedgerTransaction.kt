@@ -53,6 +53,7 @@ data class LedgerTransaction @JvmOverloads constructor(
     init {
         checkBaseInvariants()
         if (timeWindow != null) check(notary != null) { "Transactions with time-windows must be notarised" }
+        checkNotaryWhitelisted()
         checkNoNotaryChange()
         checkEncumbrancesValid()
     }

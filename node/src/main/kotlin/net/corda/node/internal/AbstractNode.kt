@@ -169,7 +169,8 @@ abstract class AbstractNode<S>(val configuration: NodeConfiguration,
     val networkMapClient: NetworkMapClient? = configuration.networkServices?.let { NetworkMapClient(it.networkMapURL, versionInfo) }
     val attachments = NodeAttachmentService(metricRegistry, cacheFactory, database).tokenize()
     val cryptoService = configuration.makeCryptoService()
-    val networkParametersStorage = NodeParametersStorage(cacheFactory, database, networkMapClient).tokenize()
+    @Suppress("LeakingThis")
+    val networkParametersStorage = makeParametersStorage()
     val cordappProvider = CordappProviderImpl(cordappLoader, CordappConfigFileProvider(configuration.cordappDirectories), attachments).tokenize()
     @Suppress("LeakingThis")
     val keyManagementService = makeKeyManagementService(identityService).tokenize()
@@ -350,7 +351,7 @@ abstract class AbstractNode<S>(val configuration: NodeConfiguration,
 
         // Do all of this in a database transaction so anything that might need a connection has one.
         return database.transaction {
-            networkParametersStorage.start(signedNetParams, trustRoot)
+            networkParametersStorage.setCurrentParameters(signedNetParams, trustRoot)
             identityService.loadIdentities(nodeInfo.legalIdentitiesAndCerts)
             attachments.start()
             cordappProvider.start(netParams.whitelistedContractImplementations)
@@ -659,6 +660,10 @@ abstract class AbstractNode<S>(val configuration: NodeConfiguration,
 
     protected open fun makeTransactionStorage(transactionCacheSizeBytes: Long): WritableTransactionStorage {
         return DBTransactionStorage(database, cacheFactory)
+    }
+
+    protected open fun makeParametersStorage(): NodeParametersStorageInternal {
+        return NodeParametersStorage(cacheFactory, database, networkMapClient).tokenize()
     }
 
     @VisibleForTesting

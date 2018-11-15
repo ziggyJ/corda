@@ -56,7 +56,9 @@ class FinalityFlow(val transaction: SignedTransaction,
         transaction.pushToLoggingContext()
         val commandDataTypes = transaction.tx.commands.map { it.value }.mapNotNull { it::class.qualifiedName }.distinct()
         logger.info("Started finalization, commands are ${commandDataTypes.joinToString(", ", "[", "]")}.")
-        val parties = getPartiesToSend(verifyTx())
+
+        val ledgerTransaction = verifyTx()
+        val parties = getPartiesToSend(ledgerTransaction)
         val notarised = notariseAndRecord()
 
         // Each transaction has its own set of recipients, but extra recipients get them all.

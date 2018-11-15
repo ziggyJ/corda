@@ -2,6 +2,7 @@ package net.corda.core.node.services
 
 import net.corda.core.DoNotImplement
 import net.corda.core.crypto.SecureHash
+import net.corda.core.identity.Party
 import net.corda.core.internal.SignedDataWithCert
 import net.corda.core.node.NetworkParameters
 
@@ -43,4 +44,14 @@ interface NetworkParametersStorage {
      * Hash should always be calculated over the serialized bytes.
      */
     fun saveParameters(signedNetworkParameters: SignedDataWithCert<NetworkParameters>)
+
+    /** Returns true if and only if the given [Party] is a notary, which is defined by the network parameters. */
+    fun isNotary(party: Party): Boolean
+
+    /**
+     * Returns true if and only if the given [Party] is validating notary. For every party that is a validating notary,
+     * [isNotary] is also true.
+     * @see isNotary
+     */
+    fun isValidatingNotary(party: Party): Boolean
 }
