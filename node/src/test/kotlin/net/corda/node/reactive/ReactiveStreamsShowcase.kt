@@ -119,11 +119,11 @@ private class InMemoryAppendOnlyEventLogPublisher<EVENT> : AppendOnlyEventLogPub
         if (size == 0 || offset >= size) {
             return emptyList()
         }
-        var limit = offset + count
-        if (limit >= size) {
-            limit = size
+        var end = offset + count
+        if (end >= size) {
+            end = size
         }
-        return eventLog.slice(offset until limit)
+        return eventLog.slice(offset until end)
     }
 
     private class SubscriptionImpl<EVENT>(private val subscriber: Subscriber<EVENT>, private val requestEvents: (Int, Int) -> List<EVENT>, private val cancel: (SubscriptionImpl<EVENT>) -> Unit, private val id: String = UUID.randomUUID().toString()) : Subscription {
