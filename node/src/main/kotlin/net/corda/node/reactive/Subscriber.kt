@@ -6,6 +6,8 @@ interface Subscriber<ELEMENT> {
 
     fun onNext(element: ELEMENT)
 
+    fun onNoNext()
+
     fun onError(error: Throwable)
 
     fun onComplete()

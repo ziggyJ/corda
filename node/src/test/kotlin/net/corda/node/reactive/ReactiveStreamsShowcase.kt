@@ -26,6 +26,10 @@ class ReactiveStreamsShowcase {
                     discard
                 },
                 onError = { error -> throw error },
+                onNoNext = {
+                    // TODO sollecitom here you would typically schedule the next request e.g, `scheduler.submit({ subscriber.request(sameClientOffset, 1) }, 5, TimeUnit.SECOND)`
+                    println("Nothing more to process, exiting.")
+                },
                 onComplete = { println("Completed!") },
                 process = { event -> println("Got event $event.") }
         )
@@ -34,7 +38,7 @@ class ReactiveStreamsShowcase {
     }
 }
 
-private class FunctionalSubscriber<EVENT>(initialClientOffset: Int = 0, private val persistClientOffset: (Int) -> Unit = {}, private val shouldDiscardEvent: (EVENT) -> Boolean = { false }, private val onError: (Throwable) -> Unit = { error -> throw error }, private val onComplete: () -> Unit, private val process: (EVENT) -> Unit) : Subscriber<EVENT>, AutoCloseable {
+private class FunctionalSubscriber<EVENT>(initialClientOffset: Int = 0, private val persistClientOffset: (Int) -> Unit = {}, private val shouldDiscardEvent: (EVENT) -> Boolean = { false }, private val onError: (Throwable) -> Unit = { error -> throw error }, private val onComplete: () -> Unit, private val onNoNext: (FunctionalSubscriber<EVENT>) -> Unit, private val process: (EVENT) -> Unit) : Subscriber<EVENT>, AutoCloseable {
 
     private var clientOffset = initialClientOffset
     private var subscription: Subscription? = null
@@ -71,8 +75,13 @@ private class FunctionalSubscriber<EVENT>(initialClientOffset: Int = 0, private 
     }
 
     override fun onComplete() {
+        // TODO sollecitom this should never happen.
         onComplete.invoke()
         close()
+    }
+
+    override fun onNoNext() {
+        onNoNext.invoke(this)
     }
 
     override fun close() {
@@ -122,7 +131,11 @@ private class InMemoryAppendOnlyEventLogPublisher<EVENT> : AppendOnlyEventLogPub
         override fun request(offset: Int, count: Int) {
             try {
                 val events = requestEvents.invoke(offset, count)
-                events.forEach(subscriber::onNext)
+                if (events.isNotEmpty()) {
+                    events.forEach(subscriber::onNext)
+                } else {
+                    subscriber.onNoNext()
+                }
             } catch (e: Exception) {
                 // TODO sollecitom this is obviously grossly simplified for is PoC
                 subscriber.onError(e)
