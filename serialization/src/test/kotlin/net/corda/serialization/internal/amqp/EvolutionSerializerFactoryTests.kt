@@ -1,5 +1,8 @@
 package net.corda.serialization.internal.amqp
 
+import net.corda.core.serialization.CordaSerializable
+import net.corda.core.serialization.CordaSerializationTransformEnumDefault
+import net.corda.core.serialization.CordaSerializationTransformEnumDefaults
 import net.corda.serialization.internal.amqp.testutils.deserializeAndReturnEnvelope
 import net.corda.serialization.internal.amqp.testutils.serialize
 import net.corda.serialization.internal.amqp.testutils.testDefaultFactory
@@ -50,6 +53,36 @@ class EvolutionSerializerFactoryTests {
         assertFailsWith<EvolutionSerializationException> {
             strictEvolutionSerializerFactory.getEvolutionSerializer(withAddedField, localTypeInformation)
         }
+    }
+
+    @CordaSerializable
+    enum class EnumInVault { A, B, C }
+
+    @CordaSerializationTransformEnumDefaults(
+            CordaSerializationTransformEnumDefault("E", "C"),
+            CordaSerializationTransformEnumDefault("D", "C")
+    )
+    @CordaSerializable
+    enum class EnumInProcess { A, B, C, D, E }
+
+    @Test
+    fun enumEvolution() {
+        val evolutionSerializerFactory = DefaultEvolutionSerializerFactory(
+                factory,
+                ClassLoader.getSystemClassLoader(),
+                false)
+
+        val (_, env) = DeserializationInput(factory).deserializeAndReturnEnvelope(
+                SerializationOutput(factory).serialize(EnumInVault.A))
+
+        val remoteTypeInformation = AMQPRemoteTypeModel().interpret(SerializationSchemas(env.schema, env.transformsSchema))
+                .values.find { it.typeIdentifier == TypeIdentifier.forClass(EnumInVault::class.java) }
+                as RemoteTypeInformation.AnEnum
+
+        val renamed = remoteTypeInformation.copy(typeIdentifier = TypeIdentifier.forClass(EnumInProcess::class.java))
+        val localTypeInformation = factory.getTypeInformation(EnumInProcess::class.java)
+
+        assertNotNull(evolutionSerializerFactory.getEvolutionSerializer(renamed, localTypeInformation))
     }
 
 }

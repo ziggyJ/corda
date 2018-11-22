@@ -128,34 +128,9 @@ class DefaultEvolutionSerializerFactory(
     }
 
     private fun RemoteTypeInformation.AnEnum.getEvolutionSerializer(
-            localTypeInformation: LocalTypeInformation.AnEnum): AMQPSerializer<Any>? {
-        if (members == localTypeInformation.members) return null
-
-        val remoteTransforms = transforms
-        val localTransforms = localTypeInformation.getEnumTransforms(localSerializerFactory)
-        val transforms = if (remoteTransforms.size > localTransforms.size) remoteTransforms else localTransforms
-
-        val localOrdinals = localTypeInformation.members.asSequence().mapIndexed { ord, member -> member to ord }.toMap()
-        val remoteOrdinals = members.asSequence().mapIndexed { ord, member -> member to ord }.toMap()
-        val rules = transforms.defaults + transforms.renames
-
-        // We just trust our transformation rules not to contain cycles here.
-        tailrec fun findLocal(remote: String): String =
-            if (remote in localOrdinals) remote
-            else findLocal(rules[remote] ?: throw EvolutionSerializationException(
-                    this,
-                    "Cannot resolve local enum member $remote to a member of ${localOrdinals.keys} using rules $rules"
-            ))
-
-        val conversions = members.associate { it to findLocal(it) }
-        val convertedOrdinals = remoteOrdinals.asSequence().map { (member, ord) -> ord to conversions[member]!! }.toMap()
-        if (localOrdinals.any { (name, ordinal) -> convertedOrdinals[ordinal] != name })
-            throw EvolutionSerializationException(
-                    this,
-                    "Constants have been reordered, additions must be appended to the end")
-
-        return EnumEvolutionSerializer(localTypeInformation.observedType, localSerializerFactory, conversions, localOrdinals)
-    }
+            localTypeInformation: LocalTypeInformation.AnEnum): AMQPSerializer<Any>? =
+        if (members == localTypeInformation.members) null
+        else EnumEvolutionSerializer.make(this, localTypeInformation, localSerializerFactory)
 
     private fun RemoteTypeInformation.Composable.buildComposableEvolutionSerializer(
             localTypeInformation: LocalTypeInformation.Composable,

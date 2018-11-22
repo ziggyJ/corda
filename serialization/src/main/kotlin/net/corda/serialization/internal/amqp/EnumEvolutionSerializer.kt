@@ -2,7 +2,10 @@ package net.corda.serialization.internal.amqp
 
 import net.corda.core.internal.uncheckedCast
 import net.corda.core.serialization.SerializationContext
+import net.corda.serialization.internal.amqp.EnumEvolutionSerializer.Companion.ordinals
+import net.corda.serialization.internal.model.EnumTransforms
 import net.corda.serialization.internal.model.LocalTypeInformation
+import net.corda.serialization.internal.model.RemoteTypeInformation
 import org.apache.qpid.proton.amqp.Symbol
 import org.apache.qpid.proton.codec.Data
 import java.io.NotSerializableException
@@ -42,6 +45,61 @@ class EnumEvolutionSerializer(
         private val conversions: Map<String, String>,
         private val ordinals: Map<String, Int>) : AMQPSerializer<Any> {
     override val typeDescriptor = factory.createDescriptor(type)
+
+    companion object {
+        fun make(remoteTypeInformation: RemoteTypeInformation.AnEnum, localTypeInformation: LocalTypeInformation.AnEnum,
+                 localSerializerFactory: LocalSerializerFactory): AMQPSerializer<Any> =
+                remoteTypeInformation.evolveTo(localTypeInformation, localSerializerFactory)
+
+        private fun RemoteTypeInformation.AnEnum.evolveTo(localTypeInformation: LocalTypeInformation.AnEnum,
+                                                  localSerializerFactory: LocalSerializerFactory): AMQPSerializer<Any> {
+            val transforms = getTransforms(localTypeInformation, localSerializerFactory)
+
+            val remoteOrdinals = members.ordinals
+            val localOrdinals = localTypeInformation.members.ordinals
+
+            val conversions = getConversions(transforms, localOrdinals)
+
+            if (areConstantsReordered(localOrdinals, remoteOrdinals, conversions)) throw EvolutionSerializationException(
+                    this,
+                    "Constants have been reordered, additions must be appended to the end")
+
+            return EnumEvolutionSerializer(localTypeInformation.observedType, localSerializerFactory, conversions, localOrdinals)
+        }
+
+        private val List<String>.ordinals: Map<String, Int> get() =
+            asSequence().mapIndexed { ord, member -> member to ord }.toMap()
+
+        private fun RemoteTypeInformation.AnEnum.getTransforms(localTypeInformation: LocalTypeInformation.AnEnum, localSerializerFactory: LocalSerializerFactory): EnumTransforms {
+            val localTransforms = localTypeInformation.getEnumTransforms(localSerializerFactory)
+            return if (transforms.size > localTransforms.size) transforms else localTransforms
+        }
+
+        private fun RemoteTypeInformation.AnEnum.getConversions(transforms: EnumTransforms, localOrdinals: Map<String, Int>): Map<String, String> {
+            val rules = transforms.defaults + transforms.renames
+
+            // We just trust our transformation rules not to contain cycles here.
+            tailrec fun findLocal(remote: String): String =
+                    if (remote in localOrdinals) remote
+                    else findLocal(rules[remote] ?: throw EvolutionSerializationException(
+                            this,
+                            "Cannot resolve local enum member $remote to a member of ${localOrdinals.keys} using rules $rules"
+                    ))
+
+            return members.associate { it to findLocal(it) }
+        }
+
+        private fun areConstantsReordered(
+                localOrdinals: Map<String, Int>,
+                remoteOrdinals: Map<String, Int>,
+                conversions: Map<String, String>): Boolean {
+            val convertedOrdinals = remoteOrdinals.asSequence().map { (member, ord) -> ord to conversions[member]!! }.toMap()
+
+            return if (localOrdinals.size <= remoteOrdinals.size)
+                localOrdinals.any { (name, ordinal) -> convertedOrdinals[ordinal] != name }
+            else remoteOrdinals.any { (name, ordinal) -> localOrdinals[name] != ordinal }
+        }
+    }
 
     override fun readObject(obj: Any, schemas: SerializationSchemas, input: DeserializationInput,
                             context: SerializationContext
