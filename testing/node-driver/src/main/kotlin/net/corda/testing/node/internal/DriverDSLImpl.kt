@@ -58,11 +58,13 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import rx.Subscription
 import rx.schedulers.Schedulers
+import java.io.File.separatorChar
 import java.lang.management.ManagementFactory
 import java.net.ConnectException
 import java.net.URL
 import java.net.URLClassLoader
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.security.cert.X509Certificate
 import java.time.Duration
 import java.time.Instant
@@ -333,12 +335,6 @@ class DriverDSLImpl(
         }
     }
 
-    private enum class ClusterType(val validating: Boolean, val clusterName: CordaX500Name) {
-        VALIDATING_RAFT(true, CordaX500Name("Raft", "Zurich", "CH")),
-        NON_VALIDATING_RAFT(false, CordaX500Name("Raft", "Zurich", "CH")),
-        NON_VALIDATING_BFT(false, CordaX500Name("BFT", "Zurich", "CH"))
-    }
-
     @Suppress("DEPRECATION")
     private fun queryWebserver(handle: NodeHandle, process: Process): WebserverHandle {
         val protocol = if ((handle as NodeHandleInternal).useHTTPS) "https://" else "http://"
@@ -563,16 +559,7 @@ class DriverDSLImpl(
     private fun startOutOfProcessMiniNode(config: NodeConfig, vararg extraCmdLineFlag: String): CordaFuture<Unit> {
         val debugPort = if (isDebug) debugPortAllocation.nextPort() else null
         val monitorPort = if (jmxPolicy.startJmxHttpServer) jmxPolicy.jmxHttpServerPortAllocation?.nextPort() else null
-        val process = startOutOfProcessNode(
-                config,
-                quasarJarPath,
-                debugPort,
-                jolokiaJarPath,
-                monitorPort,
-                systemProperties,
-                "512m",
-                *extraCmdLineFlag
-        )
+        val process = startOutOfProcessNode(config, debugPort, monitorPort, "512m", *extraCmdLineFlag)
 
         return poll(executorService, "$extraCmdLineFlag (${config.corda.myLegalName})") {
             if (process.isAlive) null else Unit
@@ -644,7 +631,7 @@ class DriverDSLImpl(
         } else {
             val debugPort = if (isDebug) debugPortAllocation.nextPort() else null
             val monitorPort = if (jmxPolicy.startJmxHttpServer) jmxPolicy.jmxHttpServerPortAllocation?.nextPort() else null
-            val process = startOutOfProcessNode(config, quasarJarPath, debugPort, jolokiaJarPath, monitorPort, systemProperties, maximumHeapSize)
+            val process = startOutOfProcessNode(config, debugPort, monitorPort, maximumHeapSize)
 
             // Destroy the child process when the parent exits.This is needed even when `waitForAllNodesToFinish` is
             // true because we don't want orphaned processes in the case that the parent process is terminated by the
@@ -688,6 +675,79 @@ class DriverDSLImpl(
         val pollFuture = poll(executorService, pollName, pollInterval, warnCount, check)
         shutdownManager.registerShutdown { pollFuture.cancel(true) }
         return pollFuture
+    }
+
+    private fun startOutOfProcessNode(config: NodeConfig,
+                                      debugPort: Int?,
+                                      monitorPort: Int?,
+                                      maximumHeapSize: String,
+                                      vararg extraCmdLineFlag: String): Process {
+        // This is a traditional uber jar and not the capsule jar of "corda.jar". The capsule ...
+        val nodeFatJar = driverDirectory / "node-fat.jar"
+        if (!nodeFatJar.exists()) {
+            val stream = javaClass.getResourceAsStream("node-fat.jar")
+            if (stream == null) {
+                val nodeDriverDir = javaClass.location.toPath().let {
+                    val index = it.indexOf(Paths.get("node-driver"))
+                    it.root.resolve(it.subpath(0, index + 1))
+                }
+                val resourcesJar = nodeDriverDir / "build" / "resources" / "main" / javaClass.packageName.replace('.', separatorChar) / "node-fat.jar"
+                check(resourcesJar.exists()) {
+                    "Was expecting to find node-fat.jar at $resourcesJar. If running from an IDE run gradlew node-driver:processResources first."
+                }
+                resourcesJar.copyTo(nodeFatJar)
+            } else {
+                stream.copyTo(nodeFatJar)
+            }
+        }
+
+        log.info("Starting out-of-process Node ${config.corda.myLegalName.organisation}, " +
+                "debug port is " + (debugPort ?: "not enabled") + ", " +
+                "jolokia monitoring port is " + (monitorPort ?: "not enabled"))
+        // Write node.conf
+        writeConfig(config.corda.baseDirectory, "node.conf", config.typesafe.toNodeOnly())
+
+        val systemProperties = mutableMapOf(
+                "name" to config.corda.myLegalName,
+                "visualvm.display.name" to "corda-${config.corda.myLegalName}"
+        )
+        debugPort?.let {
+            systemProperties += "log4j2.level" to "debug"
+            systemProperties += "log4j2.debug" to "true"
+        }
+
+        systemProperties += inheritFromParentProcess()
+        systemProperties += this.systemProperties
+
+        // See experimental/quasar-hook/README.md for how to generate.
+        val excludePattern = "x(antlr**;bftsmart**;ch**;co.paralleluniverse**;com.codahale**;com.esotericsoftware**;" +
+                "com.fasterxml**;com.google**;com.ibm**;com.intellij**;com.jcabi**;com.nhaarman**;com.opengamma**;" +
+                "com.typesafe**;com.zaxxer**;de.javakaffee**;groovy**;groovyjarjarantlr**;groovyjarjarasm**;io.atomix**;" +
+                "io.github**;io.netty**;jdk**;joptsimple**;junit**;kotlin**;net.bytebuddy**;net.i2p**;org.apache**;" +
+                "org.assertj**;org.bouncycastle**;org.codehaus**;org.crsh**;org.dom4j**;org.fusesource**;org.h2**;" +
+                "org.hamcrest**;org.hibernate**;org.jboss**;org.jcp**;org.joda**;org.junit**;org.mockito**;org.objectweb**;" +
+                "org.objenesis**;org.slf4j**;org.w3c**;org.xml**;org.yaml**;reflectasm**;rx**;org.jolokia**;)"
+        val extraJvmArguments = systemProperties.removeResolvedClasspath().map { "-D${it.key}=${it.value}" } +
+                "-javaagent:$quasarJarPath=$excludePattern"
+        val jolokiaAgent = monitorPort?.let { "-javaagent:$jolokiaJarPath=port=$monitorPort,host=localhost" }
+        val loggingLevel = if (debugPort == null) "INFO" else "DEBUG"
+
+        val arguments = mutableListOf(
+                "--base-directory=${config.corda.baseDirectory}",
+                "--logging-level=$loggingLevel",
+                "--no-local-shell").also {
+            it += extraCmdLineFlag
+        }.toList()
+
+        return ProcessUtilities.startJavaProcess(
+                className = "net.corda.node.Corda",
+                classPath = listOfNotNull(nodeFatJar.toString(), if (monitorPort != null) jolokiaJarPath else null),
+                arguments = arguments,
+                jdwpPort = debugPort,
+                extraJvmArguments = extraJvmArguments + listOfNotNull(jolokiaAgent),
+                workingDirectory = config.corda.baseDirectory,
+                maximumHeapSize = maximumHeapSize
+        )
     }
 
     /**
@@ -768,65 +828,6 @@ class DriverDSLImpl(
             }.flatMap { nodeAndThread ->
                 addressMustBeBoundFuture(executorService, effectiveP2PAddress).map { nodeAndThread }
             }
-        }
-
-        private fun startOutOfProcessNode(
-                config: NodeConfig,
-                quasarJarPath: String,
-                debugPort: Int?,
-                jolokiaJarPath: String,
-                monitorPort: Int?,
-                overriddenSystemProperties: Map<String, String>,
-                maximumHeapSize: String,
-                vararg extraCmdLineFlag: String
-        ): Process {
-
-            log.info("Starting out-of-process Node ${config.corda.myLegalName.organisation}, " +
-                    "debug port is " + (debugPort ?: "not enabled") + ", " +
-                    "jolokia monitoring port is " + (monitorPort ?: "not enabled"))
-            // Write node.conf
-            writeConfig(config.corda.baseDirectory, "node.conf", config.typesafe.toNodeOnly())
-
-            val systemProperties = mutableMapOf(
-                    "name" to config.corda.myLegalName,
-                    "visualvm.display.name" to "corda-${config.corda.myLegalName}"
-            )
-            debugPort?.let {
-                systemProperties += "log4j2.level" to "debug"
-                systemProperties += "log4j2.debug" to "true"
-            }
-
-            systemProperties += inheritFromParentProcess()
-            systemProperties += overriddenSystemProperties
-
-            // See experimental/quasar-hook/README.md for how to generate.
-            val excludePattern = "x(antlr**;bftsmart**;ch**;co.paralleluniverse**;com.codahale**;com.esotericsoftware**;" +
-                    "com.fasterxml**;com.google**;com.ibm**;com.intellij**;com.jcabi**;com.nhaarman**;com.opengamma**;" +
-                    "com.typesafe**;com.zaxxer**;de.javakaffee**;groovy**;groovyjarjarantlr**;groovyjarjarasm**;io.atomix**;" +
-                    "io.github**;io.netty**;jdk**;joptsimple**;junit**;kotlin**;net.bytebuddy**;net.i2p**;org.apache**;" +
-                    "org.assertj**;org.bouncycastle**;org.codehaus**;org.crsh**;org.dom4j**;org.fusesource**;org.h2**;" +
-                    "org.hamcrest**;org.hibernate**;org.jboss**;org.jcp**;org.joda**;org.junit**;org.mockito**;org.objectweb**;" +
-                    "org.objenesis**;org.slf4j**;org.w3c**;org.xml**;org.yaml**;reflectasm**;rx**;org.jolokia**;)"
-            val extraJvmArguments = systemProperties.removeResolvedClasspath().map { "-D${it.key}=${it.value}" } +
-                    "-javaagent:$quasarJarPath=$excludePattern"
-            val jolokiaAgent = monitorPort?.let { "-javaagent:$jolokiaJarPath=port=$monitorPort,host=localhost" }
-            val loggingLevel = if (debugPort == null) "INFO" else "DEBUG"
-
-            val arguments = mutableListOf(
-                    "--base-directory=${config.corda.baseDirectory}",
-                    "--logging-level=$loggingLevel",
-                    "--no-local-shell").also {
-                it += extraCmdLineFlag
-            }.toList()
-
-            return ProcessUtilities.startJavaProcess(
-                    className = "net.corda.node.Corda", // cannot directly get class for this, so just use string
-                    arguments = arguments,
-                    jdwpPort = debugPort,
-                    extraJvmArguments = extraJvmArguments + listOfNotNull(jolokiaAgent),
-                    workingDirectory = config.corda.baseDirectory,
-                    maximumHeapSize = maximumHeapSize
-            )
         }
 
         private fun startWebserver(handle: NodeHandleInternal, debugPort: Int?, maximumHeapSize: String): Process {
@@ -953,7 +954,7 @@ private class NetworkVisibilityController {
                         // Nothing to do here but better being exhaustive.
                     }
                 }
-            }, { _ ->
+            }, {
                 // Nothing to do on errors here.
             })
             return future

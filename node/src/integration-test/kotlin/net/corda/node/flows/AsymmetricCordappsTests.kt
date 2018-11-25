@@ -16,34 +16,7 @@ import net.corda.testing.node.internal.cordappForClasses
 import org.junit.Test
 import kotlin.test.assertEquals
 
-class AsymmetricCorDappsTests {
-
-    @StartableByRPC
-    @InitiatingFlow
-    class Ping(private val pongParty: Party, val times: Int) : FlowLogic<Unit>() {
-        @Suspendable
-        override fun call() {
-            val pongSession = initiateFlow(pongParty)
-            pongSession.sendAndReceive<Unit>(times)
-            for (i in 1..times) {
-                val j = pongSession.sendAndReceive<Int>(i).unwrap { it }
-                assertEquals(i, j)
-            }
-        }
-    }
-
-    @InitiatedBy(Ping::class)
-    class Pong(private val pingSession: FlowSession) : FlowLogic<Unit>() {
-        @Suspendable
-        override fun call() {
-            val times = pingSession.sendAndReceive<Int>(Unit).unwrap { it }
-            for (i in 1..times) {
-                val j = pingSession.sendAndReceive<Int>(i).unwrap { it }
-                assertEquals(i, j)
-            }
-        }
-    }
-
+class AsymmetricCordappsTests {
     @Test
     fun `no shared cordapps with asymmetric specific classes`() {
         driver(DriverParameters(startNodesInProcess = false, cordappsForAllNodes = emptySet())) {
@@ -58,8 +31,10 @@ class AsymmetricCorDappsTests {
         val sharedCordapp = cordappForClasses(Ping::class.java)
         val cordappForNodeB = cordappForClasses(Pong::class.java)
         driver(DriverParameters(startNodesInProcess = false, cordappsForAllNodes = setOf(sharedCordapp))) {
-
-            val (nodeA, nodeB) = listOf(startNode(providedName = ALICE_NAME), startNode(providedName = BOB_NAME, additionalCordapps = setOf(cordappForNodeB))).transpose().getOrThrow()
+            val (nodeA, nodeB) = listOf(
+                    startNode(providedName = ALICE_NAME),
+                    startNode(providedName = BOB_NAME, additionalCordapps = setOf(cordappForNodeB))
+            ).transpose().getOrThrow()
             nodeA.rpc.startFlow(::Ping, nodeB.nodeInfo.singleIdentity(), 1).returnValue.getOrThrow()
         }
     }
@@ -69,9 +44,37 @@ class AsymmetricCorDappsTests {
         val sharedCordapp = cordappForClasses(Ping::class.java)
         val cordappForNodeB = cordappForClasses(Pong::class.java)
         driver(DriverParameters(startNodesInProcess = true, cordappsForAllNodes = setOf(sharedCordapp))) {
-
-            val (nodeA, nodeB) = listOf(startNode(providedName = ALICE_NAME), startNode(providedName = BOB_NAME, additionalCordapps = setOf(cordappForNodeB))).transpose().getOrThrow()
+            val (nodeA, nodeB) = listOf(
+                    startNode(providedName = ALICE_NAME),
+                    startNode(providedName = BOB_NAME, additionalCordapps = setOf(cordappForNodeB))
+            ).transpose().getOrThrow()
             nodeA.rpc.startFlow(::Ping, nodeB.nodeInfo.singleIdentity(), 1).returnValue.getOrThrow()
+        }
+    }
+}
+
+@StartableByRPC
+@InitiatingFlow
+class Ping(private val pongParty: Party, val times: Int) : FlowLogic<Unit>() {
+    @Suspendable
+    override fun call() {
+        val pongSession = initiateFlow(pongParty)
+        pongSession.sendAndReceive<Unit>(times)
+        for (i in 1..times) {
+            val j = pongSession.sendAndReceive<Int>(i).unwrap { it }
+            require(i == j) { "$i vs $j"}
+        }
+    }
+}
+
+@InitiatedBy(Ping::class)
+class Pong(private val pingSession: FlowSession) : FlowLogic<Unit>() {
+    @Suspendable
+    override fun call() {
+        val times = pingSession.sendAndReceive<Int>(Unit).unwrap { it }
+        for (i in 1..times) {
+            val j = pingSession.sendAndReceive<Int>(i).unwrap { it }
+            require(i == j) { "$i vs $j"}
         }
     }
 }

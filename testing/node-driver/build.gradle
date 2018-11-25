@@ -24,6 +24,13 @@ sourceSets {
     }
 }
 
+processResources {
+    from(project(':node').tasks['fatJar']) {
+        rename 'node-(.*)-fat.jar', 'node-fat.jar'
+        into 'net/corda/testing/node/internal'
+    }
+}
+
 dependencies {
     // Bundling in the Raft notary service for tests involving distributed notaries
     compile project(':experimental:notary-raft')

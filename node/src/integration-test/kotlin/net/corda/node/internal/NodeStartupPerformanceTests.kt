@@ -1,4 +1,4 @@
-package net.corda.node
+package net.corda.node.internal
 
 import com.google.common.base.Stopwatch
 import net.corda.testing.driver.driver

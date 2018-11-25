@@ -5,7 +5,6 @@ import net.corda.core.identity.CordaX500Name
 import net.corda.core.internal.CertRole
 import net.corda.core.internal.concurrent.fork
 import net.corda.core.internal.concurrent.openFuture
-import net.corda.core.internal.concurrent.transpose
 import net.corda.core.internal.div
 import net.corda.core.internal.list
 import net.corda.core.internal.readLines
@@ -15,7 +14,6 @@ import net.corda.node.internal.NodeStartup
 import net.corda.testing.common.internal.ProjectStructure.projectRootDir
 import net.corda.testing.core.BOB_NAME
 import net.corda.testing.core.DUMMY_BANK_A_NAME
-import net.corda.testing.core.DUMMY_BANK_B_NAME
 import net.corda.testing.core.DUMMY_NOTARY_NAME
 import net.corda.testing.http.HttpApi
 import net.corda.testing.node.NotarySpec
@@ -30,7 +28,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.ScheduledExecutorService
-import kotlin.streams.toList
 import kotlin.test.assertEquals
 
 class DriverTests {
@@ -134,34 +131,29 @@ class DriverTests {
     }
 
     @Test
-    fun `driver rejects multiple nodes with the same name parallel`() {
-        driver(DriverParameters(startNodesInProcess = true, notarySpecs = emptyList())) {
-            val nodes = listOf(newNode(DUMMY_BANK_A_NAME), newNode(DUMMY_BANK_B_NAME), newNode(DUMMY_BANK_A_NAME))
-            assertThatIllegalArgumentException().isThrownBy {
-                nodes.parallelStream().map { it.invoke() }.toList().transpose().getOrThrow()
-            }
-        }
-    }
-
-    @Test
     fun `driver rejects multiple nodes with the same organisation name`() {
         driver(DriverParameters(startNodesInProcess = true, notarySpecs = emptyList())) {
-            newNode(CordaX500Name(commonName = "Notary", organisation = "R3CEV", locality = "New York", country = "US"))().getOrThrow()
+            startNode(CordaX500Name(commonName = "Notary", organisation = "ORG", locality = "New York", country = "US")).getOrThrow()
             assertThatIllegalArgumentException().isThrownBy {
-                newNode(CordaX500Name(commonName = "Regulator", organisation = "R3CEV", locality = "New York", country = "US"))().getOrThrow()
+                startNode(CordaX500Name(commonName = "Regulator", organisation = "ORG", locality = "New York", country = "US")).getOrThrow()
             }
         }
     }
 
     @Test
-    fun `driver allows reusing names of nodes that have been stopped`() {
-        driver(DriverParameters(startNodesInProcess = true, notarySpecs = emptyList())) {
-            val nodeA = newNode(DUMMY_BANK_A_NAME)().getOrThrow()
-            nodeA.stop()
-            assertThatCode { newNode(DUMMY_BANK_A_NAME)().getOrThrow() }.doesNotThrowAnyException()
-        }
-    }
+    fun `out-of-process node can be restarted`() {
+        val p2pAddress = NetworkHostAndPort("localhost", 30000)
 
+        driver(DriverParameters(startNodesInProcess = false, notarySpecs = emptyList())) {
+            val nodeA = startNode(providedName = DUMMY_BANK_A_NAME, customOverrides = mapOf("p2pAddress" to p2pAddress.toString())).getOrThrow()
+            // In case the p2pAddress config is no longer used and we end up with a false-positive below
+            addressMustBeBound(executorService, p2pAddress)
+            nodeA.stop()
+            startNode(providedName = DUMMY_BANK_A_NAME, customOverrides = mapOf("p2pAddress" to p2pAddress.toString())).getOrThrow()
+        }
+
+        addressMustNotBeBound(executorService, p2pAddress)
+    }
 
     @Test
     fun `driver waits for in-process nodes to finish`() {
@@ -181,12 +173,12 @@ class DriverTests {
             last.stopQuietly()
         }
         driver(DriverParameters(startNodesInProcess = true, waitForAllNodesToFinish = true)) {
-            val nodeA = newNode(DUMMY_BANK_A_NAME)().getOrThrow()
+            val nodeA = startNode(DUMMY_BANK_A_NAME).getOrThrow()
             handlesFuture.set(listOf(nodeA) + notaryHandles.map { it.nodeHandles.getOrThrow() }.flatten())
         }
         driverExit.countDown()
         testFuture.getOrThrow()
     }
 
-    private fun DriverDSL.newNode(name: CordaX500Name) = { startNode(NodeParameters(providedName = name)) }
+    private fun DriverDSL.startNode(name: CordaX500Name) = startNode(NodeParameters(providedName = name))
 }

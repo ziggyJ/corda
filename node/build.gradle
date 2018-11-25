@@ -202,6 +202,17 @@ jar {
     baseName 'corda-node'
 }
 
+task fatJar(type: Jar) {
+    classifier "fat"
+    from(configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }) {
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+    }
+    from("$rootDir/config/dev/log4j2.xml")
+    with jar
+}
+
 publish {
     name jar.baseName
 }

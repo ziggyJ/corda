@@ -25,7 +25,6 @@ import java.util.*
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import kotlin.concurrent.thread
-import kotlin.test.assertEquals
 
 class HardRestartTest {
     companion object {
@@ -41,7 +40,7 @@ class HardRestartTest {
             pongSession.sendAndReceive<Unit>(times)
             for (i in 1 .. times) {
                 val j = pongSession.sendAndReceive<Int>(i).unwrap { it }
-                assertEquals(i, j)
+                require(i == j) { "$i vs $j" }
             }
         }
     }
@@ -53,13 +52,13 @@ class HardRestartTest {
             val times = pingSession.sendAndReceive<Int>(Unit).unwrap { it }
             for (i in 1 .. times) {
                 val j = pingSession.sendAndReceive<Int>(i).unwrap { it }
-                assertEquals(i, j)
+                require(i == j) { "$i vs $j" }
             }
         }
     }
 
     @Test
-    fun restartShortPingPongFlowRandomly() {
+    fun `restart short ping pong flow randomly`() {
         val demoUser = User("demo", "demo", setOf(Permissions.startFlow<Ping>(), Permissions.all()))
         driver(DriverParameters(
                 startNodesInProcess = false,
@@ -96,7 +95,7 @@ class HardRestartTest {
     }
 
     @Test
-    fun restartLongPingPongFlowRandomly() {
+    fun `restart long ping pong flow randomly`() {
         val demoUser = User("demo", "demo", setOf(Permissions.startFlow<Ping>(), Permissions.all()))
         driver(DriverParameters(
                 startNodesInProcess = false,
@@ -133,7 +132,7 @@ class HardRestartTest {
     }
 
     @Test
-    fun softRestartLongPingPongFlowRandomly() {
+    fun `soft restart long ping pong flow randomly`() {
         val demoUser = User("demo", "demo", setOf(Permissions.startFlow<Ping>(), Permissions.all()))
         driver(DriverParameters(
                 startNodesInProcess = false,
@@ -214,7 +213,7 @@ class HardRestartTest {
     }
 
     @Test
-    fun restartRecursiveFlowRandomly() {
+    fun `restart recursive flow randomly`() {
         val demoUser = User("demo", "demo", setOf(Permissions.startFlow<RecursiveA>(), Permissions.all()))
         driver(DriverParameters(
                 startNodesInProcess = false,

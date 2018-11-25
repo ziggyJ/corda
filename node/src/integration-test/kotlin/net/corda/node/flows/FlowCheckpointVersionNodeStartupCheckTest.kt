@@ -9,7 +9,8 @@ import net.corda.core.messaging.startTrackedFlow
 import net.corda.core.utilities.getOrThrow
 import net.corda.node.internal.CheckpointIncompatibleException
 import net.corda.node.internal.NodeStartup
-import net.corda.testMessage.*
+import net.corda.testMessage.Message
+import net.corda.testMessage.MessageState
 import net.corda.testing.core.ALICE_NAME
 import net.corda.testing.core.BOB_NAME
 import net.corda.testing.core.singleIdentity
@@ -19,8 +20,7 @@ import net.corda.testing.driver.driver
 import net.corda.testing.node.TestCordapp
 import net.corda.testing.node.internal.ListenProcessDeathException
 import net.corda.testing.node.internal.TestCordappDirectories
-import net.corda.testing.node.internal.cordappForClasses
-import net.test.cordapp.v1.Record
+import net.corda.testing.node.internal.cordappForPackages
 import net.test.cordapp.v1.SendMessageFlow
 import org.junit.Test
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
@@ -33,14 +33,7 @@ import kotlin.test.assertNotNull
 class FlowCheckpointVersionNodeStartupCheckTest {
     companion object {
         val message = Message("Hello world!")
-        val defaultCordapp = cordappForClasses(
-                MessageState::class.java,
-                MessageContract::class.java,
-                SendMessageFlow::class.java,
-                MessageSchema::class.java,
-                MessageSchemaV1::class.java,
-                Record::class.java
-        )
+        val defaultCordapp = cordappForPackages("net.corda.testMessage", "net.test.cordapp.v1")
     }
 
     @Test

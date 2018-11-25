@@ -1,4 +1,4 @@
-package net.corda.node
+package net.corda.node.cordapp
 
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.client.rpc.CordaRPCClient
