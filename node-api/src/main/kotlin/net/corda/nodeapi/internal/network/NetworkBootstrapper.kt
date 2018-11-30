@@ -380,7 +380,7 @@ internal constructor(private val initSerEnv: Boolean,
     private fun defaultNetworkParametersWith(notaryInfos: List<NotaryInfo>,
                                              whitelist: Map<String, List<AttachmentId>>): NetworkParameters {
         return NetworkParameters(
-                minimumPlatformVersion = PLATFORM_VERSION,
+                minimumPlatformVersion = 3,
                 notaries = notaryInfos,
                 modifiedTime = Instant.now(),
                 maxMessageSize = DEFAULT_MAX_MESSAGE_SIZE,
