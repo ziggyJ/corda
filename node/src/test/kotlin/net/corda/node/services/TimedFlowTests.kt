@@ -23,6 +23,7 @@ import net.corda.core.node.NotaryInfo
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
+import net.corda.core.utilities.getOrThrow
 import net.corda.core.utilities.minutes
 import net.corda.core.utilities.seconds
 import net.corda.node.services.api.ServiceHubInternal
@@ -54,6 +55,7 @@ import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -199,13 +201,9 @@ class TimedFlowTests {
                 val progressTrackerDone = getDoneFuture(progressTracker)
 
                 val resultFuture = services.startFlow(flow).resultFuture
-                var exceptionThrown = false
-                try {
-                    resultFuture.get(3, TimeUnit.SECONDS)
-                } catch (e: TimeoutException) {
-                    exceptionThrown = true
+                assertFailsWith(TimeoutException::class) {
+                    resultFuture.getOrThrow(3.seconds)
                 }
-                assertTrue(exceptionThrown)
                 flow.stateMachine.updateTimedFlowTimeout(2)
                 val notarySignatures = resultFuture.get(10, TimeUnit.SECONDS)
                 (issueTx + notarySignatures).verifyRequiredSignatures()
@@ -232,13 +230,9 @@ class TimedFlowTests {
 
                 val resultFuture = services.startFlow(flow).resultFuture
                 flow.stateMachine.updateTimedFlowTimeout(1)
-                var exceptionThrown = false
-                try {
-                    resultFuture.get(3, TimeUnit.SECONDS)
-                } catch (e: TimeoutException) {
-                    exceptionThrown = true
+                assertFailsWith(TimeoutException::class) {
+                    resultFuture.getOrThrow(3.seconds)
                 }
-                assertTrue(exceptionThrown)
                 val notarySignatures = resultFuture.get(10, TimeUnit.SECONDS)
                 (issueTx + notarySignatures).verifyRequiredSignatures()
                 progressTrackerDone.get()
