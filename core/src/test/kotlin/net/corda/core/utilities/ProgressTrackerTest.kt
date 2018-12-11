@@ -1,13 +1,20 @@
 package net.corda.core.utilities
 
+import net.corda.testing.core.internal.CheckpointSerializationEnvironmentRule
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
 
 class ProgressTrackerTest {
+
+    @Rule
+    @JvmField
+    val serializationRule = CheckpointSerializationEnvironmentRule()
+
     object SimpleSteps {
         object ONE : ProgressTracker.Step("one")
         object TWO : ProgressTracker.Step("two")
@@ -247,5 +254,21 @@ class ProgressTrackerTest {
         repeat(4) { pt.nextStep() }
         pt.currentStep = SimpleSteps.ONE
         assertEquals(SimpleSteps.TWO, pt.nextStep())
+    }
+
+    @Test
+    fun `can be checkpointed`() {
+        assertEquals(ProgressTracker.UNSTARTED, pt.currentStep)
+        assertEquals(ProgressTracker.STARTING, pt.nextStep())
+        assertEquals(SimpleSteps.ONE, pt.nextStep())
+        assertEquals(2, pt.stepIndex)
+        assertEquals(SimpleSteps.TWO, pt.nextStep())
+
+        val serializedBytes = serializationRule.checkpointSerializer.serialize(pt, serializationRule.checkpointSerializationContext)
+        val deserialized = serializationRule.checkpointSerializer.deserialize(serializedBytes, ProgressTracker::class.java, serializationRule.checkpointSerializationContext)
+
+        assertEquals(SimpleSteps.THREE, deserialized.nextStep())
+        assertEquals(SimpleSteps.FOUR, deserialized.nextStep())
+        assertEquals(ProgressTracker.DONE, deserialized.nextStep())
     }
 }
