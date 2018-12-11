@@ -202,7 +202,8 @@ class TimedFlowTests {
 
                 val resultFuture = services.startFlow(flow).resultFuture
                 assertFailsWith(TimeoutException::class) {
-                    resultFuture.getOrThrow(3.seconds)
+                    val result = resultFuture.getOrThrow(3.seconds)
+                    println(result)
                 }
                 flow.stateMachine.updateTimedFlowTimeout(2)
                 val notarySignatures = resultFuture.get(10, TimeUnit.SECONDS)
@@ -231,7 +232,8 @@ class TimedFlowTests {
                 val resultFuture = services.startFlow(flow).resultFuture
                 flow.stateMachine.updateTimedFlowTimeout(1)
                 assertFailsWith(TimeoutException::class) {
-                    resultFuture.getOrThrow(3.seconds)
+                    val result = resultFuture.getOrThrow(3.seconds)
+                    println(result)
                 }
                 val notarySignatures = resultFuture.get(10, TimeUnit.SECONDS)
                 (issueTx + notarySignatures).verifyRequiredSignatures()
