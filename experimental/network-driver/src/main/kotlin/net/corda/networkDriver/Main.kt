@@ -6,12 +6,39 @@ import net.corda.core.messaging.startFlow
 import net.corda.core.utilities.OpaqueBytes
 import net.corda.finance.POUNDS
 import net.corda.finance.flows.CashIssueAndPaymentFlow
+import org.slf4j.LoggerFactory
 import picocli.CommandLine
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.schedule
 
 fun main(args: Array<String>) {
+
+    val logger = LoggerFactory.getLogger("Main")
+
+    fun addresses(seedNode: NetworkHostAndPort, userName: String, password: String, filterPattern: String, includeNotaries: Boolean): List<NetworkHostAndPort> {
+        val client = CordaRPCClient(seedNode).start(userName, password)
+        val notaries = client.proxy.notaryIdentities()
+        val networkMap = client.proxy.networkMapSnapshot()
+
+
+        for (entry in networkMap) {
+            logger.info("${entry.legalIdentities}: ${entry.addresses}")
+        }
+        val netMapFiltered = networkMap.filter {
+            includeNotaries || !notaries.any { n -> it.legalIdentities.contains(n) }
+        }.filter {
+            filterPattern.isEmpty() || it.legalIdentities.map { it.name.toString() }.any { it.contains(filterPattern) }
+        }
+
+        // RPC port is P2P port plus one by convention.
+        val rpcAddresses = netMapFiltered.map { it.addresses[0] }.map { it.copy(port = it.port+1) }
+
+        client.close()
+        logger.info("discovered RPC addresses: $rpcAddresses")
+
+        return rpcAddresses
+    }
 
     val parameters = Parameters()
     val commandline = CommandLine(parameters)
@@ -29,8 +56,8 @@ fun main(args: Array<String>) {
             CordaRPCClient(it).start(parameters.username, parameters.password)
             it
         } catch (e: Exception) {
-            println(e)
-            println("ignoring $it")
+            logger.info(e.toString())
+            logger.info("ignoring $it")
             null
         }
     }.filterNotNull()
@@ -54,38 +81,15 @@ fun main(args: Array<String>) {
             parameters.filterPattern.isEmpty() || it.legalIdentities.map { it.name.toString() }.any { it.contains(parameters.filterPattern) }
         }.shuffled(rng).first().legalIdentities.first()
 
-        println("all notaries: $notaries")
+        logger.info("all notaries: $notaries")
         val notary = notaries.first()
-        println("$myIdentity -> $peer (notary $notary)")
+        logger.info("$myIdentity -> $peer (notary $notary)")
         try {
-            val response = rpcClient.startFlow(::CashIssueAndPaymentFlow, 100.POUNDS, OpaqueBytes.of(1), peer, false, notary).returnValue.get(30, TimeUnit.SECONDS)
-            println("response: $response")
+            val response = rpcClient.startFlow(::CashIssueAndPaymentFlow, 100.POUNDS, OpaqueBytes.of(1), peer, false, notary).returnValue.get(5, TimeUnit.SECONDS)
+            logger.info("response: $response")
         } catch(e: Exception) {
-            println(e)
+            logger.info(e.toString())
         }
     }
 }
 
-fun addresses(seedNode: NetworkHostAndPort, userName: String, password: String, filterPattern: String, includeNotaries: Boolean): List<NetworkHostAndPort> {
-    val client = CordaRPCClient(seedNode).start(userName, password)
-    val notaries = client.proxy.notaryIdentities()
-    val networkMap = client.proxy.networkMapSnapshot()
-
-
-    for (entry in networkMap) {
-        println("${entry.legalIdentities}: ${entry.addresses}")
-    }
-    val netMapFiltered = networkMap.filter {
-        includeNotaries || !notaries.any { n -> it.legalIdentities.contains(n) }
-    }.filter {
-        filterPattern.isEmpty() || it.legalIdentities.map { it.name.toString() }.any { it.contains(filterPattern) }
-    }
-
-    // RPC port is P2P port plus one by convention.
-    val rpcAddresses = netMapFiltered.map { it.addresses[0] }.map { it.copy(port = it.port+1) }
-
-    client.close()
-    println("discovered RPC addresses: $rpcAddresses")
-
-    return rpcAddresses
-}
