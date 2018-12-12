@@ -1,0 +1,34 @@
+apply plugin: 'kotlin'
+apply plugin: 'net.corda.plugins.cordapp'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+description 'Drive corda network via RPC'
+
+
+dependencies {
+
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
+
+    cordaCompile project(":client:rpc")
+    cordaCompile(project(":finance"))
+
+    compile "org.slf4j:log4j-over-slf4j:$slf4j_version"
+    compile "org.apache.logging.log4j:log4j-slf4j-impl:$log4j_version"
+    compile "org.apache.logging.log4j:log4j-core:$log4j_version"
+
+    // PicoCli: command line option parsing
+    compile "info.picocli:picocli:3.8.2"
+}
+jar {
+    manifest {
+        attributes 'Main-Class': 'net.corda.networkDriver.MainKt'
+    }
+}
+shadowJar {
+    baseName = 'network-driver-4'
+    classifier = null
+    version = null
+}
+
+
