@@ -43,30 +43,30 @@ class OracleNodeTearOffTests {
 
     private val dummyCashIssuer = TestIdentity(CordaX500Name("Cash issuer", "London", "GB"))
 
-    val DUMMY_NOTARY = TestIdentity(DUMMY_NOTARY_NAME, 20).party
-    val alice = TestIdentity(ALICE_NAME, 70)
+    private val DUMMY_NOTARY = TestIdentity(DUMMY_NOTARY_NAME, 20).party
+    private val alice = TestIdentity(ALICE_NAME, 70)
     private lateinit var mockNet: MockNetwork
     private lateinit var aliceNode: StartedMockNode
     private lateinit var oracleNode: StartedMockNode
     private val oracle get() = oracleNode.services.myInfo.singleIdentity()
 
-    @Before
     // DOCSTART 1
+    @Before
     fun setUp() {
         mockNet = MockNetwork(cordappPackages = listOf("net.corda.finance.contracts", "net.corda.irs"))
-        aliceNode = mockNet.createPartyNode(ALICE_NAME)
+        aliceNode = mockNet.createNode(ALICE_NAME)
         oracleNode = mockNet.createNode(MockNodeParameters(legalName = BOB_NAME)).apply {
             transaction {
                 services.cordaService(NodeInterestRates.Oracle::class.java).knownFixes = TEST_DATA
             }
         }
     }
-    // DOCEND 1
 
     @After
     fun tearDown() {
         mockNet.stopNodes()
     }
+    // DOCEND 1
 
     // DOCSTART 2
     @Test
