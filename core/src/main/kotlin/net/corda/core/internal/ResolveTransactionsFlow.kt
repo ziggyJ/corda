@@ -22,7 +22,7 @@ import kotlin.math.min
  * Each retrieved transaction is validated and inserted into the local transaction storage.
  */
 @DeleteForDJVM
-class ResolveTransactionsFlow(txHashesArg: Set<SecureHash>, private val otherSide: FlowSession) : FlowLogic<Unit>() {
+class ResolveTransactionsFlow(txHashesArg: Set<SecureHash>, private val otherSide: FlowSession, private val sendEnd: Boolean) : FlowLogic<Unit>() {
 
     // Need it ordered in terms of iteration. Needs to be a variable for the check-pointing logic to work.
     private val txHashes = txHashesArg.toList()
@@ -33,9 +33,13 @@ class ResolveTransactionsFlow(txHashesArg: Set<SecureHash>, private val otherSid
      *
      * @return a list of verified [SignedTransaction] objects, in a depth-first order.
      */
-    constructor(signedTransaction: SignedTransaction, otherSide: FlowSession) : this(dependencyIDs(signedTransaction), otherSide) {
+    constructor(signedTransaction: SignedTransaction, otherSide: FlowSession) : this(signedTransaction, otherSide, true)
+
+    constructor(signedTransaction: SignedTransaction, otherSide: FlowSession, sendEnd: Boolean) : this(dependencyIDs(signedTransaction), otherSide, sendEnd) {
         this.signedTransaction = signedTransaction
     }
+
+    constructor(txHashesArg: Set<SecureHash>, otherSide: FlowSession) : this(txHashesArg, otherSide, true)
 
     @DeleteForDJVM
     companion object {
@@ -80,7 +84,7 @@ class ResolveTransactionsFlow(txHashesArg: Set<SecureHash>, private val otherSid
             val txsWithMissingAttachments = if (pageNumber == 0) signedTransaction?.let { newTxns + it } ?: newTxns else newTxns
             fetchMissingAttachments(txsWithMissingAttachments)
         }
-        otherSide.send(FetchDataFlow.Request.End)
+        if (sendEnd) otherSide.send(FetchDataFlow.Request.End)
         // Finish fetching data.
 
         val result = topologicalSort(newTxns)
