@@ -11,6 +11,7 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.trace
 import net.corda.core.utilities.unwrap
 import java.security.SignatureException
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The [ReceiveTransactionFlow] should be called in response to the [SendTransactionFlow].
@@ -40,14 +41,13 @@ open class ReceiveTransactionFlow @JvmOverloads constructor(private val otherSid
         } else {
             logger.trace { "Receiving a transaction (but without checking the signatures) from ${otherSideSession.counterparty}" }
         }
-        var finishedResolving = false // Used to mirror the behaviour under failure before sendEnd was introduced.
+        var endNeedsSending = AtomicBoolean(false) // Used to mirror the behaviour under failure before sendEnd was introduced.
         try {
             val stx = otherSideSession.receive<SignedTransaction>().unwrap {
                 it.pushToLoggingContext()
                 logger.info("Received transaction acknowledgement request from party ${otherSideSession.counterparty}.")
                 checkParameterHash(it.networkParametersHash)
-                subFlow(ResolveTransactionsFlow(it, otherSideSession, false))
-                finishedResolving = true
+                subFlow(ResolveTransactionsFlow(it, otherSideSession, endNeedsSending))
                 logger.info("Transaction dependencies resolution completed.")
                 try {
                     it.verify(serviceHub, checkSufficientSignatures)
@@ -67,7 +67,7 @@ open class ReceiveTransactionFlow @JvmOverloads constructor(private val otherSid
             }
             return stx
         } finally {
-            if (finishedResolving) otherSideSession.send(FetchDataFlow.Request.End)
+            if (endNeedsSending.get()) otherSideSession.send(FetchDataFlow.Request.End)
         }
     }
 
