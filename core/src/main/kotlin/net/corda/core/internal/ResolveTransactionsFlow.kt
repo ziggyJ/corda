@@ -35,6 +35,14 @@ class ResolveTransactionsFlow(txHashesArg: Set<SecureHash>, private val otherSid
      */
     constructor(signedTransaction: SignedTransaction, otherSide: FlowSession) : this(signedTransaction, otherSide, true)
 
+    /**
+     * Resolves and validates the dependencies of the specified [SignedTransaction]. Fetches the attachments, but does
+     * *not* validate or store the [SignedTransaction] itself.
+     *
+     * @param sendEnd set to false if the caller will send their own [FetchDataFlow.Request.End] to prevent the other side from continuing
+     * before all processing is completed by the caller.
+     * @return a list of verified [SignedTransaction] objects, in a depth-first order.
+     */
     constructor(signedTransaction: SignedTransaction, otherSide: FlowSession, sendEnd: Boolean) : this(dependencyIDs(signedTransaction), otherSide, sendEnd) {
         this.signedTransaction = signedTransaction
     }

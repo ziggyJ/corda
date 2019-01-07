@@ -40,30 +40,35 @@ open class ReceiveTransactionFlow @JvmOverloads constructor(private val otherSid
         } else {
             logger.trace { "Receiving a transaction (but without checking the signatures) from ${otherSideSession.counterparty}" }
         }
-        val stx = otherSideSession.receive<SignedTransaction>().unwrap {
-            it.pushToLoggingContext()
-            logger.info("Received transaction acknowledgement request from party ${otherSideSession.counterparty}.")
-            checkParameterHash(it.networkParametersHash)
-            subFlow(ResolveTransactionsFlow(it, otherSideSession, false))
-            logger.info("Transaction dependencies resolution completed.")
-            try {
-                it.verify(serviceHub, checkSufficientSignatures)
-                it
-            } catch (e: Exception) {
-                logger.warn("Transaction verification failed.")
-                throw e
+        var finishedResolving = false // Used to mirror the behaviour under failure before sendEnd was introduced.
+        try {
+            val stx = otherSideSession.receive<SignedTransaction>().unwrap {
+                it.pushToLoggingContext()
+                logger.info("Received transaction acknowledgement request from party ${otherSideSession.counterparty}.")
+                checkParameterHash(it.networkParametersHash)
+                subFlow(ResolveTransactionsFlow(it, otherSideSession, false))
+                finishedResolving = true
+                logger.info("Transaction dependencies resolution completed.")
+                try {
+                    it.verify(serviceHub, checkSufficientSignatures)
+                    it
+                } catch (e: Exception) {
+                    logger.warn("Transaction verification failed.")
+                    throw e
+                }
             }
+            if (checkSufficientSignatures) {
+                // We should only send a transaction to the vault for processing if we did in fact fully verify it, and
+                // there are no missing signatures. We don't want partly signed stuff in the vault.
+                checkBeforeRecording(stx)
+                logger.info("Successfully received fully signed tx. Sending it to the vault for processing.")
+                serviceHub.recordTransactions(statesToRecord, setOf(stx))
+                logger.info("Successfully recorded received transaction locally.")
+            }
+            return stx
+        } finally {
+            if (finishedResolving) otherSideSession.send(FetchDataFlow.Request.End)
         }
-        if (checkSufficientSignatures) {
-            // We should only send a transaction to the vault for processing if we did in fact fully verify it, and
-            // there are no missing signatures. We don't want partly signed stuff in the vault.
-            checkBeforeRecording(stx)
-            logger.info("Successfully received fully signed tx. Sending it to the vault for processing.")
-            serviceHub.recordTransactions(statesToRecord, setOf(stx))
-            logger.info("Successfully recorded received transaction locally.")
-        }
-        otherSideSession.send(FetchDataFlow.Request.End)
-        return stx
     }
 
     /**
