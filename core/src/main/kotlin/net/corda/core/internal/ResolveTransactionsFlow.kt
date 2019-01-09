@@ -12,6 +12,7 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.WireTransaction
 import net.corda.core.utilities.exactAdd
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 
 // TODO: This code is currently unit tested by TwoPartyTradeFlowTests, it should have its own tests.
 /**
@@ -20,17 +21,28 @@ import java.util.*
  *
  * @return a list of verified [SignedTransaction] objects, in a depth-first order.
  */
-class ResolveTransactionsFlow(private val txHashes: Set<SecureHash>,
-                              private val otherSide: FlowSession) : FlowLogic<List<SignedTransaction>>() {
+class ResolveTransactionsFlow(private val txHashes: Set<SecureHash>, private val otherSide: FlowSession, private val sendEnd: AtomicBoolean) : FlowLogic<List<SignedTransaction>>() {
     /**
      * Resolves and validates the dependencies of the specified [SignedTransaction]. Fetches the attachments, but does
      * *not* validate or store the [SignedTransaction] itself.
      *
      * @return a list of verified [SignedTransaction] objects, in a depth-first order.
      */
-    constructor(signedTransaction: SignedTransaction, otherSide: FlowSession) : this(dependencyIDs(signedTransaction), otherSide) {
+    constructor(signedTransaction: SignedTransaction, otherSide: FlowSession) : this(signedTransaction, otherSide, AtomicBoolean(true))
+
+    /**
+     * Resolves and validates the dependencies of the specified [SignedTransaction]. Fetches the attachments, but does
+     * *not* validate or store the [SignedTransaction] itself.
+     *
+     * @param sendEnd set to false if the caller will send their own [FetchDataFlow.Request.End] to prevent the other side from continuing
+     * before all processing is completed by the caller.  Will be set to true if the end message was due to be sent.
+     * @return a list of verified [SignedTransaction] objects, in a depth-first order.
+     */
+    constructor(signedTransaction: SignedTransaction, otherSide: FlowSession, sendEnd: AtomicBoolean) : this(dependencyIDs(signedTransaction), otherSide, sendEnd) {
         this.signedTransaction = signedTransaction
     }
+
+    constructor(txHashesArg: Set<SecureHash>, otherSide: FlowSession) : this(txHashesArg, otherSide, AtomicBoolean(true))
 
     companion object {
         private fun dependencyIDs(stx: SignedTransaction) = stx.inputs.map { it.txhash }.toSet()
@@ -87,7 +99,8 @@ class ResolveTransactionsFlow(private val txHashes: Set<SecureHash>,
         // Start fetching data.
         val newTxns = downloadDependencies(txHashes)
         fetchMissingAttachments(signedTransaction?.let { newTxns + it } ?: newTxns)
-        otherSide.send(FetchDataFlow.Request.End)
+        // Send end message if required, and then indicate if not that we passed this point to maintain semantics.
+        if (sendEnd.getAndSet(true)) otherSide.send(FetchDataFlow.Request.End)
         // Finish fetching data.
 
         val result = topologicalSort(newTxns)
