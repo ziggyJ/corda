@@ -519,10 +519,8 @@ class NodeVaultService(
             val myKeys = keyManagementService.filterMyKeys(it.state.data.participants.map { participant -> participant.owningKey }).toSet()
             !isRelevant(it.state.data, myKeys)
         }.forEach {
-            val persistentState = statePairs[it.ref]!!
-            persistentState.relevancyStatus = Vault.RelevancyStatus.NOT_RELEVANT
+            statePairs[it.ref]?.relevancyStatus = Vault.RelevancyStatus.NOT_RELEVANT
         }
-        session.flush()
     }
 
     @VisibleForTesting

@@ -13,11 +13,10 @@ class DBManualMigration(val database: CordaPersistence) {
     @Table(name = "node_migration_checks")
     class DBMigrationCheck(
             @Id
-            @Column(name = "version")
+            @Column(name = "version", nullable = false)
             var version: String = "",
 
-            @Id
-            @Column(name = "migration_check_done")
+            @Column(name = "manual_migrations_done", nullable = false)
             var migrationCheckDone: Boolean = false
     )
 
@@ -25,7 +24,7 @@ class DBManualMigration(val database: CordaPersistence) {
         return database.transaction {
             val session = currentDBSession()
             val result = session.find(DBMigrationCheck::class.java, version)
-            result?.migrationCheckDone ?: true
+            result.migrationCheckDone
         }
     }
 
