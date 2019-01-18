@@ -366,6 +366,8 @@ abstract class AbstractNode<S>(val configuration: NodeConfiguration,
             throw e
         }
 
+        val dbMigrationCheck = DBManualMigration(database)
+
         // Do all of this in a database transaction so anything that might need a connection has one.
         return database.transaction {
             networkParametersStorage.setCurrentParameters(signedNetParams, trustRoot)
@@ -381,6 +383,10 @@ abstract class AbstractNode<S>(val configuration: NodeConfiguration,
             installCordaServices()
             contractUpgradeService.start()
             vaultService.start()
+            if (!dbMigrationCheck.isMigrationCheckDone("4.0")) {
+                vaultService.doMigrations()
+                dbMigrationCheck.migrationComplete("4.0")
+            }
             ScheduledActivityObserver.install(vaultService, schedulerService, flowLogicRefFactory)
 
             val frozenTokenizableServices = tokenizableServices!!

@@ -136,12 +136,7 @@ class NodeVaultService(
                 val persistentStateRef = PersistentStateRef(stateAndRef.key)
                 val isRelevant = isRelevant(stateOnly, keyManagementService.filterMyKeys(keys).toSet())
                 val constraintInfo = Vault.ConstraintInfo(stateAndRef.value.state.constraint)
-                // Save a row for each party in the state_party table.
-                // TODO: Perhaps these can be stored in a batch?
-                stateOnly.participants.groupBy { it.owningKey }.forEach { participants ->
-                    val persistentParty = VaultSchemaV1.PersistentParty(persistentStateRef, participants.value.first())
-                    session.save(persistentParty)
-                }
+                storePersistentParty(session, stateAndRef.value)
                 val stateToAdd = VaultSchemaV1.VaultStates(
                         notary = stateAndRef.value.state.notary,
                         contractStateClassName = stateAndRef.value.state.data.javaClass.name,
@@ -458,6 +453,78 @@ class NodeVaultService(
         return claimedStates
     }
 
+    private fun <T: ContractState> getPersistentStates(session: Session,
+                                                       criteria: QueryCriteria,
+                                                       paging: PageSpecification,
+                                                       sorting: Sort,
+                                                       contractStateType: Class<out T>): List<Tuple> {
+        val criteriaQuery = criteriaBuilder.createQuery(Tuple::class.java)
+        val queryRootVaultStates = criteriaQuery.from(VaultSchemaV1.VaultStates::class.java)
+        // TODO: revisit (use single instance of parser for all queries)
+        val criteriaParser = HibernateQueryCriteriaParser(contractStateType, contractStateTypeMappings, criteriaBuilder, criteriaQuery, queryRootVaultStates)
+
+        // parse criteria and build where predicates
+        criteriaParser.parse(criteria, sorting)
+
+        // prepare query for execution
+        val query = session.createQuery(criteriaQuery)
+
+        // For both SQLServer and PostgresSQL, firstResult must be >= 0. So we set a floor at 0.
+        // TODO: This is a catch-all solution. But why is the default pageNumber set to be -1 in the first place?
+        // Even if we set the default pageNumber to be 1 instead, that may not cover the non-default cases.
+        // So the floor may be necessary anyway.
+        query.firstResult = maxOf(0, (paging.pageNumber - 1) * paging.pageSize)
+        val pageSize = paging.pageSize + 1
+        query.maxResults = if (pageSize > 0) pageSize else Integer.MAX_VALUE // detection too many results, protected against overflow
+
+        return query.resultList
+    }
+
+    private fun persistentStateToStateRef(persistentState: VaultSchemaV1.VaultStates): StateRef {
+        return StateRef(SecureHash.parse(persistentState.stateRef!!.txId), persistentState.stateRef!!.index)
+    }
+
+    private fun storePersistentParty(session: Session, stateAndRef: StateAndRef<ContractState>) {
+        // Save a row for each party in the state_party table.
+        // TODO: Perhaps these can be stored in a batch?
+        val state = stateAndRef.state.data
+        val persistentStateRef = PersistentStateRef(stateAndRef.ref)
+        state.participants.groupBy { it.owningKey }.forEach { participants ->
+            val persistentParty = VaultSchemaV1.PersistentParty(persistentStateRef, participants.value.first())
+            session.save(persistentParty)
+        }
+    }
+
+    override fun doMigrations() {
+        log.warn("Updating vault data from previous version to be compatible with the new version.")
+        val session = getSession()
+        val persistentStates: List<VaultSchemaV1.VaultStates> = getPersistentStates(
+                session,
+                QueryCriteria.VaultQueryCriteria(),
+                PageSpecification(),
+                Sort(emptySet()),
+                ContractState::class.java).filter { it[0] is VaultSchemaV1.VaultStates }.map { it[0] as VaultSchemaV1.VaultStates }
+        val statePairs = persistentStates.map { Pair(persistentStateToStateRef(it), it) }.toMap()
+        val states = servicesForResolution.loadStates(statePairs.map {it.key}.toSet())
+
+        log.info("Updating the state party table")
+        // Update the state party table for each unconsumed state in the vault
+        states.forEach {
+            storePersistentParty(session, it)
+        }
+
+        log.info("Updating vault state relevancy")
+        // Update the state relevancy column for each non-relevant, unconsumed state in the vault
+        states.filter {
+            val myKeys = keyManagementService.filterMyKeys(it.state.data.participants.map { participant -> participant.owningKey }).toSet()
+            !isRelevant(it.state.data, myKeys)
+        }.forEach {
+            val persistentState = statePairs[it.ref]!!
+            persistentState.relevancyStatus = Vault.RelevancyStatus.NOT_RELEVANT
+        }
+        session.flush()
+    }
+
     @VisibleForTesting
     internal fun isRelevant(state: ContractState, myKeys: Set<PublicKey>): Boolean {
         val keysToCheck = when (state) {
@@ -489,18 +556,6 @@ class NodeVaultService(
 
             val session = getSession()
 
-            val criteriaQuery = criteriaBuilder.createQuery(Tuple::class.java)
-            val queryRootVaultStates = criteriaQuery.from(VaultSchemaV1.VaultStates::class.java)
-
-            // TODO: revisit (use single instance of parser for all queries)
-            val criteriaParser = HibernateQueryCriteriaParser(contractStateType, contractStateTypeMappings, criteriaBuilder, criteriaQuery, queryRootVaultStates)
-
-            // parse criteria and build where predicates
-            criteriaParser.parse(criteria, sorting)
-
-            // prepare query for execution
-            val query = session.createQuery(criteriaQuery)
-
             // pagination checks
             if (!skipPagingChecks && !paging.isDefault) {
                 // pagination
@@ -509,16 +564,13 @@ class NodeVaultService(
                 if (paging.pageSize > MAX_PAGE_SIZE) throw VaultQueryException("Page specification: invalid page size ${paging.pageSize} [maximum is $MAX_PAGE_SIZE]")
             }
 
-            // For both SQLServer and PostgresSQL, firstResult must be >= 0. So we set a floor at 0.
-            // TODO: This is a catch-all solution. But why is the default pageNumber set to be -1 in the first place?
-            // Even if we set the default pageNumber to be 1 instead, that may not cover the non-default cases.
-            // So the floor may be necessary anyway.
-            query.firstResult = maxOf(0, (paging.pageNumber - 1) * paging.pageSize)
-            val pageSize = paging.pageSize + 1
-            query.maxResults = if (pageSize > 0) pageSize else Integer.MAX_VALUE // detection too many results, protected against overflow
-
             // execution
-            val results = query.resultList
+            val results = getPersistentStates(session, criteria, paging, sorting, contractStateType)
+
+            val stateTypes = when(criteria) {
+                is QueryCriteria.CommonQueryCriteria -> criteria.status
+                else -> Vault.StateStatus.UNCONSUMED
+            }
 
             // final pagination check (fail-fast on too many results when no pagination specified)
             if (!skipPagingChecks && paging.isDefault && results.size > DEFAULT_PAGE_SIZE) {
@@ -535,7 +587,7 @@ class NodeVaultService(
                             if (!paging.isDefault && index == paging.pageSize) // skip last result if paged
                                 return@forEachIndexed
                             val vaultState = result[0] as VaultSchemaV1.VaultStates
-                            val stateRef = StateRef(SecureHash.parse(vaultState.stateRef!!.txId), vaultState.stateRef!!.index)
+                            val stateRef = persistentStateToStateRef(vaultState)
                             stateRefs.add(stateRef)
                             statesMeta.add(Vault.StateMetadata(stateRef,
                                     vaultState.contractStateClassName,
@@ -557,7 +609,7 @@ class NodeVaultService(
             if (stateRefs.isNotEmpty())
                 statesAndRefs.addAll(uncheckedCast(servicesForResolution.loadStates(stateRefs)))
 
-            Vault.Page(states = statesAndRefs, statesMetadata = statesMeta, stateTypes = criteriaParser.stateTypes, totalStatesAvailable = totalStates, otherResults = otherResults)
+            Vault.Page(states = statesAndRefs, statesMetadata = statesMeta, stateTypes = stateTypes, totalStatesAvailable = totalStates, otherResults = otherResults)
         }
     }
 
