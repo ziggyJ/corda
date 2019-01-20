@@ -108,6 +108,10 @@ task smokeTest(type: Test) {
     classpath = sourceSets.smokeTest.runtimeClasspath
 }
 
+classes.doLast {
+    tasks.quasarInstrumentation.execute()
+}
+
 jar {
     baseName 'corda-rpc'
     manifest {

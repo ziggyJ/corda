@@ -82,6 +82,10 @@ task integrationTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 }
 
+classes.doLast {
+    tasks.quasarInstrumentation.execute()
+}
+
 jar {
     baseName 'corda-shell'
 }

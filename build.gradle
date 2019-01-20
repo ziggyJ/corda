@@ -277,6 +277,28 @@ subprojects {
             maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
         }
     }
+
+    task quasarInstrumentation {
+        doLast {
+            ant.taskdef(name: 'instrumentation', classname: 'co.paralleluniverse.fibers.instrument.InstrumentationTask') {
+                classpath {
+                    configurations.runtimeClasspath.forEach {
+                        pathelement(location: it)
+                    }
+                }
+            }
+            ant.instrumentation(check: true) {
+                sourceSets.main.output.files.forEach {
+                    if (it.exists()) {
+                        fileset(dir: it) {
+                            exclude(name: 'CordaCaplet.class')
+                            exclude(name: 'net/corda/notary/experimental/bftsmart/BFTSmartNotaryService$ServiceFlow.class')
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // Check that we are running on a Java 8 JDK. The source/targetCompatibility values above aren't sufficient to

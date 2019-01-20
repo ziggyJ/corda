@@ -32,36 +32,7 @@ capsule {
     version capsule_version
 }
 
-def getAllDependentProjects(project) {
-    def projectDependencies = project.configurations.runtime.getAllDependencies().withType(ProjectDependency)
-    def dependentProjects = projectDependencies*.dependencyProject
-    dependentProjects.each { dependentProjects += getAllDependentProjects(it) }
-    dependentProjects += project
-    return dependentProjects.unique()
-}
-
-task quasarInstrumentation(dependsOn: project(':node').tasks.jar) {
-    doLast {
-        ant.taskdef(name: 'instrumentation', classname: 'co.paralleluniverse.fibers.instrument.InstrumentationTask') {
-            classpath {
-                project(':node').configurations.runtimeClasspath.forEach {
-                    pathelement(location: it)
-                }
-            }
-        }
-        ant.instrumentation(check: true) {
-            getAllDependentProjects(project(':node')).collectMany { it.sourceSets.main.output.files }.forEach {
-                if (it.exists()) {
-                    println(it)
-                    fileset(dir: it, excludes: 'CordaCaplet.class')
-                }
-
-            }
-        }
-    }
-}
-
-task buildCordaJAR(type: FatCapsule, dependsOn: quasarInstrumentation) {
+task buildCordaJAR(type: FatCapsule, dependsOn: project(':node').tasks.jar) {
     applicationClass 'net.corda.node.Corda'
     archiveName "corda-${corda_release_version}.jar"
     applicationSource = files(
