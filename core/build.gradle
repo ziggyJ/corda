@@ -122,6 +122,10 @@ task copyQuasarJar(type: Copy) {
     rename { filename -> "quasar.jar"}
 }
 
+classes.doLast {
+    tasks.quasarInstrumentation.execute()
+}
+
 jar {
     finalizedBy(copyQuasarJar)
     baseName 'corda-core'
