@@ -1,5 +1,7 @@
 package net.corda.node.internal.cordapp
 
+import co.paralleluniverse.fibers.instrument.QuasarInstrumentor
+import co.paralleluniverse.fibers.instrument.QuasarURLClassLoader
 import io.github.classgraph.ClassGraph
 import io.github.classgraph.ScanResult
 import net.corda.core.cordapp.Cordapp
@@ -53,7 +55,10 @@ class JarScanningCordappLoader private constructor(private val cordappJarPaths: 
 
     override val cordapps: List<CordappImpl> by lazy { loadCordapps() + extraCordapps }
 
-    override val appClassLoader: URLClassLoader = URLClassLoader(cordappJarPaths.stream().map { it.url }.toTypedArray(), javaClass.classLoader)
+    override val appClassLoader: URLClassLoader = QuasarURLClassLoader(cordappJarPaths.stream().map { it.url }.toTypedArray(), javaClass.classLoader).apply {
+        instrumentor.isDebug = true
+//        instrumentor.addExcludedPackage("kotlin**")
+    }
 
     override fun close() = appClassLoader.close()
 
@@ -288,6 +293,7 @@ class JarScanningCordappLoader private constructor(private val cordappJarPaths: 
 
 
     private fun <T : Any> loadClass(className: String, type: KClass<T>): Class<out T>? {
+        System.err.println("net.corda.node.internal.cordapp.JarScanningCordappLoader.loadClass $className")
         return try {
             appClassLoader.loadClass(className).asSubclass(type.java)
         } catch (e: ClassCastException) {

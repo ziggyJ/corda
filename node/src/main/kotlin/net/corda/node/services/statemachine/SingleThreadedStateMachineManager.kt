@@ -3,7 +3,6 @@ package net.corda.node.services.statemachine
 import co.paralleluniverse.fibers.Fiber
 import co.paralleluniverse.fibers.FiberExecutorScheduler
 import co.paralleluniverse.fibers.Suspendable
-import co.paralleluniverse.fibers.instrument.SuspendableHelper
 import co.paralleluniverse.strands.channels.Channels
 import com.codahale.metrics.Gauge
 import net.corda.core.concurrent.CordaFuture
@@ -37,11 +36,7 @@ import net.corda.node.services.api.ServiceHubInternal
 import net.corda.node.services.config.shouldCheckCheckpoints
 import net.corda.node.services.messaging.DeduplicationHandler
 import net.corda.node.services.statemachine.FlowStateMachineImpl.Companion.createSubFlowVersion
-import net.corda.node.services.statemachine.interceptors.DumpHistoryOnErrorInterceptor
-import net.corda.node.services.statemachine.interceptors.FiberDeserializationChecker
-import net.corda.node.services.statemachine.interceptors.FiberDeserializationCheckingInterceptor
-import net.corda.node.services.statemachine.interceptors.HospitalisingInterceptor
-import net.corda.node.services.statemachine.interceptors.PrintingInterceptor
+import net.corda.node.services.statemachine.interceptors.*
 import net.corda.node.services.statemachine.transitions.StateMachine
 import net.corda.node.utilities.AffinityExecutor
 import net.corda.node.utilities.injectOldProgressTracker
@@ -57,12 +52,28 @@ import rx.subjects.PublishSubject
 import java.lang.Integer.min
 import java.security.SecureRandom
 import java.util.HashSet
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 import javax.annotation.concurrent.ThreadSafe
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
+import kotlin.collections.List
+import kotlin.collections.Set
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.emptyList
+import kotlin.collections.filterNotNull
+import kotlin.collections.first
+import kotlin.collections.fold
+import kotlin.collections.isNotEmpty
+import kotlin.collections.iterator
+import kotlin.collections.listOf
+import kotlin.collections.map
+import kotlin.collections.mapNotNull
+import kotlin.collections.mutableListOf
+import kotlin.collections.plus
+import kotlin.collections.plusAssign
+import kotlin.collections.set
+import kotlin.collections.toSet
 import kotlin.streams.toList
 
 /**
@@ -137,7 +148,6 @@ class SingleThreadedStateMachineManager(
     override val changes: Observable<StateMachineManager.Change> = mutex.content.changesPublisher
 
     override fun start(tokenizableServices: List<Any>) {
-        checkQuasarJavaAgentPresence()
         val checkpointSerializationContext = CheckpointSerializationDefaults.CHECKPOINT_CONTEXT.withTokenContext(
                 CheckpointSerializeAsTokenContextImpl(tokenizableServices, CheckpointSerializationDefaults.CHECKPOINT_SERIALIZER, CheckpointSerializationDefaults.CHECKPOINT_CONTEXT, serviceHub)
         )
@@ -305,13 +315,6 @@ class SingleThreadedStateMachineManager(
             flows[flowId]?.let { flow ->
                 changesPublisher.onNext(StateMachineManager.Change.Add(flow.fiber.logic))
             }
-        }
-    }
-
-    private fun checkQuasarJavaAgentPresence() {
-        check(SuspendableHelper.isJavaAgentActive()) {
-            """Missing the '-javaagent' JVM argument. Make sure you run the tests with the Quasar java agent attached to your JVM.
-               #See https://docs.corda.net/troubleshooting.html - 'Fiber classes not instrumented' for more details.""".trimMargin("#")
         }
     }
 

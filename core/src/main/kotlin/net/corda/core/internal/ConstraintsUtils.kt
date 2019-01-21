@@ -123,6 +123,7 @@ internal fun checkConstraintValidity(state: TransactionState<*>) {
  * is not applied, and it's up to the contract developer to enforce a secure propagation logic.
  */
 internal fun ContractClassName.contractHasAutomaticConstraintPropagation(classLoader: ClassLoader? = null): Boolean {
+    println(this)
     return (classLoader ?: NoConstraintPropagation::class.java.classLoader)
             .run { Class.forName(this@contractHasAutomaticConstraintPropagation, false, this) }
             .getAnnotation(NoConstraintPropagation::class.java) == null

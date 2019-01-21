@@ -6,7 +6,6 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.config.ConfigRenderOptions
 import com.typesafe.config.ConfigValueFactory
 import net.corda.client.rpc.CordaRPCClient
-import net.corda.client.rpc.CordaRPCClientConfiguration
 import net.corda.cliutils.CommonCliConstants.BASE_DIR
 import net.corda.core.concurrent.CordaFuture
 import net.corda.core.concurrent.firstOf
@@ -55,7 +54,6 @@ import okhttp3.Request
 import rx.Subscription
 import rx.schedulers.Schedulers
 import java.io.File
-import java.lang.management.ManagementFactory
 import java.net.ConnectException
 import java.net.URL
 import java.net.URLClassLoader
@@ -706,9 +704,6 @@ class DriverDSLImpl(
             val effectiveP2PAddress = config.corda.messagingServerAddress ?: config.corda.p2pAddress
             return executorService.fork {
                 log.info("Starting in-process Node ${config.corda.myLegalName.organisation}")
-                if (!(ManagementFactory.getRuntimeMXBean().inputArguments.any { it.contains("quasar") })) {
-                    throw IllegalStateException("No quasar agent: -javaagent:lib/quasar.jar and working directory project root might fix")
-                }
                 // Write node.conf
                 writeConfig(config.corda.baseDirectory, "node.conf", config.typesafe.toNodeOnly())
                 // TODO pass the version in?
@@ -748,17 +743,7 @@ class DriverDSLImpl(
             systemProperties += inheritFromParentProcess()
             systemProperties += overriddenSystemProperties
 
-            // See experimental/quasar-hook/README.md for how to generate.
-            val excludePattern = "x(antlr**;bftsmart**;ch**;co.paralleluniverse**;com.codahale**;com.esotericsoftware**;" +
-                    "com.fasterxml**;com.google**;com.ibm**;com.intellij**;com.jcabi**;com.nhaarman**;com.opengamma**;" +
-                    "com.typesafe**;com.zaxxer**;de.javakaffee**;groovy**;groovyjarjarantlr**;groovyjarjarasm**;io.atomix**;" +
-                    "io.github**;io.netty**;jdk**;joptsimple**;junit**;kotlin**;net.bytebuddy**;net.i2p**;org.apache**;" +
-                    "org.assertj**;org.bouncycastle**;org.codehaus**;org.crsh**;org.dom4j**;org.fusesource**;org.h2**;" +
-                    "org.hamcrest**;org.hibernate**;org.jboss**;org.jcp**;org.joda**;org.junit**;org.mockito**;org.objectweb**;" +
-                    "org.objenesis**;org.slf4j**;org.w3c**;org.xml**;org.yaml**;reflectasm**;rx**;org.jolokia**;" +
-                    "com.lmax**;picocli**;liquibase**;com.github.benmanes**;org.json**;org.postgresql**;nonapi.io.github.classgraph**;)"
-            val extraJvmArguments = systemProperties.removeResolvedClasspath().map { "-D${it.key}=${it.value}" } +
-                    "-javaagent:$quasarJarPath=$excludePattern"
+            val extraJvmArguments = systemProperties.removeResolvedClasspath().map { "-D${it.key}=${it.value}" }
             val loggingLevel = if (debugPort == null) "INFO" else "DEBUG"
 
             val arguments = mutableListOf(

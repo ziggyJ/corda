@@ -15,7 +15,6 @@ import net.corda.core.transactions.MissingContractAttachments
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.getOrThrow
-import net.corda.node.flows.isQuasarAgentSpecified
 import net.corda.node.services.Permissions.Companion.invokeRpc
 import net.corda.node.services.Permissions.Companion.startFlow
 import net.corda.testMessage.Message
@@ -49,7 +48,7 @@ class SignatureConstraintVersioningTests {
 
         val stateAndRef: StateAndRef<MessageState>? = internalDriver(
                 inMemoryDB = false,
-                startNodesInProcess = isQuasarAgentSpecified(),
+                startNodesInProcess = false,
                 networkParameters = testNetworkParameters(notaries = emptyList(), minimumPlatformVersion = 4)
         ) {
             val nodeName = {
@@ -91,7 +90,7 @@ class SignatureConstraintVersioningTests {
         val port = incrementalPortAllocation(21_000).nextPort()
 
         val stateAndRef: StateAndRef<MessageState>? = internalDriver(inMemoryDB = false,
-                startNodesInProcess = isQuasarAgentSpecified(),
+                startNodesInProcess = false,
                 networkParameters = testNetworkParameters(notaries = emptyList(), minimumPlatformVersion = 4)) {
             val nodeName = {
                 val nodeHandle = startNode(NodeParameters(rpcUsers = listOf(user), additionalCordapps = listOf(newCordapp)),

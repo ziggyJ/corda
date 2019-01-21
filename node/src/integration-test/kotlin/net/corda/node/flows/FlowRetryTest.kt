@@ -27,7 +27,6 @@ import org.assertj.core.api.Assertions.assertThatExceptionOfType
 import org.hibernate.exception.ConstraintViolationException
 import org.junit.Before
 import org.junit.Test
-import java.lang.management.ManagementFactory
 import java.sql.SQLException
 import java.util.*
 import kotlin.test.assertEquals
@@ -46,7 +45,7 @@ class FlowRetryTest {
         val numIterations = 10
         val user = User("mark", "dadada", setOf(Permissions.startFlow<InitiatorFlow>()))
         val result: Any? = driver(DriverParameters(
-                startNodesInProcess = isQuasarAgentSpecified(),
+                startNodesInProcess = false,
                 notarySpecs = emptyList()
         )) {
             val nodeAHandle = startNode(providedName = ALICE_NAME, rpcUsers = listOf(user)).getOrThrow()
@@ -65,7 +64,7 @@ class FlowRetryTest {
     fun `async operation deduplication id is stable accross retries`() {
         val user = User("mark", "dadada", setOf(Permissions.startFlow<AsyncRetryFlow>()))
         driver(DriverParameters(
-                startNodesInProcess = isQuasarAgentSpecified(),
+                startNodesInProcess = false,
                 notarySpecs = emptyList()
         )) {
             val nodeAHandle = startNode(providedName = ALICE_NAME, rpcUsers = listOf(user)).getOrThrow()
@@ -81,7 +80,7 @@ class FlowRetryTest {
         val user = User("mark", "dadada", setOf(Permissions.startFlow<RetryFlow>()))
         assertThatExceptionOfType(CordaRuntimeException::class.java).isThrownBy {
             driver(DriverParameters(
-                    startNodesInProcess = isQuasarAgentSpecified(),
+                    startNodesInProcess = false,
                     notarySpecs = emptyList()
             )) {
                 val nodeAHandle = startNode(providedName = ALICE_NAME, rpcUsers = listOf(user)).getOrThrow()
@@ -99,7 +98,7 @@ class FlowRetryTest {
         val user = User("mark", "dadada", setOf(Permissions.startFlow<ThrowingFlow>()))
         assertThatExceptionOfType(CordaRuntimeException::class.java).isThrownBy {
             driver(DriverParameters(
-                    startNodesInProcess = isQuasarAgentSpecified(),
+                    startNodesInProcess = false,
                     notarySpecs = emptyList()
             )) {
                 val nodeAHandle = startNode(providedName = ALICE_NAME, rpcUsers = listOf(user)).getOrThrow()
@@ -111,11 +110,6 @@ class FlowRetryTest {
             }
         }
     }
-}
-
-fun isQuasarAgentSpecified(): Boolean {
-    val jvmArgs = ManagementFactory.getRuntimeMXBean().inputArguments
-    return jvmArgs.any { it.startsWith("-javaagent:") && it.contains("quasar") }
 }
 
 class ExceptionToCauseFiniteRetry : ConstraintViolationException("Faked violation", SQLException("Fake"), "Fake name")

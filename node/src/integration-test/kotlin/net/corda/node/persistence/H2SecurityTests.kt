@@ -29,7 +29,7 @@ class H2SecurityTests {
 
     @Test
     fun `h2 server starts when h2Settings are set`() {
-        driver(DriverParameters(inMemoryDB = false, startNodesInProcess = isQuasarAgentSpecified(), notarySpecs = emptyList())) {
+        driver(DriverParameters(inMemoryDB = false, startNodesInProcess = false, notarySpecs = emptyList())) {
             val port = getFreePort()
             startNode(customOverrides = mapOf(h2AddressKey to "localhost:$port")).getOrThrow()
             DriverManager.getConnection("jdbc:h2:tcp://localhost:$port/node", "sa", "").use {
@@ -40,7 +40,7 @@ class H2SecurityTests {
 
     @Test
     fun `h2 server on the host name requires non-default database password`() {
-        driver(DriverParameters(inMemoryDB = false, startNodesInProcess = isQuasarAgentSpecified(), notarySpecs = emptyList())) {
+        driver(DriverParameters(inMemoryDB = false, startNodesInProcess = false, notarySpecs = emptyList())) {
             assertFailsWith(CouldNotCreateDataSourceException::class) {
                 startNode(customOverrides = mapOf(h2AddressKey to "${InetAddress.getLocalHost().hostName}:${getFreePort()}")).getOrThrow()
             }
@@ -49,7 +49,7 @@ class H2SecurityTests {
 
     @Test
     fun `h2 server on the external host IP requires non-default database password`() {
-        driver(DriverParameters(inMemoryDB = false, startNodesInProcess = isQuasarAgentSpecified(), notarySpecs = emptyList())) {
+        driver(DriverParameters(inMemoryDB = false, startNodesInProcess = false, notarySpecs = emptyList())) {
             assertFailsWith(CouldNotCreateDataSourceException::class) {
                 startNode(customOverrides = mapOf(h2AddressKey to "${InetAddress.getLocalHost().hostAddress}:${getFreePort()}")).getOrThrow()
             }
@@ -58,7 +58,7 @@ class H2SecurityTests {
 
     @Test
     fun `h2 server on host name requires non-blank database password`() {
-        driver(DriverParameters(inMemoryDB = false, startNodesInProcess = isQuasarAgentSpecified(), notarySpecs = emptyList())) {
+        driver(DriverParameters(inMemoryDB = false, startNodesInProcess = false, notarySpecs = emptyList())) {
             assertFailsWith(CouldNotCreateDataSourceException::class) {
                 startNode(customOverrides = mapOf(h2AddressKey to "${InetAddress.getLocalHost().hostName}:${getFreePort()}",
                         dbPasswordKey to " ")).getOrThrow()
@@ -68,7 +68,7 @@ class H2SecurityTests {
 
     @Test
     fun `h2 server on external host IP requires non-blank database password`() {
-        driver(DriverParameters(inMemoryDB = false, startNodesInProcess = isQuasarAgentSpecified(), notarySpecs = emptyList())) {
+        driver(DriverParameters(inMemoryDB = false, startNodesInProcess = false, notarySpecs = emptyList())) {
             assertFailsWith(CouldNotCreateDataSourceException::class) {
                 startNode(customOverrides = mapOf(h2AddressKey to "${InetAddress.getLocalHost().hostAddress}:${getFreePort()}",
                         dbPasswordKey to " ")).getOrThrow()
@@ -85,7 +85,7 @@ class H2SecurityTests {
 
     @Test
     fun `h2 server to loopback IP runs with the default database password`() {
-        driver(DriverParameters(inMemoryDB = false, startNodesInProcess = isQuasarAgentSpecified(), notarySpecs = emptyList())) {
+        driver(DriverParameters(inMemoryDB = false, startNodesInProcess = false, notarySpecs = emptyList())) {
             startNode(customOverrides = mapOf(h2AddressKey to "127.0.0.1:${getFreePort()}")).getOrThrow()
         }
     }
