@@ -28,7 +28,7 @@ class ExecutionContextTests {
     @Test
     fun nestedContexts() {
         // Initialise a context with some tags
-        ExecutionContext.configure { addTags("foo", "bar") }
+        ExecutionContext.initialize { addTags("foo", "bar") }
 
         // Read the tags out of the current context
         assertEquals(setOf("foo", "bar"), getCurrentTags())
@@ -69,7 +69,7 @@ class ExecutionContextTests {
 
     @Test
     fun multipleContexts() {
-        ExecutionContext.configure {
+        ExecutionContext.initialize {
             addTags("serialization")
 
             writeSerialization {

@@ -22,7 +22,7 @@ sealed class ContextData {
     /**
      * Create a [ContextDataDelta] which represents a set of changes to apply to [ContextData].
      */
-    val delta: ContextDataDelta get() = ContextDataDelta(mutableMapOf(), this)
+    fun newDelta(): ContextDataDelta = ContextDataDelta(mutableMapOf(), this)
 
     /**
      * [ContextData] with no values.
@@ -86,22 +86,22 @@ data class ExecutionContext(val data: ContextData) {
         val current = ThreadLocal<ExecutionContext>().apply { set(empty) }
 
         /**
-         * Configure the current [ExecutionContext] using an [Extender] to write values into its [ContextData].
+         * Initialise an [ExecutionContext] using an [Extender] to write values into its [ContextData].
          *
          * This should only normally be used during program initialisation, as it completely overwrites the current context, instead of
          * storing it for the duration of an execution block and restoring it after the block has completed.
          */
-        inline fun configure(block: Extender.() -> Unit) = current.set(current.get().write(block))
+        inline fun initialize(block: Extender.() -> Unit) = current.set(empty.write(block))
 
         /**
          * Obtain the current [ExecutionContext] and do something with it.
          */
-        inline fun <R> withCurrent(block: ExecutionContext.() -> R) = current.get().block()
+        inline fun <R> withCurrent(block: ExecutionContext.() -> R): R = current.get().block()
 
         /**
          * Obtain the current [ExecutionContext], mapping its [ContextData] into a typesafe wrapper, and do something with the wrapper.
          */
-        inline fun <T : Any, R> withCurrent(wrapper: (ContextData) -> T, block: T.() -> R) = withCurrent { read(wrapper, block) }
+        inline fun <T : Any, R> withCurrent(wrapper: (ContextData) -> T, block: T.() -> R): R = withCurrent { read(wrapper, block) }
 
         /**
          * Create an [ExecutionContext] whose [ContextData] has been modified using an [Extender], make it the current context, run the
@@ -129,9 +129,9 @@ data class ExecutionContext(val data: ContextData) {
      * Obtain a new [ExecutionContext] whose [ContextData] has been extended using an [Extender].
      */
     inline fun write(block: Extender.() -> Unit): ExecutionContext {
-        val extender = Extender(data.delta)
+        val extender = Extender(data.newDelta())
         extender.block()
-        return extender.extended
+        return extender.createExtended()
     }
 
     /**
@@ -149,7 +149,7 @@ data class ExecutionContext(val data: ContextData) {
         /**
          * Obtain an [ExecutionContext] with the [ContextDataDelta] merged into its [ContextData].
          */
-        val extended: ExecutionContext get() = ExecutionContext(delta.merge())
+        fun createExtended(): ExecutionContext = ExecutionContext(delta.merge())
     }
 }
 
@@ -157,18 +157,29 @@ data class ExecutionContext(val data: ContextData) {
  * A delegate through which a property of a typesafe wrapper can be read from [ContextData].
  */
 class ContextPropertyReader<R : Any, T : Any>(private val data: ContextData, val defaultValue: T? = null): ReadOnlyProperty<R, T> {
-    override fun getValue(thisRef: R, property: KProperty<*>): T = data.read(property as KProperty<T>) ?: defaultValue ?:
-        throw IllegalArgumentException("No context value found for property $property")
+
+    private lateinit var actualValue: T
+
+    override fun getValue(thisRef: R, property: KProperty<*>): T =
+            if (::actualValue.isInitialized) actualValue
+            else (data.read(property as KProperty<T>) ?: defaultValue ?:
+                throw IllegalArgumentException("No context value found for property $property")).apply { actualValue = this }
 }
 
 /**
  * A delegate through which a property of a typesafe wrapper can be read from [ContextData], and written into a [ContextDataDelta].
  */
 class ContextPropertyWriter<R : Any, T : Any>(private val delta: ContextDataDelta, val defaultValue: T? = null): ReadWriteProperty<R, T> {
-    override fun getValue(thisRef: R, property: KProperty<*>): T = delta.read(property as KProperty<T>) ?: defaultValue ?:
-        throw IllegalArgumentException("No context value found for property $property")
+
+    private lateinit var actualValue: T
+
+    override fun getValue(thisRef: R, property: KProperty<*>): T =
+            if (::actualValue.isInitialized) actualValue
+            else (delta.read(property as KProperty<T>) ?: defaultValue ?:
+            throw IllegalArgumentException("No context value found for property $property")).apply { actualValue = this }
 
     override fun setValue(thisRef: R, property: KProperty<*>, value: T) {
         delta.write(property as KProperty<T>, value)
+        actualValue = value
     }
 }
