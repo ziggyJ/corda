@@ -27,7 +27,7 @@ object ProcessUtilities {
     ): Process {
         val command = mutableListOf<String>().apply {
             add(javaPath)
-            (jdwpPort != null) && add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$jdwpPort")
+            (jdwpPort != null) && add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=$jdwpPort")
             if (maximumHeapSize != null) add("-Xmx$maximumHeapSize")
             add("-XX:+UseG1GC")
             addAll(extraJvmArguments)

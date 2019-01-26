@@ -365,7 +365,7 @@ class DriverDSLImpl(
             }
         }
         try {
-            _notaries.map { notary -> notary.map { handle -> handle.nodeHandles } }.getOrThrow(notaryHandleTimeout).forEach { future -> future.getOrThrow(notaryHandleTimeout) }
+            _notaries.map { notary -> notary.map { handle -> handle.nodeHandles } }.getOrThrow().forEach { future -> future.getOrThrow() }
         } catch (e: ListenProcessDeathException) {
             throw IllegalStateException("Unable to start notaries. A required port might be bound already.", e)
         } catch (e: TimeoutException) {
@@ -672,7 +672,7 @@ class DriverDSLImpl(
     companion object {
         internal val log = contextLogger()
 
-        private val notaryHandleTimeout = Duration.ofMinutes(1)
+//        private val notaryHandleTimeout = Duration.ofMinutes(1)
         private val defaultRpcUserList = listOf(InternalUser("default", "default", setOf("ALL")).toConfig().root().unwrapped())
         private val names = arrayOf(ALICE_NAME, BOB_NAME, DUMMY_BANK_A_NAME)
         /**

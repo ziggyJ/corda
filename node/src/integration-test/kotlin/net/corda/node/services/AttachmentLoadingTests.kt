@@ -73,7 +73,8 @@ class AttachmentLoadingTests {
         driver(DriverParameters(
                 startNodesInProcess = false,
                 notarySpecs = listOf(NotarySpec(DUMMY_NOTARY_NAME, validating = false)),
-                cordappsForAllNodes = listOf(enclosedCordapp())
+                cordappsForAllNodes = listOf(enclosedCordapp()),
+                isDebug = false
         )) {
             installIsolatedCordapp(ALICE_NAME)
             installIsolatedCordapp(BOB_NAME)
