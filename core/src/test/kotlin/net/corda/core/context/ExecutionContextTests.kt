@@ -8,11 +8,21 @@ class ExecutionContextTests {
     // Enables us to store a set of tags in the execution context.
     object ContextTags : ContextWrapper<ContextTags.Reader, ContextTags.Writer>(::Reader, ::Writer) {
 
+        /**
+         * The Reader is responsible for pulling values out of the [ContextData] and making them readable
+         * in a type-safe, null-safe way.
+         */
         class Reader(data: ContextData) {
+            // By convention, we use a reference to the property itself as the key into the data.
             val tags: Set<String> = data.read(::tags, emptySet())
         }
 
+        /**
+         * The Writer is responsible for providing a type-safe interface for updating values in a
+         * [ContextDataDelta], that will then be merged into the [ContextData] of a child-context.
+         */
         class Writer(delta: ContextDataDelta, reader: Reader) {
+            // The same property reference is used as a key for updating the context data.
             var tags: Set<String> by delta.updating(reader::tags)
         }
     }
@@ -20,7 +30,9 @@ class ExecutionContextTests {
     @Test
     fun nestedContexts() {
         // Initialise a context with some tags
-        ExecutionContext.initialize { write(ContextTags) { tags = setOf("foo", "bar") } }
+        ExecutionContext.initialize {
+            write(ContextTags) { tags = setOf("foo", "bar") }
+        }
 
         // Read the tags out of the current context
         assertEquals(setOf("foo", "bar"), ContextTags.current { tags })
@@ -63,10 +75,10 @@ class ExecutionContextTests {
         }
 
         ExecutionContext.withExtended({
-            write(ContextTags) { tags += "lenient carpentry" }
+            write(ContextTags) { tags += "lenient carpentry enabled" }
             write(Serialization) { lenientCarpenter = true }
         }) {
-            assertEquals(setOf("serialization", "lenient carpentry"), ContextTags.current { tags })
+            assertEquals(setOf("serialization", "lenient carpentry enabled"), ContextTags.current { tags })
             assertEquals(true, Serialization.current { lenientCarpenter })
         }
 

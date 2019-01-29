@@ -1,6 +1,5 @@
 package net.corda.core.context
 
-import net.corda.core.utilities.contextLogger
 import java.lang.reflect.Method
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
@@ -9,11 +8,28 @@ import kotlin.reflect.jvm.javaGetter
 typealias ReadOnlyProperties = Map<Method, Any>
 typealias WriteableProperties = MutableMap<Method, Any>
 
+/**
+ * A [ContextWrapper] provides a type-safe wrapper for reader and updating values stored in an [ExecutionContext]'s
+ * [ContextData].
+ *
+ * @param reader The constructor of a Reader class which extracts values from [ContextData].
+ * @param writer The constructor of a Writer class which applies updates to a [ContextDataDelta].
+ * @type R The type of the Reader class provided by this wrapper.
+ * @type W The type of the Writer class provided by this wrapper.
+ */
 open class ContextWrapper<R : Any, W : Any>(val reader: (ContextData) -> R, val writer: (ContextDataDelta, R) -> W) {
 
+    /**
+     * Create a Reader of type [R] wrapping the current [ExecutionContext], and run a block against it.
+     */
     inline fun <V> current(block: R.() -> V): V =
         ExecutionContext.withCurrent { read(this@ContextWrapper, block) }
 
+    /**
+     * Create a Writer of type [W] writing a [ContextDataDelta] against the current [ExecutionContext],
+     * run the [extendBlock] against it, then run the [actionBlock] against an [ExecutionContext] containing
+     * the extended [ContextData].
+     */
     inline fun <V> withExtended(extendBlock: W.() -> Unit, actionBlock: ExecutionContext.() -> V) {
         ExecutionContext.withExtended({ write(this@ContextWrapper, extendBlock) }, actionBlock)
     }
@@ -64,7 +80,6 @@ sealed class ContextData {
  * Represents a set of changes to a context's [ContextData]
  *
  * @param delta A mutable map of the values to be changed.
- * @param data The [ContextData] to which the changes will be applied.
  */
 data class ContextDataDelta(private val delta: WriteableProperties) {
 
@@ -87,9 +102,6 @@ data class ContextDataDelta(private val delta: WriteableProperties) {
 
     /**
      * Create a delegate for reading/writing the value of this property out of a wrapped [ContextDataDelta].
-     *
-     * @param initializer An optional initializer that will be run on first read of the value, populating it
-     * if it is `null`.
      */
     fun <R : Any, T : Any> updating(property: KProperty<T>): ReadWriteProperty<R, T> =
             ContextPropertyWriter(this, property)
@@ -103,8 +115,6 @@ data class ContextDataDelta(private val delta: WriteableProperties) {
 data class ExecutionContext(val data: ContextData) {
 
     companion object {
-
-        val logger = contextLogger()
 
         /**
          * An [ExecutionContext] initialised with empty [ContextData]
@@ -148,13 +158,14 @@ data class ExecutionContext(val data: ContextData) {
     /**
      * We cache readers, since readers themselves cache the results of lookups against the context data map.
      */
-    private val readerCache = mutableMapOf<ContextWrapper<*, *>, Any>()
+    @Volatile private var readerCache = mapOf<ContextWrapper<*, *>, Any>()
 
     /**
      * Obtain and cache a reader for a given [ContextWrapper].
      */
-    fun <R : Any> getReader(wrapper: ContextWrapper<R, *>) =
-        readerCache.getOrPut(wrapper as ContextWrapper<*, *>) { wrapper.reader(data) } as R
+    fun <R : Any> getReader(wrapper: ContextWrapper<R, *>): R =
+        readerCache[wrapper] as? R ?:
+        wrapper.reader(data).apply { readerCache += wrapper to this }
 
     /**
      * Wrap this context's [ContextData] in a typesafe wrapper, and read values from it via the wrapper.
