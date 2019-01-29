@@ -10,7 +10,6 @@ import java.io.OutputStream
 import java.lang.Math.max
 import java.lang.Math.min
 import java.nio.ByteBuffer
-import javax.xml.bind.DatatypeConverter
 
 /**
  * An abstraction of a byte array, with offset and size that does no copying of bytes unless asked to.
@@ -179,13 +178,13 @@ fun ByteArray.sequence(offset: Int = 0, size: Int = this.size) = ByteSequence.of
 /**
  * Converts this [ByteArray] into a [String] of hexadecimal digits.
  */
-fun ByteArray.toHexString(): String = DatatypeConverter.printHexBinary(this)
+fun ByteArray.toHexString(): String = printHexBinary(this)
 
 /**
  * Converts this [String] of hexadecimal digits into a [ByteArray].
  * @throws IllegalArgumentException if the [String] contains incorrectly-encoded characters.
  */
-fun String.parseAsHex(): ByteArray = DatatypeConverter.parseHexBinary(this)
+fun String.parseAsHex(): ByteArray = parseHexBinary(this)
 
 /**
  * Class is public for serialization purposes.

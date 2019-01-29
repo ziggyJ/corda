@@ -10,7 +10,6 @@ import net.corda.core.internal.hash
 import java.nio.charset.Charset
 import java.security.PublicKey
 import java.util.*
-import javax.xml.bind.DatatypeConverter
 
 // This file includes useful encoding methods and extension functions for the most common encoding/decoding operations.
 
@@ -31,7 +30,18 @@ fun ByteArray.toBase58(): String = Base58.encode(this)
 fun ByteArray.toBase64(): String = Base64.getEncoder().encodeToString(this)
 
 /** Convert a byte array to a hex (Base16) capitalized encoded [String]. */
-fun ByteArray.toHex(): String = DatatypeConverter.printHexBinary(this)
+fun ByteArray.toHex(): String = printHexBinary(this)
+
+private val hexCode = "0123456789ABCDEF".toCharArray()
+
+fun printHexBinary(data: ByteArray): String {
+    val r = StringBuilder(data.size * 2)
+    for (b in data) {
+        r.append(hexCode[b.toInt() shr 4 and 0xF])
+        r.append(hexCode[b.toInt() and 0xF])
+    }
+    return r.toString()
+}
 
 // [String] encoders and decoders
 
@@ -49,7 +59,44 @@ fun String.base58ToByteArray(): ByteArray = Base58.decode(this)
 fun String.base64ToByteArray(): ByteArray = Base64.getDecoder().decode(this)
 
 /** Hex-String to [ByteArray]. Accept any hex form (capitalized, lowercase, mixed). */
-fun String.hexToByteArray(): ByteArray = DatatypeConverter.parseHexBinary(this)
+fun String.hexToByteArray(): ByteArray = parseHexBinary(this)
+
+private fun hexToBin(ch: Char): Int {
+    if (ch in '0'..'9') {
+        return ch - '0'
+    }
+    if (ch in 'A'..'F') {
+        return ch - 'A' + 10
+    }
+    return if (ch in 'a'..'f') {
+        ch - 'a' + 10
+    } else -1
+}
+
+fun parseHexBinary(s: String): ByteArray {
+    val len = s.length
+
+    // "111" is not a valid hex encoding.
+    if (len % 2 != 0) {
+        throw IllegalArgumentException("hexBinary needs to be even-length: $s")
+    }
+
+    val out = ByteArray(len / 2)
+
+    var i = 0
+    while (i < len) {
+        val h = hexToBin(s[i])
+        val l = hexToBin(s[i + 1])
+        if (h == -1 || l == -1) {
+            throw IllegalArgumentException("contains illegal character for hexBinary: $s")
+        }
+
+        out[i / 2] = (h * 16 + l).toByte()
+        i += 2
+    }
+
+    return out
+}
 
 // Encoding changers
 
