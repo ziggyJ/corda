@@ -4,6 +4,14 @@ buildscript {
     file("$projectDir/src/main/resources/build.properties").withInputStream { properties.load(it) }
 
     ext.jolokia_version = properties.getProperty('jolokiaAgentVersion')
+
+    repositories {
+        maven { url = "http://dl.bintray.com/pedjak/gradle-plugins"}
+    }
+
+    dependencies {
+        classpath "com.pedjak.gradle.plugins:dockerized-test:0.5"
+    }
 }
 
 plugins {
@@ -18,6 +26,7 @@ apply plugin: 'java'
 apply plugin: 'net.corda.plugins.quasar-utils'
 apply plugin: 'net.corda.plugins.publish-utils'
 apply plugin: 'com.jfrog.artifactory'
+apply plugin: 'com.github.pedjak.dockerized-test'
 
 description 'Corda node modules'
 
@@ -213,4 +222,36 @@ jar {
 
 publish {
     name jar.baseName
+}
+
+test {
+    maxParallelForks = 5
+    docker {
+        // base image for creating docker containers that execute the tests
+        image = 'azul/zulu-openjdk:8u192'
+
+        // volumes mounted to the containers
+        // in a form: host_dir : container_dir
+//        volumes = [ "/foo/bar": "/foo/bar"]
+
+
+//        // invoked right after the container is created
+//        afterContainerCreate = { String containerId, DockerClient client ->
+//        }
+//
+//        // invoked right before the container start
+//        beforeContainerStart = { String containerId, DockerClient client ->
+//        }
+
+        // invoked right after the container start command got executed
+        afterContainerStart = { String containerId, com.github.dockerjava.api.DockerClient client ->
+        }
+
+        // invoked after the container stops
+        // if not specified, the stopped container will be removed
+        afterContainerStop = { containerId, client ->
+            // you can here copy some file from the container to a central place
+        }
+
+    }
 }
