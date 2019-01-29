@@ -139,18 +139,14 @@ class AnalysisConfiguration private constructor(
             java.lang.System::class.java,
             java.lang.ThreadLocal::class.java,
             java.lang.Throwable::class.java,
-            kotlin.Any::class.java,
-            sun.misc.JavaLangAccess::class.java,
-            sun.misc.SharedSecrets::class.java
+            kotlin.Any::class.java
         ).sandboxed() + setOf(
             "sandbox/Task",
             "sandbox/TaskTypes",
             "sandbox/java/lang/Character\$Cache",
             "sandbox/java/lang/DJVM",
             "sandbox/java/lang/DJVMException",
-            "sandbox/java/lang/DJVMThrowableWrapper",
-            "sandbox/sun/misc/SharedSecrets\$1",
-            "sandbox/sun/misc/SharedSecrets\$JavaLangAccessImpl"
+            "sandbox/java/lang/DJVMThrowableWrapper"
         )
 
         /**
