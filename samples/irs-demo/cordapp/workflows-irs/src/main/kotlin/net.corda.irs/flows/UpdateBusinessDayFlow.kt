@@ -21,7 +21,7 @@ object UpdateBusinessDayFlow {
     @CordaSerializable
     data class UpdateBusinessDayMessage(val date: LocalDate)
 
-    @InitiatedBy(Broadcast::class)
+    @InitiatedBy(UpdateBusinessDayFlow.Broadcast::class)
     private class UpdateBusinessDayHandler(val otherPartySession: FlowSession) : FlowLogic<Unit>() {
         @Suspendable
         override fun call() {
