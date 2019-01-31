@@ -139,7 +139,7 @@ apply plugin: 'com.jfrog.artifactory'
 // the resulting import. This fixes it.
 apply plugin: 'java'
 sourceCompatibility = 1.11
-targetCompatibility = 1.8
+targetCompatibility = 1.11
 
 
 allprojects {
@@ -171,7 +171,7 @@ allprojects {
         }
     }
     sourceCompatibility = 1.11
-    targetCompatibility = 1.8
+    targetCompatibility = 1.11
 
     tasks.withType(JavaCompile) {
         options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation" << "-Xlint:-options" << "-parameters"

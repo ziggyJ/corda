@@ -2,7 +2,7 @@ apply plugin: 'java'
 apply plugin: 'kotlin'
 apply plugin: 'application'
 
-sourceCompatibility = 1.8
+sourceCompatibility = 1.11
 mainClassName = 'net.corda.explorer.Main'
 
 // Use manual resource copying of log4j2.xml rather than source sets.

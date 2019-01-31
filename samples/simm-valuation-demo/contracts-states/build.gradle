@@ -61,6 +61,11 @@ task shrink(type: ProGuardTask) {
     dontwarn 'co.paralleluniverse.**'
     dontwarn 'org.checkerframework.**'
     dontwarn 'org.joda.**'
+    dontwarn 'java.**'
+    dontwarn 'javax.**'
+    dontwarn 'org.apache.commons.math3.**'
+    dontwarn 'com.opengamma.strata.**'
+    dontwarn 'cern.colt.list.**'
     dontnote
 
     // We need to preserve our CorDapp's own directory structure so that Corda
@@ -69,6 +74,7 @@ task shrink(type: ProGuardTask) {
     keepattributes '*'
     dontobfuscate
     dontoptimize
+    dontpreverify
     verbose
 
     // These are our CorDapp classes, so don't change these.
@@ -79,6 +85,7 @@ task shrink(type: ProGuardTask) {
     // CorDapps. Unfortunately, this means that we cannot shrink them as much as
     // we'd like to.
     keepclassmembers 'class com.opengamma.strata.** { *; }', includedescriptorclasses:true
+    keepclassmembers 'class org.apache.commons.math3.** { *; }', includedescriptorclasses:true
     keepclassmembers 'class com.google.** { *; }', includedescriptorclasses:true
     keepclassmembers 'class org.joda.** { *; }', includedescriptorclasses:true
 }
