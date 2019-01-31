@@ -102,7 +102,7 @@ class JarScanningCordappLoader private constructor(private val cordappJarPaths: 
                     if (certificates.isEmpty() || (certificates - blockedCertificates).isNotEmpty())
                         true // Cordapp is not signed or it is signed by at least one non-blacklisted certificate
                     else {
-                        logger.warn("Not loading CorDapp ${url} as it is signed by development key(s) only: " +
+                        logger.warn("Not loading CorDapp $url as it is signed by development key(s) only: " +
                                 "${blockedCertificates.map { it.publicKey }}.")
                         false
                     }
@@ -117,7 +117,7 @@ class JarScanningCordappLoader private constructor(private val cordappJarPaths: 
 
     private fun loadCordapps(): List<CordappImpl> {
 
-        return ClassGraph().addClassLoader(appClassLoader).enableAnnotationInfo().enableClassInfo().scan().use { scan ->
+        return ClassGraph().addClassLoader(appClassLoader).enableAnnotationInfo().enableClassInfo().pooledScan().use { scan ->
 
             // Scan the appClassLoader for all relevant Corda classes. This step is required because The ClassGraph scanner can't resolve dependencies between cordapps.
             val initiatedFlows = scan.getClassesWithAnnotation(FlowLogic::class, InitiatedBy::class)
@@ -143,7 +143,7 @@ class JarScanningCordappLoader private constructor(private val cordappJarPaths: 
                 val minimumPlatformVersion = manifest?.get(CordappImpl.MIN_PLATFORM_VERSION)?.toIntOrNull() ?: 1
                 val targetPlatformVersion = manifest?.get(CordappImpl.TARGET_PLATFORM_VERSION)?.toIntOrNull() ?: minimumPlatformVersion
 
-                val allJarClasses = ClassGraph().enableClassInfo().overrideClasspath(jarUrl).scan().use { it.allClasses }.map { it.name }.toSet()
+                val allJarClasses = ClassGraph().enableClassInfo().overrideClasspath(jarUrl).pooledScan().use { it.allClasses }.map { it.name }.toSet()
 
                 CordappImpl(
                         contractClassNames = contractClassNames.filter { it in allJarClasses },

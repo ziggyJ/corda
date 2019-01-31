@@ -76,7 +76,7 @@ open class CordappProviderImpl(val cordappLoader: CordappLoader,
                         // We can't make attachmentStorage a AttachmentStorageInternal as that ends up requiring
                         // MockAttachmentStorage to implement it.
                         if (attachmentStorage is AttachmentStorageInternal) {
-                            attachmentStorage.privilegedImportAttachment(stream, DEPLOYED_CORDAPP_UPLOADER, null)
+                            attachmentStorage.privilegedImportContractAttachment(stream, DEPLOYED_CORDAPP_UPLOADER, null, it.contractClassNames)
                         } else {
                             attachmentStorage.importAttachment(stream, DEPLOYED_CORDAPP_UPLOADER, null)
                         }

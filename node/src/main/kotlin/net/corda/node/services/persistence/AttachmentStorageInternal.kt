@@ -13,7 +13,17 @@ interface AttachmentStorageInternal : AttachmentStorage {
     fun privilegedImportAttachment(jar: InputStream, uploader: String, filename: String?): AttachmentId
 
     /**
+     * Same as [privilegedImportAttachment], but for Contract jars.
+     */
+    fun privilegedImportContractAttachment(jar: InputStream, uploader: String, filename: String?, contractClassNames: List<String>): AttachmentId
+
+    /**
      * Similar to above but returns existing [AttachmentId] instead of throwing [DuplicateAttachmentException]
      */
     fun privilegedImportOrGetAttachment(jar: InputStream, uploader: String, filename: String?): AttachmentId
+
+    /**
+     * Similar to above but returns existing [AttachmentId] instead of throwing [DuplicateAttachmentException]
+     */
+    fun privilegedImportOrGetContractAttachment(jar: InputStream, uploader: String, filename: String?, contractClassNames: List<String>): AttachmentId
 }

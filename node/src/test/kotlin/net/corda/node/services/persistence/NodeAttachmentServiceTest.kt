@@ -135,13 +135,13 @@ class NodeAttachmentServiceTest {
             val expectedAttachmentId = attachment.readAll().sha256()
 
             val initialUploader = "test"
-            val attachmentId = attachment.read { storage.privilegedImportAttachment(it, initialUploader, null) }
+            val attachmentId = attachment.read { storage.privilegedImportContractAttachment(it, initialUploader, null, listOf("com.example.MyContract")) }
             assertThat(attachmentId).isEqualTo(expectedAttachmentId)
             assertThat((storage.openAttachment(expectedAttachmentId) as ContractAttachment).uploader).isEqualTo(initialUploader)
 
             val trustedUploader = TRUSTED_UPLOADERS.randomOrNull()!!
 
-            val overriddenAttachmentId = attachment.read { storage.privilegedImportAttachment(it, trustedUploader, null) }
+            val overriddenAttachmentId = attachment.read { storage.privilegedImportContractAttachment(it, trustedUploader, null, listOf("com.example.MyContract")) }
             assertThat(overriddenAttachmentId).isEqualTo(expectedAttachmentId)
             assertThat((storage.openAttachment(expectedAttachmentId) as ContractAttachment).uploader).isEqualTo(trustedUploader)
         }
@@ -155,12 +155,12 @@ class NodeAttachmentServiceTest {
             val expectedAttachmentId = attachment.readAll().sha256()
 
             val trustedUploader = TRUSTED_UPLOADERS.randomOrNull()!!
-            val attachmentId = attachment.read { storage.privilegedImportAttachment(it, trustedUploader, null) }
+            val attachmentId = attachment.read { storage.privilegedImportContractAttachment(it, trustedUploader, null, listOf("com.example.MyContract")) }
             assertThat(attachmentId).isEqualTo(expectedAttachmentId)
             assertThat((storage.openAttachment(expectedAttachmentId) as ContractAttachment).uploader).isEqualTo(trustedUploader)
 
             val untrustedUploader = "test"
-            assertThatThrownBy { attachment.read { storage.privilegedImportAttachment(it, untrustedUploader, null) } }.isInstanceOf(DuplicateAttachmentException::class.java)
+            assertThatThrownBy { attachment.read { storage.privilegedImportContractAttachment(it, untrustedUploader, null, listOf("com.example.MyContract")) } }.isInstanceOf(DuplicateAttachmentException::class.java)
         }
     }
 
@@ -175,11 +175,11 @@ class NodeAttachmentServiceTest {
             // TRUSTED_UPLOADERS = listOf(DEPLOYED_CORDAPP_UPLOADER, RPC_UPLOADER)
 
             database.transaction {
-                val id = testJar.read { storage.privilegedImportOrGetAttachment(it, P2P_UPLOADER, null) }
+                val id = testJar.read { storage.privilegedImportOrGetContractAttachment(it, P2P_UPLOADER, null, listOf("com.example.MyContract")) }
                 assertEquals(expectedHash, id)
                 val attachment1 = storage.openAttachment(expectedHash)
 
-                val id2 = testJar.read { storage.privilegedImportOrGetAttachment(it, DEPLOYED_CORDAPP_UPLOADER, null) }
+                val id2 = testJar.read { storage.privilegedImportOrGetContractAttachment(it, DEPLOYED_CORDAPP_UPLOADER, null, listOf("com.example.MyContract")) }
                 assertEquals(expectedHash, id2)
                 val attachment2 = storage.openAttachment(expectedHash)
 
@@ -333,10 +333,10 @@ class NodeAttachmentServiceTest {
         SelfCleaningDir().use { file ->
             val (contractJar, _) = makeTestSignedContractJar(file.path, "com.example.MyContract")
             val anotherContractJar = makeTestContractJar(file.path, listOf( "com.example.MyContract", "com.example.AnotherContract"), true, generateManifest = false, jarFileName = "another-sample.jar")
-            contractJar.read { storage.privilegedImportAttachment(it, "app", "sample.jar") }
+            contractJar.read { storage.privilegedImportContractAttachment(it, "app", "sample.jar", listOf("com.example.MyContract")) }
 
             assertThatExceptionOfType(DuplicateContractClassException::class.java).isThrownBy {
-                anotherContractJar.read { storage.privilegedImportAttachment(it, "app", "another-sample.jar") }
+                anotherContractJar.read { storage.privilegedImportContractAttachment(it, "app", "another-sample.jar", listOf("com.example.MyContract")) }
             }
         }
     }
@@ -347,7 +347,7 @@ class NodeAttachmentServiceTest {
             val (contractJar, _) = makeTestSignedContractJar(file.path, "com.example.MyContract")
             val anotherContractJar = makeTestContractJar(file.path, listOf( "com.example.MyContract", "com.example.AnotherContract"), true, generateManifest = false, jarFileName = "another-sample.jar")
             val attachmentId =  contractJar.read { storage.importAttachment(it, "uploaderA", "sample.jar") }
-            val anotherAttachmentId = anotherContractJar.read { storage.privilegedImportAttachment(it, "app", "another-sample.jar") }
+            val anotherAttachmentId = anotherContractJar.read { storage.privilegedImportContractAttachment(it, "app", "another-sample.jar", listOf("com.example.MyContract")) }
             assertNotEquals(attachmentId, anotherAttachmentId)
         }
     }
@@ -357,7 +357,7 @@ class NodeAttachmentServiceTest {
         SelfCleaningDir().use { file ->
             val (contractJar, _) = makeTestSignedContractJar(file.path, "com.example.MyContract")
             val attachmentId = contractJar.read { storage.importAttachment(it, "uploaderA", "sample.jar") }
-            val reimportedAttachmentId = contractJar.read { storage.privilegedImportAttachment(it, "app", "sample.jar") }
+            val reimportedAttachmentId = contractJar.read { storage.privilegedImportContractAttachment(it, "app", "sample.jar", listOf("com.example.MyContract")) }
             assertEquals(attachmentId, reimportedAttachmentId)
         }
     }
@@ -368,10 +368,10 @@ class NodeAttachmentServiceTest {
             val (contractJar, _) = makeTestSignedContractJar(file.path, "com.example.MyContract")
             contractJar.read { storage.importAttachment(it, "uploaderA", "sample.jar") }
             val anotherContractJar = makeTestContractJar(file.path, listOf( "com.example.MyContract", "com.example.AnotherContract"), true, generateManifest = false, jarFileName = "another-sample.jar")
-            anotherContractJar.read { storage.privilegedImportAttachment(it, "app", "another-sample.jar") }
+            anotherContractJar.read { storage.privilegedImportContractAttachment(it, "app", "another-sample.jar", listOf("com.example.MyContract")) }
 
             assertThatExceptionOfType(DuplicateContractClassException::class.java).isThrownBy {
-                contractJar.read { storage.privilegedImportAttachment(it, "app", "sample.jar") }
+                contractJar.read { storage.privilegedImportContractAttachment(it, "app", "sample.jar", listOf("com.example.MyContract")) }
             }
 
         }
@@ -382,10 +382,10 @@ class NodeAttachmentServiceTest {
         SelfCleaningDir().use { file ->
             val (contractJar, _) = makeTestSignedContractJar(file.path, "com.example.MyContract")
             val anotherContractJar = makeTestContractJar(file.path, listOf( "com.example.MyContract", "com.example.AnotherContract"), true, generateManifest = false, jarFileName = "another-sample.jar")
-            contractJar.read { storage.privilegedImportAttachment(it, "app", "sample.jar") }
+            contractJar.read { storage.privilegedImportContractAttachment(it, "app", "sample.jar", listOf("com.example.MyContract")) }
 
             assertThatExceptionOfType(DuplicateContractClassException::class.java).isThrownBy {
-                anotherContractJar.read { storage.privilegedImportAttachment(it, "app", "another-sample.jar") }
+                anotherContractJar.read { storage.privilegedImportContractAttachment(it, "app", "another-sample.jar", listOf("com.example.MyContract")) }
             }
         }
     }
@@ -594,12 +594,12 @@ class NodeAttachmentServiceTest {
             val contractJarV2 = makeTestContractJar(file.path,"com.example.MyContract", version = 2)
             val (signedContractJarV2, _) = makeTestSignedContractJar(file.path,"com.example.MyContract", version = 2)
 
-            contractJar.read { storage.privilegedImportAttachment(it, "app", "contract.jar") }
-            signedContractJar.read { storage.privilegedImportAttachment(it, "app", "contract-signed.jar") }
+            contractJar.read { storage.privilegedImportContractAttachment(it, "app", "contract.jar", listOf("com.example.MyContract")) }
+            signedContractJar.read { storage.privilegedImportContractAttachment(it, "app", "contract-signed.jar", listOf("com.example.MyContract")) }
             var attachmentIdV2Unsigned: AttachmentId? = null
-            contractJarV2.read { attachmentIdV2Unsigned = storage.privilegedImportAttachment(it, "app", "contract-V2.jar") }
+            contractJarV2.read { attachmentIdV2Unsigned = storage.privilegedImportContractAttachment(it, "app", "contract-V2.jar", listOf("com.example.MyContract")) }
             var attachmentIdV2Signed: AttachmentId? = null
-            signedContractJarV2.read { attachmentIdV2Signed = storage.privilegedImportAttachment(it, "app", "contract-signed-V2.jar") }
+            signedContractJarV2.read { attachmentIdV2Signed = storage.privilegedImportContractAttachment(it, "app", "contract-signed-V2.jar", listOf("com.example.MyContract")) }
 
             val latestAttachments = storage.getLatestContractAttachments("com.example.MyContract")
             assertEquals(2, latestAttachments.size)
@@ -615,11 +615,11 @@ class NodeAttachmentServiceTest {
             val (signedContractJar, publicKey) = makeTestSignedContractJar(file.path, "com.example.MyContract")
             val contractJarV2 = makeTestContractJar(file.path,"com.example.MyContract", version = 2)
 
-            contractJar.read { storage.privilegedImportAttachment(it, "app", "contract.jar") }
+            contractJar.read { storage.privilegedImportContractAttachment(it, "app", "contract.jar", listOf("com.example.MyContract")) }
             var attachmentIdV1Signed: AttachmentId? = null
-            signedContractJar.read { attachmentIdV1Signed = storage.privilegedImportAttachment(it, "app", "contract-signed.jar") }
+            signedContractJar.read { attachmentIdV1Signed = storage.privilegedImportContractAttachment(it, "app", "contract-signed.jar", listOf("com.example.MyContract")) }
             var attachmentIdV2Unsigned: AttachmentId? = null
-            contractJarV2.read { attachmentIdV2Unsigned = storage.privilegedImportAttachment(it, "app", "contract-V2.jar") }
+            contractJarV2.read { attachmentIdV2Unsigned = storage.privilegedImportContractAttachment(it, "app", "contract-V2.jar", listOf("com.example.MyContract")) }
 
             val latestAttachments = storage.getLatestContractAttachments("com.example.MyContract")
             assertEquals(2, latestAttachments.size)
@@ -635,11 +635,11 @@ class NodeAttachmentServiceTest {
             val (signedContractJar, publicKey) = makeTestSignedContractJar(file.path, "com.example.MyContract")
             val contractJarV2 = makeTestContractJar(file.path,"com.example.MyContract", version = 2)
 
-            contractJar.read { storage.privilegedImportAttachment(it, "app", "contract.jar") }
+            contractJar.read { storage.privilegedImportContractAttachment(it, "app", "contract.jar", listOf("com.example.MyContract")) }
             var attachmentIdV1Signed: AttachmentId? = null
-            signedContractJar.read { attachmentIdV1Signed = storage.privilegedImportAttachment(it, "app", "contract-signed.jar") }
+            signedContractJar.read { attachmentIdV1Signed = storage.privilegedImportContractAttachment(it, "app", "contract-signed.jar", listOf("com.example.MyContract")) }
             var attachmentIdV2Unsigned: AttachmentId? = null
-            contractJarV2.read { attachmentIdV2Unsigned = storage.privilegedImportAttachment(it, "app", "contract-V2.jar") }
+            contractJarV2.read { attachmentIdV2Unsigned = storage.privilegedImportContractAttachment(it, "app", "contract-V2.jar", listOf("com.example.MyContract")) }
 
             val latestAttachments = storage.getLatestContractAttachments("com.example.MyContract")
             assertEquals(2, latestAttachments.size)
@@ -654,9 +654,9 @@ class NodeAttachmentServiceTest {
             val (signedContractJar, publicKey) = makeTestSignedContractJar(file.path, "com.example.MyContract")
             val (signedContractJarV2, _) = makeTestSignedContractJar(file.path,"com.example.MyContract", version = 2)
 
-            signedContractJar.read { storage.privilegedImportAttachment(it, "app", "contract-signed.jar") }
+            signedContractJar.read { storage.privilegedImportContractAttachment(it, "app", "contract-signed.jar", listOf("com.example.MyContract")) }
             var attachmentIdV2Signed: AttachmentId? = null
-            signedContractJarV2.read { attachmentIdV2Signed = storage.privilegedImportAttachment(it, "app", "contract-signed-V2.jar") }
+            signedContractJarV2.read { attachmentIdV2Signed = storage.privilegedImportContractAttachment(it, "app", "contract-signed-V2.jar", listOf("com.example.MyContract")) }
 
             val latestAttachments = storage.getLatestContractAttachments("com.example.MyContract")
             assertEquals(1, latestAttachments.size)
@@ -670,9 +670,9 @@ class NodeAttachmentServiceTest {
             val contractJar = makeTestContractJar(file.path, "com.example.MyContract")
             val contractJarV2 = makeTestContractJar(file.path,"com.example.MyContract", version = 2)
 
-            contractJar.read { storage.privilegedImportAttachment(it, "app", "contract.jar") }
+            contractJar.read { storage.privilegedImportContractAttachment(it, "app", "contract.jar", listOf("com.example.MyContract")) }
             var attachmentIdV2Unsigned: AttachmentId? = null
-            contractJarV2.read { attachmentIdV2Unsigned = storage.privilegedImportAttachment(it, "app", "contract-V2.jar") }
+            contractJarV2.read { attachmentIdV2Unsigned = storage.privilegedImportContractAttachment(it, "app", "contract-V2.jar", listOf("com.example.MyContract")) }
 
             val latestAttachments = storage.getLatestContractAttachments("com.example.MyContract")
             assertEquals(1, latestAttachments.size)
