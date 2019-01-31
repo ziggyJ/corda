@@ -16,11 +16,11 @@ configurations {
 }
 
 compileKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "1.8" // TODO: Kotlin compiler doesn't currently support 1.11 target
 }
 
 compileTestKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "1.8" // // TODO: Kotlin compiler doesn't currently support 1.11 target
 }
 
 sourceSets {

@@ -36,8 +36,8 @@ task buildExplorerJAR(type: FatCapsule, dependsOn: project(':tools:explorer').ta
     capsuleManifest {
         applicationVersion = corda_release_version
         systemProperties['visualvm.display.name'] = 'Node Explorer'
-        minJavaVersion = '1.8.0'
-        minUpdateVersion['1.8'] = java8_minUpdateVersion
+        minJavaVersion = '1.11.0'
+        minUpdateVersion['1.11'] = java11_minUpdateVersion
         caplets = ['ExplorerCaplet']
 
         // JVM configuration:

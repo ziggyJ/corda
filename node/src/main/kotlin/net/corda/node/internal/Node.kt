@@ -17,7 +17,6 @@ import net.corda.core.internal.concurrent.openFuture
 import net.corda.core.internal.concurrent.thenMatch
 import net.corda.core.internal.div
 import net.corda.core.internal.errors.AddressBindingException
-import net.corda.core.internal.getJavaUpdateVersion
 import net.corda.core.internal.notary.NotaryService
 import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.messaging.RPCOps
@@ -155,11 +154,11 @@ open class Node(configuration: NodeConfiguration,
         }
 
         private fun hasMinimumJavaVersion(): Boolean {
-            // when the ext.java8_minUpdateVersion gradle constant changes, so must this check
+            // when the ext.minJavaVersion gradle constant changes, so must this check
             val major = SystemUtils.JAVA_VERSION_FLOAT
             return try {
-                val update = getJavaUpdateVersion(SystemUtils.JAVA_VERSION) // To filter out cases like 1.8.0_202-ea
-                major == 1.8F && update >= 171
+                val update = SystemUtils.JAVA_VERSION.substringAfter("_").toLong()
+                major == 1.11F && update >= 2
             } catch (e: NumberFormatException) { // custom JDKs may not have the update version (e.g. 1.8.0-adoptopenjdk)
                 false
             }

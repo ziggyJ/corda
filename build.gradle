@@ -77,11 +77,9 @@ buildscript {
 
     // Name of the IntelliJ SDK created for the deterministic Java rt.jar.
     // ext.deterministic_idea_sdk = '1.8 (Deterministic)'
-
-    // Update 121 is required for ObjectInputFilter.
-    // Updates [131, 161] also have zip compression bugs on MacOS (High Sierra).
-    // when the java version in NodeStartup.hasMinimumJavaVersion() changes, so must this check
-    ext.java8_minUpdateVersion = constants.getProperty('java8MinUpdateVersion')
+    
+    // when the java version in Node.hasMinimumJavaVersion() changes, so must this check
+    ext.java11_minUpdateVersion = '2'
 
     repositories {
         mavenLocal()
@@ -140,7 +138,7 @@ apply plugin: 'com.jfrog.artifactory'
 // with the run configurations. It also doesn't realise that the project is a Java 8 project and misconfigures
 // the resulting import. This fixes it.
 apply plugin: 'java'
-sourceCompatibility = 1.8
+sourceCompatibility = 1.11
 targetCompatibility = 1.8
 
 
@@ -172,7 +170,7 @@ allprojects {
             nugetconfEnabled = false
         }
     }
-    sourceCompatibility = 1.8
+    sourceCompatibility = 1.11
     targetCompatibility = 1.8
 
     tasks.withType(JavaCompile) {
@@ -184,7 +182,7 @@ allprojects {
         kotlinOptions {
             languageVersion = "1.2"
             apiVersion = "1.2"
-            jvmTarget = "1.8"
+            jvmTarget = "1.8" // TODO: Kotlin in 1.2 doesn't support 1.11 `jvmTarget`
             javaParameters = true   // Useful for reflection.
             freeCompilerArgs = ['-Xjvm-default=compatibility']
             allWarningsAsErrors = project.hasProperty('compilation.allWarningsAsErrors') ? project.property('compilation.allWarningsAsErrors').toBoolean() : false
@@ -282,8 +280,8 @@ allprojects {
 //
 // We recommend a specific minor version (unfortunately, not checkable directly) because JavaFX adds APIs in
 // minor releases, so we can't work with just any Java 8, it has to be a recent one.
-if (!JavaVersion.current().java8Compatible)
-    throw new GradleException("Corda requires Java 8, please upgrade to at least 1.8.0_$java8_minUpdateVersion")
+if (!JavaVersion.current().java11Compatible)
+    throw new GradleException("Corda requires Java 11, please upgrade to at least 11.0.$java11_minUpdateVersion")
 
 // Required for building out the fat JAR.
 dependencies {
