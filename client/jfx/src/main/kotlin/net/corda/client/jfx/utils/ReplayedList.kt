@@ -61,4 +61,6 @@ class ReplayedList<A>(sourceList: ObservableList<A>) : TransformationList<A, A>(
     override fun getSourceIndex(index: Int) = index
 
     override fun get(index: Int) = replayedList[index]
+
+    override fun getViewIndex(index: Int) = index
 }

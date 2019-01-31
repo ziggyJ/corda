@@ -65,4 +65,5 @@ class MappedList<A, B>(list: ObservableList<A>, val function: (A) -> B) : Transf
     override fun get(index: Int) = backingList[index]
     override val size: Int get() = backingList.size
     override fun getSourceIndex(index: Int) = index
+    override fun getViewIndex(index: Int) = index
 }

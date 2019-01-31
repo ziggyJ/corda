@@ -157,4 +157,6 @@ class AggregatedList<A, E : Any, K : Any>(
             return null
         }
     }
+
+    override fun getViewIndex(index: Int) = index
 }

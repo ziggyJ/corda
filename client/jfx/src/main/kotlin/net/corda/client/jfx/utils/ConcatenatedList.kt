@@ -287,4 +287,5 @@ class ConcatenatedList<A>(sourceList: ObservableList<ObservableList<A>>) : Trans
         }
     }
 
+    override fun getViewIndex(index: Int) = index
 }

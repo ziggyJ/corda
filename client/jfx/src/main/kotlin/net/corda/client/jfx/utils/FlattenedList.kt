@@ -114,4 +114,6 @@ class FlattenedList<A>(val sourceList: ObservableList<out ObservableValue<out A>
     override fun getSourceIndex(index: Int) = index
 
     override val size: Int get() = sourceList.size
+
+    override fun getViewIndex(index: Int) = index
 }
