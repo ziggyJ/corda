@@ -1,8 +1,6 @@
 package net.corda.serialization.internal.model
 
 import net.corda.serialization.internal.carpenter.*
-import java.io.NotSerializableException
-import java.lang.ClassCastException
 import java.lang.reflect.Type
 
 /**
@@ -25,6 +23,12 @@ class ClassCarpentingTypeLoader(private val carpenter: RemoteTypeCarpenter, priv
 
     val cache = DefaultCacheProvider.createCache<TypeIdentifier, Type>()
 
+    /**
+     * Note: The result of this method might not contain some of the types included in the input, if they are not available (and not needed).
+     *       This is done in order to maintain backwards-compatibility in as many cases as possible.
+     *       More specifically, when an interface is not available, but all the classes that implement it are available in the classpath
+     *       and thus do not need to be carpented, then this interface will not be loaded.
+     */
     override fun load(remoteTypeInformation: Collection<RemoteTypeInformation>): Map<TypeIdentifier, Type> {
         val remoteInformationByIdentifier = remoteTypeInformation.associateBy { it.typeIdentifier }
 
@@ -41,9 +45,16 @@ class ClassCarpentingTypeLoader(private val carpenter: RemoteTypeCarpenter, priv
         if (noCarpentryRequired.size == remoteTypeInformation.size) return noCarpentryRequired
 
         // Identify the types which need carpenting up.
-        val requiringCarpentry = remoteInformationByIdentifier.asSequence().mapNotNull { (identifier, information) ->
-            if (identifier in noCarpentryRequired) null else information
-        }.toSet()
+        // Includes only the interfaces of classes that require carpenting.
+        val nonInterfacesRequiringCarpentry = remoteInformationByIdentifier.asSequence()
+                .filter { (identifier, _) -> identifier !in noCarpentryRequired }
+                .map { (_, information) -> information }
+                .filter { it !is RemoteTypeInformation.AnInterface }.toSet()
+        val interfacesRequiringCarpentry = nonInterfacesRequiringCarpentry.asSequence()
+                .filter { it is RemoteTypeInformation.Composable }
+                .flatMap { (it as RemoteTypeInformation.Composable).interfaces.asSequence() }
+                .filter { it.typeIdentifier !in noCarpentryRequired.keys }.toSet()
+        val requiringCarpentry = nonInterfacesRequiringCarpentry + interfacesRequiringCarpentry
 
         // Build the types requiring carpentry in reverse-dependency order.
         // Something else might be trying to carpent these types at the same time as us, so we always consult

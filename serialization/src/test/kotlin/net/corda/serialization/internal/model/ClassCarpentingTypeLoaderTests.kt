@@ -2,12 +2,14 @@ package net.corda.serialization.internal.model
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.common.reflect.TypeToken
+import net.corda.core.identity.AbstractParty
 import net.corda.serialization.internal.AllWhitelist
 import net.corda.serialization.internal.amqp.asClass
 import net.corda.serialization.internal.carpenter.ClassCarpenterImpl
 import org.junit.Test
 import java.lang.reflect.Type
 import kotlin.test.assertEquals
+import org.assertj.core.api.Assertions.assertThat
 
 class ClassCarpentingTypeLoaderTests {
 
@@ -69,6 +71,52 @@ class ClassCarpentingTypeLoaderTests {
               } ]
             }
         """.trimIndent(), personJson)
+    }
+
+    @Test
+    fun `interfaces are not loaded, when not available and not needed for class carpenting`() {
+        val className = "net.corda.core.contracts.StatePointer"
+        val interfaceName = "net.corda.test.SomeUnknownInterface"
+        val interfaceInformation = RemoteTypeInformation.AnInterface(
+                "someInterface",
+                typeIdentifierOf(interfaceName),
+                emptyMap(), emptyList(), emptyList())
+        val classInformation = RemoteTypeInformation.Composable(
+                "someClass",
+                typeIdentifierOf(className),
+                mapOf("dummyField" to remoteType<String>().optional),
+                listOf(interfaceInformation),
+                emptyList()
+        )
+
+        val loadedTypes = typeLoader.load(listOf(classInformation, interfaceInformation))
+
+        val typeIdentifiers = loadedTypes.map { it.key.name }
+        assertThat(typeIdentifiers).contains(className)
+                .doesNotContain(interfaceName)
+    }
+
+    @Test
+    fun `interfaces are loaded, when needed`() {
+        val className = "net.corda.test.SomeClass"
+        val interfaceName = "net.corda.core.contracts.ContractState"
+        val interfaceInformation = RemoteTypeInformation.AnInterface(
+                "someInterface",
+                typeIdentifierOf(interfaceName),
+                emptyMap(), emptyList(), emptyList())
+        val classInformation = RemoteTypeInformation.Composable(
+                "someClass",
+                typeIdentifierOf(className),
+                mapOf("participants" to remoteType<AbstractParty>().optional),
+                listOf(interfaceInformation),
+                emptyList()
+        )
+
+        val loadedTypes = typeLoader.load(listOf(classInformation, interfaceInformation))
+
+        val typeIdentifiers = loadedTypes.map { it.key.name }
+        assertThat(typeIdentifiers).contains(className)
+                .contains(interfaceName)
     }
 
     private fun Type.make(vararg params: Any): Any {
