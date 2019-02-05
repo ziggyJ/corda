@@ -1,5 +1,6 @@
 package net.corda.testing.node.internal
 
+import co.paralleluniverse.fibers.Fiber
 import com.google.common.util.concurrent.ThreadFactoryBuilder
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
@@ -57,7 +58,6 @@ import java.io.File
 import java.lang.management.ManagementFactory
 import java.net.ConnectException
 import java.net.URL
-import java.net.URLClassLoader
 import java.nio.file.Path
 import java.security.cert.X509Certificate
 import java.time.Duration
@@ -126,7 +126,7 @@ class DriverDSLImpl(
     private val state = ThreadBox(State())
 
     //TODO: remove this once we can bundle quasar properly.
-    private val quasarJarPath: String by lazy { resolveJar(".*quasar.*\\.jar$") }
+    private val quasarJarPath: String by lazy { resolveQuasarJar() }
 
     private fun NodeConfig.checkAndOverrideForInMemoryDB(): NodeConfig = this.run {
         if (inMemoryDB && corda.dataSourceProperties.getProperty("dataSource.url").startsWith("jdbc:h2:")) {
@@ -138,15 +138,14 @@ class DriverDSLImpl(
         }
     }
 
-    private fun resolveJar(jarNamePattern: String): String {
+    private fun resolveQuasarJar(): String {
         return try {
-            val cl = ClassLoader.getSystemClassLoader()
-            val urls = (cl as URLClassLoader).urLs
-            val jarPattern = jarNamePattern.toRegex()
-            val jarFileUrl = urls.first { jarPattern.matches(it.path) }
-            jarFileUrl.toPath().toString()
+            val url = Fiber::class.java.classLoader.getResource("co/paralleluniverse/fibers/Fiber.class")
+            val justJarFile = url.path.substringAfter("file:/").substringBefore("!/")
+            val result = justJarFile.replace("/", File.separator)
+            result
         } catch (e: Exception) {
-            log.warn("Unable to locate JAR `$jarNamePattern` on classpath: ${e.message}", e)
+            log.warn("Unable to locate Quasar JAR on classpath: ${e.message}", e)
             throw e
         }
     }
