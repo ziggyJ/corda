@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Helper class for loading JVM agents dynamically
  */
+@Deprecated("This class is obsolete as project \"om.ea.agentloader\" been archived and will not be supporting Java 9 and beyond")
 object JVMAgentRegistry {
 
     /**

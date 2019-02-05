@@ -945,6 +945,9 @@ abstract class AbstractNode<S>(val configuration: NodeConfiguration,
 
     /** Load configured JVM agents */
     private fun initialiseJVMAgents() {
+        // Nothing to do with Java 11, see JVMAgentRegistry
+        // This probably means parameter "configuration.jmxMonitoringHttpPort" is now also obsolete
+        /*
         configuration.jmxMonitoringHttpPort?.let { port ->
             requireNotNull(NodeBuildProperties.JOLOKIA_AGENT_VERSION) {
                 "'jolokiaAgentVersion' missing from build properties"
@@ -957,6 +960,7 @@ abstract class AbstractNode<S>(val configuration: NodeConfiguration,
             log.info("Agent jar file: $jarFilePath")
             JVMAgentRegistry.attach("jolokia", "port=$port", jarFilePath)
         }
+        */
     }
 
     inner class ServiceHubInternalImpl : SingletonSerializeAsToken(), ServiceHubInternal, ServicesForResolution by servicesForResolution {
