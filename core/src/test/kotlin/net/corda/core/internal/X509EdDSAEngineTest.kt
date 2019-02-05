@@ -4,16 +4,22 @@ import net.corda.core.crypto.Crypto
 import net.i2p.crypto.eddsa.EdDSAEngine
 import net.i2p.crypto.eddsa.EdDSAPublicKey
 import org.junit.Test
-import sun.security.util.BitArray
-import sun.security.util.ObjectIdentifier
-import sun.security.x509.AlgorithmId
-import sun.security.x509.X509Key
+// TODO: vkolomeyko - this test been deliberately broken as it is using
+// internal JDK API which is not as easily accessible in Java 11
+// It is theoretically possible to use "--add-exports" Java compiler option, but current version of Kotlin and Gradle Plugin we use doesn't support that
+// Re-visit this later and potentially re-write or delete this test
+//import sun.security.util.BitArray
+//import sun.security.util.ObjectIdentifier
+//import sun.security.x509.AlgorithmId
+//import sun.security.x509.X509Key
 import java.math.BigInteger
 import java.security.InvalidKeyException
+import java.security.PublicKey
 import java.util.*
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
+/*
 class TestX509Key(algorithmId: AlgorithmId, key: BitArray) : X509Key() {
     init {
         this.algid = algorithmId
@@ -21,6 +27,7 @@ class TestX509Key(algorithmId: AlgorithmId, key: BitArray) : X509Key() {
         this.encode()
     }
 }
+*/
 
 class X509EdDSAEngineTest {
     companion object {
@@ -32,7 +39,7 @@ class X509EdDSAEngineTest {
         private const val keyHeaderStart = 9
         private const val keyStart = 12
 
-        private fun toX509Key(publicKey: EdDSAPublicKey): X509Key {
+        private fun toX509Key(publicKey: EdDSAPublicKey): PublicKey {
             val internals = publicKey.encoded
 
             // key size in the header includes the count unused bits at the end of the key
@@ -44,7 +51,8 @@ class X509EdDSAEngineTest {
             System.arraycopy(internals, keyStart, key, 0, keySize)
 
             // 1.3.101.102 is the EdDSA OID
-            return TestX509Key(AlgorithmId(ObjectIdentifier("1.3.101.112")), BitArray(keySize * 8, key))
+            TODO()
+            //return TestX509Key(AlgorithmId(ObjectIdentifier("1.3.101.112")), BitArray(keySize * 8, key))
         }
     }
 
