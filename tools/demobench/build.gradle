@@ -15,6 +15,7 @@ ext {
 apply plugin: 'java'
 apply plugin: 'kotlin'
 apply plugin: 'application'
+apply plugin: 'org.openjfx.javafxplugin'
 
 evaluationDependsOn(':tools:explorer:capsule')
 evaluationDependsOn(':webserver:webcapsule')
@@ -40,6 +41,10 @@ configurations {
         // We don't need Hibernate just for its @Type annotation.
         exclude group: 'org.hibernate', module: 'hibernate-core'
     }
+}
+
+javafx {
+    modules = [ 'javafx.base', 'javafx.graphics', 'javafx.controls', 'javafx.swing' ]
 }
 
 dependencies {

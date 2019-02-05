@@ -1,12 +1,8 @@
-// TODO: Re-visit
-plugins {
-    id 'org.openjfx.javafxplugin' version '0.0.7'
-}
-
 apply plugin: 'kotlin'
 apply plugin: 'net.corda.plugins.quasar-utils'
 apply plugin: 'net.corda.plugins.publish-utils'
 apply plugin: 'com.jfrog.artifactory'
+apply plugin: 'org.openjfx.javafxplugin'
 
 description 'Corda client JavaFX modules'
 
