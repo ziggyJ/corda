@@ -223,7 +223,10 @@ open class NodeStartup : NodeStartupLogging {
         logger.info("PID: ${info.name.split("@").firstOrNull()}")  // TODO Java 9 has better support for this
         logger.info("Main class: ${NodeConfiguration::class.java.location.toURI().path}")
         logger.info("CommandLine Args: ${info.inputArguments.joinToString(" ")}")
-        logger.info("bootclasspath: ${info.bootClassPath}")
+        // Not every version of JVM supports bootClassPath
+        Try.on { info.bootClassPath }.doOnSuccess(Consumer<String> {
+            logger.info("bootclasspath: $it")
+        })
         logger.info("classpath: ${info.classPath}")
         logger.info("VM ${info.vmName} ${info.vmVendor} ${info.vmVersion}")
         logger.info("Machine: ${lookupMachineNameAndMaybeWarn()}")
