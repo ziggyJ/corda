@@ -1,6 +1,6 @@
 package net.corda.node.internal
 
-import com.codahale.metrics.JmxReporter
+import com.codahale.metrics.jmx.JmxReporter
 import com.codahale.metrics.MetricFilter
 import com.codahale.metrics.MetricRegistry
 import com.github.benmanes.caffeine.cache.Caffeine
