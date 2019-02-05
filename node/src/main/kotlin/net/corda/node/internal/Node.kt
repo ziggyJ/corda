@@ -146,7 +146,7 @@ open class Node(configuration: NodeConfiguration,
 
         fun isInvalidJavaVersion(): Boolean {
             if (!hasMinimumJavaVersion()) {
-                println("You are using a version of Java that is not supported (${SystemUtils.JAVA_VERSION}). Please upgrade to the latest version of Java 8.")
+                println("You are using a version of Java that is not supported (${SystemUtils.JAVA_VERSION}). Please upgrade to the latest version of Java 11.")
                 println("Corda will now exit...")
                 return true
             }
@@ -155,13 +155,7 @@ open class Node(configuration: NodeConfiguration,
 
         private fun hasMinimumJavaVersion(): Boolean {
             // when the ext.minJavaVersion gradle constant changes, so must this check
-            val major = SystemUtils.JAVA_VERSION_FLOAT
-            return try {
-                val update = SystemUtils.JAVA_VERSION.substringAfter("_").toLong()
-                major == 1.11F && update >= 2
-            } catch (e: NumberFormatException) { // custom JDKs may not have the update version (e.g. 1.8.0-adoptopenjdk)
-                false
-            }
+            return SystemUtils.JAVA_VERSION_FLOAT >= 11.02f
         }
     }
 
