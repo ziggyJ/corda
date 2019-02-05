@@ -151,6 +151,11 @@ allprojects {
     apply plugin: 'org.owasp.dependencycheck'
     apply plugin: 'kotlin-allopen'
 
+    jacoco {
+        // Use Java 11 compliant version of Jacoco
+        toolVersion = "0.8.3"
+    }
+
     allOpen {
         annotations(
                 "javax.persistence.Entity",
