@@ -1,6 +1,7 @@
 apply plugin: 'java'
 apply plugin: 'kotlin'
 apply plugin: 'application'
+apply plugin: 'org.openjfx.javafxplugin'
 
 sourceCompatibility = 1.11
 mainClassName = 'net.corda.explorer.Main'
@@ -9,6 +10,10 @@ mainClassName = 'net.corda.explorer.Main'
 // This prevents problems in IntelliJ with regard to duplicate source roots.
 processResources {
     from file("$rootDir/config/dev/log4j2.xml")
+}
+
+javafx {
+    modules = [ 'javafx.base', 'javafx.graphics', 'javafx.controls', 'javafx.swing' ]
 }
 
 dependencies {
