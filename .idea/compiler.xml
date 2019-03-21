@@ -9,7 +9,7 @@
       <module name="attachment-demo-workflows_integrationTest" target="11" />
       <module name="attachment-demo-workflows_main" target="11" />
       <module name="attachment-demo-workflows_test" target="11" />
-      <module name="attachment-demo_integrationTest" target="1.8" />
+      <module name="attachment-demo_integrationTest" target="11" />
       <module name="attachment-demo_main" target="11" />
       <module name="attachment-demo_test" target="11" />
       <module name="avalanche_main" target="11" />
@@ -266,7 +266,7 @@
       <module name="tools-blobinspector_test" target="11" />
       <module name="tools_main" target="11" />
       <module name="tools_test" target="11" />
-      <module name="trader-demo_integrationTest" target="1.8" />
+      <module name="trader-demo_integrationTest" target="11" />
       <module name="trader-demo_main" target="11" />
       <module name="trader-demo_test" target="11" />
       <module name="unwanteds_main" target="1.8" />
@@ -291,8 +291,8 @@
       <module name="workflows_integrationTest" target="1.8" />
       <module name="workflows_main" target="1.8" />
       <module name="workflows_test" target="1.8" />
-      <module name="worldmap_main" target="1.8" />
-      <module name="worldmap_test" target="1.8" />
+      <module name="worldmap_main" target="11" />
+      <module name="worldmap_test" target="11" />
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
