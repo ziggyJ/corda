@@ -26,6 +26,9 @@ sourceSets {
 
 dependencies {
     compile project(':test-utils')
+    implementation project(':common-validation')
+    implementation project(':common-configuration-parsing')
+    
 
     // Integration test helpers
     testCompile "org.assertj:assertj-core:$assertj_version"
@@ -39,6 +42,12 @@ dependencies {
 
     compile "org.gradle:gradle-tooling-api:${gradle.gradleVersion}"
     
+    implementation "org.apache.sshd:sshd-core:2.2.0"
+
+    // JimFS: in memory java.nio filesystem. Used for test and simulation utilities.
+    implementation "com.google.jimfs:jimfs:1.1"
+
+
     // Jersey for JAX-RS implementation for use in Jetty
     compile "org.glassfish.jersey.core:jersey-server:${jersey_version}"
     compile "org.glassfish.jersey.containers:jersey-container-servlet-core:${jersey_version}"

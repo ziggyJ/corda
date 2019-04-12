@@ -73,6 +73,8 @@ dependencies {
 
     testCompile project(':test-utils')
     testCompile project(':webserver')
+    testCompile project(':common-validation')
+    testCompile project(':common-configuration-parsing')
 
     testCompile "junit:junit:$junit_version"
     testCompile "org.jetbrains.kotlin:kotlin-test:$kotlin_version"

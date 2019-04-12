@@ -18,7 +18,9 @@ apply plugin: 'com.github.johnrengelman.shadow'
 
 
 dependencies{
-    compile project(':node')
+    implementation project(':node')
+    implementation project(':node-api')
+    implementation project(':common-configuration-parsing')
 }
 
 shadowJar {

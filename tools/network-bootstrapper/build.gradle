@@ -31,6 +31,9 @@ dependencies {
 
     compile project(':node-api')
     compile project(':node')
+    implementation project(':common-validation')
+    implementation project(':common-configuration-parsing')
+
 
     compile "com.typesafe:config:$typesafe_config_version"
     compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jackson_version"

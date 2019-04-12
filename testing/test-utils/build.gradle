@@ -14,6 +14,9 @@ dependencies {
         exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jre8'
     }
     compile project(':client:mock')
+    compile project(':client:rpc')
+    compile project(':client:jackson')
+    
 
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
@@ -23,6 +26,8 @@ dependencies {
 
     // Guava: Google test library (collections test suite)
     compile "com.google.guava:guava-testlib:$guava_version"
+
+
 
     // OkHTTP: Simple HTTP library.
     compile "com.squareup.okhttp3:okhttp:$okhttp_version"

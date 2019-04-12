@@ -31,6 +31,8 @@ dependencies {
     compile project(':node-driver')
     compile project(':webserver')
     testCompile project(':test-utils')
+    testCompile project(':common-validation')
+    testCompile project(':common-configuration-parsing')
 
     compile "org.graphstream:gs-core:1.3"
     compile("org.graphstream:gs-ui:1.3") {
