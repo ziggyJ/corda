@@ -62,7 +62,7 @@ dependencies {
 
     // Bring in the MockNode infrastructure for writing protocol unit tests.
     testCompile project(":node-driver")
-
+   
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
     testCompile "org.jetbrains.kotlin:kotlin-test:$kotlin_version"
@@ -115,7 +115,7 @@ dependencies {
     compile group: "io.github.classgraph", name: "classgraph", version: class_graph_version
 
     // JimFS: in memory java.nio filesystem. Used for test and simulation utilities.
-    implementation "com.google.jimfs:jimfs:1.1"
+    testCompile "com.google.jimfs:jimfs:1.1"
 
 }
 
