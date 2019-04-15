@@ -63,15 +63,15 @@ dependencies {
     // Bring in the MockNode infrastructure for writing protocol unit tests.
     testCompile project(":node-driver")
    
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
+    api "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    api "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
     testCompile "org.jetbrains.kotlin:kotlin-test:$kotlin_version"
 
     // Hamkrest, for fluent, composable matchers
     testCompile "com.natpryce:hamkrest:$hamkrest_version"
 
     // Thread safety annotations
-    compile "com.google.code.findbugs:jsr305:$jsr305_version"
+    implementation "com.google.code.findbugs:jsr305:$jsr305_version"
 
     // SLF4J: commons-logging bindings for a SLF4J back end
     compile "org.slf4j:jcl-over-slf4j:$slf4j_version"
@@ -84,7 +84,7 @@ dependencies {
     testCompile "com.google.guava:guava:$guava_version"
 
     // For caches rather than guava
-    compile "com.github.ben-manes.caffeine:caffeine:$caffeine_version"
+    implementation "com.github.ben-manes.caffeine:caffeine:$caffeine_version"
 
     // Smoke tests do NOT have any Node code on the classpath!
     smokeTestCompile project(':smoke-test-utils')
@@ -92,27 +92,27 @@ dependencies {
     smokeTestCompile "junit:junit:$junit_version"
 
     // RxJava: observable streams of events.
-    compile "io.reactivex:rxjava:$rxjava_version"
+    implementation "io.reactivex:rxjava:$rxjava_version"
 
     // Apache JEXL: An embeddable expression evaluation library.
     // This may be temporary until we experiment with other ways to do on-the-fly contract specialisation via an API.
-    compile "org.apache.commons:commons-jexl3:3.0"
-    compile 'commons-lang:commons-lang:2.6'
+    implementation "org.apache.commons:commons-jexl3:3.0"
+    implementation 'commons-lang:commons-lang:2.6'
 
     // Java ed25519 implementation. See https://github.com/str4d/ed25519-java/
-    compile "net.i2p.crypto:eddsa:$eddsa_version"
+    implementation "net.i2p.crypto:eddsa:$eddsa_version"
 
     // Bouncy castle support needed for X509 certificate manipulation
-    compile "org.bouncycastle:bcprov-jdk15on:${bouncycastle_version}"
-    compile "org.bouncycastle:bcpkix-jdk15on:${bouncycastle_version}"
+    implementation "org.bouncycastle:bcprov-jdk15on:${bouncycastle_version}"
+    implementation "org.bouncycastle:bcpkix-jdk15on:${bouncycastle_version}"
 
     // JPA 2.2 annotations.
-    compile "javax.persistence:javax.persistence-api:2.2"
+    implementation "javax.persistence:javax.persistence-api:2.2"
 
     // required to use @Type annotation
-    compile "org.hibernate:hibernate-core:$hibernate_version"
+    implementation "org.hibernate:hibernate-core:$hibernate_version"
 
-    compile group: "io.github.classgraph", name: "classgraph", version: class_graph_version
+    implementation group: "io.github.classgraph", name: "classgraph", version: class_graph_version
 
     // JimFS: in memory java.nio filesystem. Used for test and simulation utilities.
     testCompile "com.google.jimfs:jimfs:1.1"
