@@ -31,8 +31,10 @@ import javax.persistence.*
  */
 class BasicHSMKeyManagementService(cacheFactory: NamedCacheFactory, val identityService: PersistentIdentityService,
                                    private val database: CordaPersistence, private val cryptoService: CryptoService) : SingletonSerializeAsToken(), KeyManagementServiceInternal {
+
+
     @Entity
-    @Table(name = "${NODE_DATABASE_PREFIX}our_key_pairs")
+    @Table(name = "${NODE_DATABASE_PREFIX}our_key_pairs", indexes = [Index(name = "public_key_hash_idx", columnList = "public_key_hash")])
     class PersistentKey(
             @Id
             @Column(name = "public_key_hash", length = MAX_HASH_HEX_SIZE, nullable = false)
@@ -135,6 +137,19 @@ class BasicHSMKeyManagementService(cacheFactory: NamedCacheFactory, val identity
 
     override fun externalIdForPublicKey(publicKey: PublicKey): UUID? {
         return keyToExternalId[publicKey.toStringShort()]
+    }
+
+    override fun publicKeysForExternalId(uuid: UUID): List<UUID>? {
+        return database.transaction {
+            val criteriaQuery = session.criteriaBuilder.createQuery()
+            val persistentKeyRoot = criteriaQuery.from(PersistentKey::class.java)
+            val externalIdRoot = criteriaQuery.from(PublicKeyHashToExternalId::class.java)
+            val joinCriteria = session.criteriaBuilder.equal(externalIdRoot.get<String>(PublicKeyHashToExternalId::publicKeyHash.name), persistentKeyRoot.get<String>(PersistentKey::publicKeyHash.name))
+            val selectCriteria = session.criteriaBuilder.equal(externalIdRoot.get<String>(PublicKeyHashToExternalId::externalId.name), uuid)
+            criteriaQuery.select(persistentKeyRoot.get(PersistentKey::publicKey.name))
+            criteriaQuery.where(joinCriteria, selectCriteria)
+            session.createQuery(criteriaQuery).resultList as List<UUID>?
+        }
     }
 
     private fun getSigner(publicKey: PublicKey): ContentSigner {

@@ -12,10 +12,11 @@ import javax.persistence.*
 interface KeyManagementServiceInternal : KeyManagementService {
     fun start(initialKeyPairs: Set<KeyPair>)
     fun externalIdForPublicKey(publicKey: PublicKey): UUID?
+    fun publicKeysForExternalId(uuid: UUID): List<UUID>?
 }
 
 @Entity
-@Table(name = "pk_hash_to_ext_id_map", indexes = [Index(name = "date_idx", columnList = "date_mapped")])
+@Table(name = "pk_hash_to_ext_id_map", indexes = [Index(name = "date_idx", columnList = "date_mapped"), Index(name = "external_id_idx", columnList = "external_id")])
 class PublicKeyHashToExternalId(
 
         @Column(name = "date_mapped", nullable = false)

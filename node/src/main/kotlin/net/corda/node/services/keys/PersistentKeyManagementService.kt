@@ -30,6 +30,9 @@ class PersistentKeyManagementService(cacheFactory: NamedCacheFactory, val identi
                                      private val database: CordaPersistence) : SingletonSerializeAsToken(), KeyManagementServiceInternal {
 
 
+
+
+
     @Entity
     @Table(name = "${NODE_DATABASE_PREFIX}our_key_pairs")
     class PersistentKey(
@@ -116,10 +119,22 @@ class PersistentKeyManagementService(cacheFactory: NamedCacheFactory, val identi
         return database.transaction {
             val criteriaQuery = session.criteriaBuilder.createQuery(PublicKeyHashToExternalId::class.java)
             val queryRoot = criteriaQuery.from(PublicKeyHashToExternalId::class.java)
-            Restrictions.eq("public_key_hash", publicKey.toStringShort())
-            criteriaQuery.where(session.criteriaBuilder.equal(queryRoot.get<String>(PublicKeyHashToExternalId::publicKeyHash.name), publicKey.toString()))
+            criteriaQuery.where(session.criteriaBuilder.equal(queryRoot.get<String>(PublicKeyHashToExternalId::publicKeyHash.name), publicKey.toStringShort()))
             criteriaQuery.select(queryRoot)
             session.createQuery(criteriaQuery).uniqueResult().externalId
+        }
+    }
+
+    override fun publicKeysForExternalId(uuid: UUID): List<UUID>? {
+        return database.transaction {
+            val criteriaQuery = session.criteriaBuilder.createQuery()
+            val persistentKeyRoot = criteriaQuery.from(BasicHSMKeyManagementService.PersistentKey::class.java)
+            val externalIdRoot = criteriaQuery.from(PublicKeyHashToExternalId::class.java)
+            val joinCriteria = session.criteriaBuilder.equal(externalIdRoot.get<String>(PublicKeyHashToExternalId::publicKeyHash.name), persistentKeyRoot.get<String>(BasicHSMKeyManagementService.PersistentKey::publicKeyHash.name))
+            val selectCriteria = session.criteriaBuilder.equal(externalIdRoot.get<String>(PublicKeyHashToExternalId::externalId.name), uuid)
+            criteriaQuery.select(persistentKeyRoot.get(BasicHSMKeyManagementService.PersistentKey::publicKey.name))
+            criteriaQuery.where(joinCriteria, selectCriteria)
+            session.createQuery(criteriaQuery).resultList as List<UUID>?
         }
     }
 
