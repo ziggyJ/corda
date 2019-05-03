@@ -6,6 +6,7 @@ apply plugin: 'com.jfrog.artifactory'
 
 dependencies {
     compile project(':serialization')
+    compile project(':cordapp-api')
 
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     // Jackson and its plugins: parsing to/from JSON and other textual formats.

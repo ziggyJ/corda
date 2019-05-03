@@ -19,7 +19,6 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.NetworkHostAndPort
 import net.corda.core.utilities.Try
-import net.corda.core.utilities.getOrThrow
 import net.corda.core.utilities.seconds
 import net.corda.node.services.config.NotaryConfig
 import net.corda.nodeapi.internal.DevIdentityGenerator
@@ -40,8 +39,6 @@ import java.nio.file.Paths
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.ExecutionException
-import kotlin.collections.component1
-import kotlin.collections.component2
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue

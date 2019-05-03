@@ -5,7 +5,6 @@ import net.corda.core.internal.*
 import net.corda.core.node.NodeInfo
 import net.corda.core.serialization.serialize
 import net.corda.core.utilities.contextLogger
-import net.corda.core.utilities.debug
 import net.corda.core.utilities.seconds
 import net.corda.core.internal.NODE_INFO_DIRECTORY
 import net.corda.nodeapi.internal.NodeInfoAndSigned

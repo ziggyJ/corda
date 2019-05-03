@@ -23,7 +23,6 @@ import net.corda.serialization.internal.amqp.SerializationFactoryCacheKey
 import net.corda.serialization.internal.amqp.SerializerFactory
 import java.time.Duration
 import java.util.ServiceLoader
-import java.net.URLClassLoader
 
 /**
  * This class is essentially just a wrapper for an RPCConnection<CordaRPCOps> and can be treated identically.

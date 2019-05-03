@@ -54,6 +54,9 @@ processSmokeTestResources {
 }
 
 dependencies {
+    compile project(":core-types")
+    compile project(":crypto")
+    
     testCompile "junit:junit:$junit_version"
     testCompile "commons-fileupload:commons-fileupload:$fileupload_version"
 

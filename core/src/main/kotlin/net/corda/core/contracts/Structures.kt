@@ -183,16 +183,6 @@ inline fun <reified T : ContractState> Iterable<StateAndRef<ContractState>>.filt
     return mapNotNull { if (it.state.data is T) StateAndRef(TransactionState(it.state.data, it.state.contract, it.state.notary), it.ref) else null }
 }
 
-/**
- * Reference to something being stored or issued by a party e.g. in a vault or (more likely) on their normal
- * ledger. The reference is intended to be encrypted so it's meaningless to anyone other than the party.
- */
-@KeepForDJVM
-@CordaSerializable
-data class PartyAndReference(val party: AbstractParty, val reference: OpaqueBytes) {
-    override fun toString() = "$party$reference"
-}
-
 /** Marker interface for classes that represent commands */
 @CordaSerializable
 interface CommandData

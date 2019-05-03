@@ -5,7 +5,6 @@ import net.corda.core.contracts.TimeWindow
 import net.corda.core.crypto.DigitalSignature
 import net.corda.core.crypto.NullKeys
 import net.corda.core.crypto.SecureHash
-import net.corda.core.crypto.sha256
 import net.corda.core.flows.NotarisationRequestSignature
 import net.corda.core.flows.NotaryError
 import net.corda.core.flows.StateConsumptionDetails

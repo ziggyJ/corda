@@ -18,9 +18,7 @@ import net.corda.core.internal.notary.*
 import net.corda.core.schemas.PersistentStateRef
 import net.corda.core.serialization.CordaSerializable
 import net.corda.core.serialization.SingletonSerializeAsToken
-import net.corda.core.serialization.serialize
 import net.corda.core.utilities.contextLogger
-import net.corda.core.utilities.debug
 import net.corda.node.utilities.AppendOnlyPersistentMap
 import net.corda.nodeapi.internal.persistence.CordaPersistence
 import net.corda.nodeapi.internal.persistence.NODE_DATABASE_PREFIX

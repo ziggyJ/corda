@@ -37,7 +37,6 @@ import java.nio.file.Paths
 import java.security.KeyPair
 import java.security.MessageDigest
 import java.security.PrivateKey
-import java.security.PublicKey
 import java.security.cert.*
 import java.time.Duration
 import java.time.temporal.Temporal
@@ -502,8 +501,6 @@ inline fun <T : Any> SerializedBytes<T>.sign(signer: (SerializedBytes<T>) -> Dig
 fun <T : Any> SerializedBytes<T>.sign(keyPair: KeyPair): SignedData<T> = SignedData(this, keyPair.sign(this.bytes))
 
 fun ByteBuffer.copyBytes(): ByteArray = ByteArray(remaining()).also { get(it) }
-
-val PublicKey.hash: SecureHash get() = encoded.sha256()
 
 /**
  * Extension method for providing a sumBy method that processes and returns a Long

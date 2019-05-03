@@ -1,6 +1,7 @@
 package net.corda.core.internal
 
 import net.corda.core.crypto.Crypto
+import net.corda.crypto.internal.X509EdDSAEngine
 import net.i2p.crypto.eddsa.EdDSAEngine
 import net.i2p.crypto.eddsa.EdDSAPublicKey
 import org.junit.Test

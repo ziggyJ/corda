@@ -22,7 +22,6 @@ import net.corda.core.schemas.PersistentStateRef
 import net.corda.core.schemas.StatePersistable
 import net.corda.core.utilities.OpaqueBytes
 import net.corda.core.utilities.contextLogger
-import net.corda.core.utilities.trace
 import net.corda.node.services.persistence.NodeAttachmentService
 import org.hibernate.query.criteria.internal.expression.LiteralExpression
 import org.hibernate.query.criteria.internal.path.SingularAttributePath

@@ -16,7 +16,6 @@ import net.corda.core.serialization.serialize
 import net.corda.core.transactions.CoreTransaction
 import net.corda.core.transactions.FilteredTransaction
 import net.corda.core.utilities.contextLogger
-import net.corda.core.utilities.debug
 import net.corda.core.utilities.getOrThrow
 import net.corda.core.utilities.unwrap
 import net.corda.node.services.api.ServiceHubInternal

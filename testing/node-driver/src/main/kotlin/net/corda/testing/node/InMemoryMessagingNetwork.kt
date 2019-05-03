@@ -15,7 +15,6 @@ import net.corda.core.serialization.CordaSerializable
 import net.corda.core.serialization.SingletonSerializeAsToken
 import net.corda.core.utilities.ByteSequence
 import net.corda.core.utilities.getOrThrow
-import net.corda.core.utilities.trace
 import net.corda.node.services.messaging.Message
 import net.corda.testing.node.internal.MockNodeMessagingService
 import org.apache.activemq.artemis.utils.ReusableLatch

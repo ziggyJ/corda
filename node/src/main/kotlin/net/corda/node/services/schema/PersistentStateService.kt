@@ -7,7 +7,6 @@ import net.corda.core.internal.VisibleForTesting
 import net.corda.core.schemas.MappedSchema
 import net.corda.core.schemas.PersistentStateRef
 import net.corda.core.utilities.contextLogger
-import net.corda.core.utilities.debug
 import net.corda.node.services.api.SchemaService
 import net.corda.nodeapi.internal.persistence.currentDBSession
 

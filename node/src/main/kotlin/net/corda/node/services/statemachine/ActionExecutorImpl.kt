@@ -8,7 +8,6 @@ import net.corda.core.serialization.*
 import net.corda.core.serialization.internal.CheckpointSerializationContext
 import net.corda.core.serialization.internal.checkpointSerialize
 import net.corda.core.utilities.contextLogger
-import net.corda.core.utilities.trace
 import net.corda.node.services.api.CheckpointStorage
 import net.corda.node.services.api.ServiceHubInternal
 import net.corda.nodeapi.internal.persistence.contextDatabase

@@ -6,7 +6,6 @@ import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
 import net.corda.core.internal.createDirectories
 import net.corda.core.internal.div
-import net.corda.core.utilities.trace
 import net.corda.nodeapi.internal.config.FileBasedCertificateStoreSupplier
 import net.corda.nodeapi.internal.config.SslConfiguration
 import net.corda.nodeapi.internal.crypto.CertificateType

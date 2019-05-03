@@ -5,7 +5,6 @@ import net.corda.core.contracts.Amount.Companion.sumOrThrow
 import net.corda.core.identity.AbstractParty
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.contextLogger
-import net.corda.core.utilities.trace
 import java.security.PublicKey
 import java.util.*
 

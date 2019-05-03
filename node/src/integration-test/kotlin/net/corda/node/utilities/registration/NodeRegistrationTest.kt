@@ -1,7 +1,6 @@
 package net.corda.node.utilities.registration
 
 import net.corda.core.identity.CordaX500Name
-import net.corda.core.internal.logElapsedTime
 import net.corda.core.internal.readFully
 import net.corda.core.utilities.NetworkHostAndPort
 import net.corda.core.utilities.getOrThrow

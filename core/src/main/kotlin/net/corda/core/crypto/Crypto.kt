@@ -5,6 +5,7 @@ import net.corda.core.KeepForDJVM
 import net.corda.core.StubOutForDJVM
 import net.corda.core.crypto.internal.*
 import net.corda.core.serialization.serialize
+import net.corda.crypto.internal.*
 import net.i2p.crypto.eddsa.EdDSAEngine
 import net.i2p.crypto.eddsa.EdDSAPrivateKey
 import net.i2p.crypto.eddsa.EdDSAPublicKey

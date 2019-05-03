@@ -2,9 +2,7 @@ package net.corda.core.internal
 
 import net.corda.core.DeleteForDJVM
 import net.corda.core.contracts.Attachment
-import net.corda.core.contracts.ContractAttachment
 import net.corda.core.contracts.ContractClassName
-import net.corda.core.flows.DataVendingFlow
 import net.corda.core.flows.FlowLogic
 import net.corda.core.node.NetworkParameters
 import net.corda.core.node.ServicesForResolution

@@ -2,11 +2,9 @@ package net.corda.serialization.internal.amqp.custom
 
 import net.corda.core.KeepForDJVM
 import net.corda.core.utilities.contextLogger
-import net.corda.core.utilities.trace
 import net.corda.serialization.internal.amqp.AMQPNotSerializableException
 import net.corda.serialization.internal.amqp.CustomSerializer
 import net.corda.serialization.internal.amqp.LocalSerializerFactory
-import net.corda.serialization.internal.amqp.SerializerFactory
 import net.corda.serialization.internal.amqp.custom.ClassSerializer.ClassProxy
 
 /**

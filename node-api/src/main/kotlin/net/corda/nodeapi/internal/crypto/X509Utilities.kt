@@ -2,7 +2,6 @@ package net.corda.nodeapi.internal.crypto
 
 import net.corda.core.CordaOID
 import net.corda.core.crypto.Crypto
-import net.corda.core.crypto.SignatureScheme
 import net.corda.core.crypto.random63BitValue
 import net.corda.core.internal.*
 import net.corda.core.utilities.days

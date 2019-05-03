@@ -40,7 +40,6 @@ import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
 import java.io.ByteArrayOutputStream
-import java.io.InputStream
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileAlreadyExistsException

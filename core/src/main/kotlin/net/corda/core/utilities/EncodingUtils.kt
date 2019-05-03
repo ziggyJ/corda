@@ -6,7 +6,7 @@ package net.corda.core.utilities
 import net.corda.core.KeepForDJVM
 import net.corda.core.crypto.Base58
 import net.corda.core.crypto.Crypto
-import net.corda.core.internal.hash
+import net.corda.core.crypto.toBase58
 import java.nio.charset.Charset
 import java.security.PublicKey
 import java.util.*
@@ -23,9 +23,6 @@ import javax.xml.bind.DatatypeConverter
 const val MAX_HASH_HEX_SIZE = 130
 
 // [ByteArray] encoders
-
-/** Convert a byte array to a Base58 encoded [String]. */
-fun ByteArray.toBase58(): String = Base58.encode(this)
 
 /** Convert a byte array to a Base64 encoded [String]. */
 fun ByteArray.toBase64(): String = Base64.getEncoder().encodeToString(this)
@@ -83,6 +80,3 @@ fun parsePublicKeyBase58(base58String: String): PublicKey = Crypto.decodePublicK
 
 /** Return the Base58 representation of the serialised public key. */
 fun PublicKey.toBase58String(): String = this.encoded.toBase58()
-
-/** Return the bytes of the SHA-256 output for this public key. */
-fun PublicKey.toSHA256Bytes(): ByteArray = this.hash.bytes

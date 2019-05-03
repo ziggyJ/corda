@@ -3,7 +3,6 @@ package net.corda.core.node.services
 import net.corda.core.DoNotImplement
 import net.corda.core.contracts.StateRef
 import net.corda.core.contracts.UpgradedContract
-import net.corda.core.flows.ContractUpgradeFlow
 
 /**
  * The [ContractUpgradeService] is responsible for securely upgrading contract state objects according to

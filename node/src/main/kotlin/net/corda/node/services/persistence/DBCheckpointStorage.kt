@@ -2,7 +2,6 @@ package net.corda.node.services.persistence
 
 import net.corda.core.flows.StateMachineRunId
 import net.corda.core.serialization.SerializedBytes
-import net.corda.core.utilities.debug
 import net.corda.node.services.api.CheckpointStorage
 import net.corda.node.services.statemachine.Checkpoint
 import net.corda.nodeapi.internal.persistence.NODE_DATABASE_PREFIX

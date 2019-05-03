@@ -5,7 +5,6 @@ import net.corda.core.internal.*
 import net.corda.core.internal.cordapp.CordappImpl
 import net.corda.core.internal.cordapp.set
 import net.corda.core.utilities.contextLogger
-import net.corda.core.utilities.debug
 import net.corda.testing.core.internal.JarSignatureTestUtils.generateKey
 import net.corda.testing.core.internal.JarSignatureTestUtils.signJar
 import java.nio.file.Path

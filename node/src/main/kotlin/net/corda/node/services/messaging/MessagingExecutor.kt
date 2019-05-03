@@ -2,8 +2,6 @@ package net.corda.node.services.messaging
 
 import net.corda.core.messaging.MessageRecipients
 import net.corda.core.utilities.contextLogger
-import net.corda.core.utilities.debug
-import net.corda.core.utilities.trace
 import net.corda.node.VersionInfo
 import net.corda.node.services.statemachine.FlowMessagingImpl
 import net.corda.nodeapi.internal.ArtemisMessagingComponent.Companion.P2PMessagingHeaders

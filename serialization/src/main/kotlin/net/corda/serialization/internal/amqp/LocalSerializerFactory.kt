@@ -3,8 +3,6 @@ package net.corda.serialization.internal.amqp
 import net.corda.core.internal.kotlinObjectInstance
 import net.corda.core.serialization.ClassWhitelist
 import net.corda.core.utilities.contextLogger
-import net.corda.core.utilities.debug
-import net.corda.core.utilities.trace
 import net.corda.serialization.internal.model.*
 import org.apache.qpid.proton.amqp.Symbol
 import java.lang.reflect.ParameterizedType

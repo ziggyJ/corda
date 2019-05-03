@@ -2,7 +2,6 @@ package net.corda.core.utilities
 
 import net.corda.core.DeleteForDJVM
 import net.corda.core.internal.STRUCTURAL_STEP_PREFIX
-import net.corda.core.internal.warnOnce
 import net.corda.core.serialization.CordaSerializable
 import rx.Observable
 import rx.Subscription

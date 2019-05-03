@@ -4,7 +4,6 @@ import com.google.common.hash.Hashing
 import net.corda.core.utilities.contextLogger
 import net.corda.core.utilities.toBase64
 import net.corda.serialization.internal.amqp.*
-import java.io.NotSerializableException
 
 /**
  * A fingerprinter that fingerprints [LocalTypeInformation].
