@@ -102,6 +102,9 @@ class ObligationTests {
         unverifiedTransaction {
             attachments(Obligation.PROGRAM_ID, Cash.PROGRAM_ID)
             output(Obligation.PROGRAM_ID, "Alice's $1,000,000 obligation to Bob", oneMillionDollars.OBLIGATION between Pair(ALICE, BOB))
+            output(Obligation.PROGRAM_ID, "Alice's $100,000 obligation to Bob", (100000.DOLLARS `issued by` defaultIssuer).OBLIGATION between Pair(ALICE, BOB))
+            output(Obligation.PROGRAM_ID, "Bob's $500,000 obligation to Alice", (500000.DOLLARS `issued by` defaultIssuer).OBLIGATION between Pair(BOB, ALICE))
+            output(Obligation.PROGRAM_ID, "Bob's $100,000 obligation to Alice", (100000.DOLLARS `issued by` defaultIssuer).OBLIGATION between Pair(BOB, ALICE))
             output(Obligation.PROGRAM_ID, "Bob's $1,000,000 obligation to Alice", oneMillionDollars.OBLIGATION between Pair(BOB, ALICE))
             output(Obligation.PROGRAM_ID, "MegaCorp's $1,000,000 obligation to Bob", oneMillionDollars.OBLIGATION between Pair(MEGA_CORP, BOB))
             output(Cash.PROGRAM_ID, "Alice's $1,000,000", 1000000.DOLLARS.CASH issuedBy defaultIssuer ownedBy ALICE)
@@ -505,6 +508,28 @@ class ObligationTests {
                 command(listOf(ALICE_PUBKEY, BOB_PUBKEY), Obligation.Commands.Net(NetType.PAYMENT))
                 timeWindow(TEST_TX_TIME)
                 this `fails with` "all involved parties have signed"
+            }
+        }
+    }
+
+    @Test
+    fun `clear obligations`() {
+        // Try settling an obligation
+        ledgerServices.ledger(DUMMY_NOTARY) {
+            cashObligationTestRoots(this)
+            transaction("Settlement") {
+                attachments(Obligation.PROGRAM_ID, Cash.PROGRAM_ID)
+                input("Alice's $1,000,000 obligation to Bob")
+                input("Alice's $100,000 obligation to Bob")
+                input("Bob's $500,000 obligation to Alice")
+                input("Bob's $100,000 obligation to Alice")
+                input("Alice's $1,000,000")
+                output(Cash.PROGRAM_ID, "Bob's $500,000", 500000.DOLLARS.CASH issuedBy defaultIssuer ownedBy BOB)
+                output(Cash.PROGRAM_ID, "Alice's $500,000", 500000.DOLLARS.CASH issuedBy defaultIssuer ownedBy ALICE)
+                command(listOf(ALICE_PUBKEY, BOB_PUBKEY), Obligation.Commands.Clear())
+                command(ALICE_PUBKEY, Cash.Commands.Move(Obligation::class.java))
+                attachment(attachment(cashContractBytes.inputStream()))
+                this.verifies()
             }
         }
     }

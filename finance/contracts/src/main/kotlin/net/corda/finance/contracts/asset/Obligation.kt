@@ -40,6 +40,7 @@ import java.security.PublicKey
 import java.time.Duration
 import java.time.Instant
 import java.util.*
+import kotlin.collections.HashMap
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
@@ -151,8 +152,7 @@ class Obligation<P : Any> : Contract {
         override val participants: List<AbstractParty> = listOf(obligor, beneficiary)
         override val owner: AbstractParty = beneficiary
 
-        override fun withNewOwnerAndAmount(newAmount: Amount<Issued<Terms<P>>>, newOwner: AbstractParty): State<P>
-                = copy(quantity = newAmount.quantity, beneficiary = newOwner)
+        override fun withNewOwnerAndAmount(newAmount: Amount<Issued<Terms<P>>>, newOwner: AbstractParty): State<P> = copy(quantity = newAmount.quantity, beneficiary = newOwner)
 
         override fun toString() = when (lifecycle) {
             Lifecycle.NORMAL -> "${Emoji.bagOfCash}Debt($amount due $dueBefore to $beneficiary)"
@@ -218,6 +218,8 @@ class Obligation<P : Any> : Contract {
          */
         data class Settle<P : Any>(val amount: Amount<Issued<Terms<P>>>) : CommandData
 
+        class Clear : TypeOnlyCommandData()
+
         /**
          * A command stating that the beneficiary is moving the contract into the defaulted state as it has not been settled
          * by the due date, or resetting a defaulted contract back to the issued state.
@@ -243,25 +245,31 @@ class Obligation<P : Any> : Contract {
             verifyLifecycleCommand(tx.inputStates, tx.outputStates)
             verifyNetCommand(tx, netCommand)
         } else {
-            val groups = tx.groupStates { it: Obligation.State<P> -> it.amount.token }
-            for ((inputs, outputs, key) in groups) {
-                requireThat {
-                    "there are no zero sized outputs" using (outputs.none { it.amount.quantity == 0L })
-                }
-                val setLifecycleCommand = tx.commands.select<Commands.SetLifecycle>().firstOrNull()
-                if (setLifecycleCommand != null) {
-                    verifySetLifecycleCommand(inputs, outputs, tx, setLifecycleCommand)
-                } else {
-                    verifyLifecycleCommand(inputs, outputs)
-                    val settleCommand = tx.commands.select<Commands.Settle<P>>().firstOrNull()
-                    if (settleCommand != null) {
-                        verifySettleCommand(tx, inputs, outputs, settleCommand, key)
+            val clearCommand = tx.commands.select<Commands.Clear>().firstOrNull()
+            if (clearCommand != null) {
+                verifyLifecycleCommand(tx.inputStates, tx.outputStates)
+                verifyClearCommand(tx, clearCommand)
+            } else {
+                val groups = tx.groupStates { it: Obligation.State<P> -> it.amount.token }
+                for ((inputs, outputs, key) in groups) {
+                    requireThat {
+                        "there are no zero sized outputs" using (outputs.none { it.amount.quantity == 0L })
+                    }
+                    val setLifecycleCommand = tx.commands.select<Commands.SetLifecycle>().firstOrNull()
+                    if (setLifecycleCommand != null) {
+                        verifySetLifecycleCommand(inputs, outputs, tx, setLifecycleCommand)
                     } else {
-                        val issueCommand = tx.commands.select<Commands.Issue>().firstOrNull()
-                        if (issueCommand != null) {
-                            verifyIssueCommand(tx, inputs, outputs, issueCommand, key)
+                        verifyLifecycleCommand(inputs, outputs)
+                        val settleCommand = tx.commands.select<Commands.Settle<P>>().firstOrNull()
+                        if (settleCommand != null) {
+                            verifySettleCommand(tx, inputs, outputs, settleCommand, key)
                         } else {
-                            conserveAmount(tx, inputs, outputs, key)
+                            val issueCommand = tx.commands.select<Commands.Issue>().firstOrNull()
+                            if (issueCommand != null) {
+                                verifyIssueCommand(tx, inputs, outputs, issueCommand, key)
+                            } else {
+                                conserveAmount(tx, inputs, outputs, key)
+                            }
                         }
                     }
                 }
@@ -275,13 +283,15 @@ class Obligation<P : Any> : Contract {
                                key: Issued<Terms<P>>) {
         val issuer = key.issuer
         val terms = key.product
-        val inputAmount = inputs.sumObligationsOrNull<P>() ?: throw IllegalArgumentException("there is at least one obligation input for this group")
+        val inputAmount = inputs.sumObligationsOrNull<P>()
+                ?: throw IllegalArgumentException("there is at least one obligation input for this group")
         val outputAmount = outputs.sumObligationsOrZero(Issued(issuer, terms))
 
         // If we want to remove obligations from the ledger, that must be signed for by the issuer.
         // A mis-signed or duplicated exit command will just be ignored here and result in the exit amount being zero.
         val exitKeys: Set<PublicKey> = inputs.flatMap { it.exitKeys }.toSet()
-        val exitCommand = tx.commands.select<Commands.Exit<P>>(parties = null, signers = exitKeys).singleOrNull { it.value.amount.token == key }
+        val exitCommand = tx.commands.select<Commands.Exit<P>>(parties = null, signers = exitKeys)
+                .singleOrNull { it.value.amount.token == key }
         val amountExitingLedger = exitCommand?.value?.amount ?: Amount(0, Issued(issuer, terms))
 
         requireThat {
@@ -328,7 +338,8 @@ class Obligation<P : Any> : Contract {
                                     groupingKey: Issued<Terms<P>>) {
         val obligor = groupingKey.issuer.party
         val template = groupingKey.product
-        val inputAmount: Amount<Issued<Terms<P>>> = inputs.sumObligationsOrNull() ?: throw IllegalArgumentException("there is at least one obligation input for this group")
+        val inputAmount: Amount<Issued<Terms<P>>> = inputs.sumObligationsOrNull()
+                ?: throw IllegalArgumentException("there is at least one obligation input for this group")
         val outputAmount: Amount<Issued<Terms<P>>> = outputs.sumObligationsOrZero(groupingKey)
 
         // Sum up all asset state objects that are moving and fulfil our requirements
@@ -407,6 +418,109 @@ class Obligation<P : Any> : Contract {
         }
     }
 
+    private fun sumAssetAmount(assets: List<FungibleAsset<*>>): HashMap<AbstractParty, HashMap<Any, Long>> {
+        val result = HashMap<AbstractParty, HashMap<Any, Long>>()
+        for (asset in assets) {
+            if (!result.containsKey(asset.owner))
+                result[asset.owner] = HashMap()
+            if (!result[asset.owner]!!.containsKey(asset.amount.token))
+                result[asset.owner]!![asset.amount.token] = 0L
+            result[asset.owner]!![asset.amount.token] = result[asset.owner]!![asset.amount.token]!! + asset.amount.quantity
+        }
+
+        return result
+    }
+
+    private fun stripMap(map: HashMap<AbstractParty, HashMap<Any, Long>>) {
+        val iterator = map.iterator()
+        while(iterator.hasNext()) {
+            val assetAmountMap = iterator.next().value
+            val it2 = assetAmountMap.iterator()
+            while(it2.hasNext()) {
+                val assetAmount = it2.next().value
+                if (assetAmount == 0L)
+                    it2.remove()
+            }
+            if (assetAmountMap.isEmpty())
+                iterator.remove()
+        }
+    }
+
+    private fun verifyClearCommand(tx: LedgerTransaction, command: CommandWithParties<Commands.Clear>) {
+
+        val groups = tx.groupStates { it: Obligation.State<P> -> it.template }
+        for ((groupInputs, groupOutputs, template) in groups) {
+
+            requireThat {
+                "there is no Obligations in outputs" using (groupOutputs.isEmpty())
+                "just one acceptableIssuedProducts" using (template.acceptableIssuedProducts.size == 1)
+            }
+
+            val acceptableContract = tx.attachments.any { it.id in template.acceptableContracts }
+            requireThat {
+                "an acceptable contract is attached" using acceptableContract
+            }
+
+            // That would pass this check. Ensuring they do not is best addressed in the transaction generation stage.
+            val assetStates = tx.outputsOfType<FungibleAsset<*>>()
+            val acceptableAssetStates = assetStates.filter {
+                // Restrict the states to those of the correct issuance definition (this normally
+                // covers issued product and obligor, but is opaque to us)
+                it.amount.token in template.acceptableIssuedProducts
+            }
+            // Catch that there's nothing useful here, so we can dump out a useful error
+            requireThat {
+                "there are fungible asset state outputs" using (assetStates.isNotEmpty())
+                "there are defined acceptable fungible asset states" using (acceptableAssetStates.isNotEmpty())
+            }
+
+            val moveCommands = tx.commands.select<MoveCommand>()
+
+            requireThat {
+                // Insist that we can be the only contract consuming inputs, to ensure no other contract can think it's being
+                // settled as well
+                "all move commands relate to this contract" using (moveCommands.map { it.value.contract }
+                        .all { it == null || it == this@Obligation.javaClass })
+                // Settle commands exclude all other commands, so we don't need to check for contracts moving at the same
+                // time.
+                "there are no zero sized inputs" using groupInputs.none { it.amount.quantity == 0L }
+            }
+
+            val involvedParties: Set<PublicKey> = groupInputs.map { it.beneficiary.owningKey }
+                    .union(groupInputs.map { it.obligor.owningKey }).toSet()
+            require(command.signers.containsAll(involvedParties)) { "all involved parties have signed" }
+        }
+
+        val assetInputs = tx.filterInputs<FungibleAsset<*>> { it.javaClass != Obligation.State::class.java }
+        val assetOnputs = tx.filterOutputs<FungibleAsset<*>> { it.javaClass != Obligation.State::class.java }
+        val partyAssetInputsBalances = sumAssetAmount(assetInputs)
+        val partyAssetOutputsBalances = sumAssetAmount(assetOnputs)
+        val obligations = tx.inputsOfType<Obligation.State<*>>()
+        for (obligation in obligations) {
+            if (!partyAssetInputsBalances.containsKey(obligation.obligor))
+                partyAssetInputsBalances[obligation.obligor] = HashMap()
+            if (!partyAssetInputsBalances.containsKey(obligation.beneficiary))
+                partyAssetInputsBalances[obligation.beneficiary] = HashMap()
+            val issuedProduct = obligation.template.acceptableIssuedProducts.single()
+            if (!partyAssetInputsBalances[obligation.obligor]!!.containsKey(issuedProduct))
+                partyAssetInputsBalances[obligation.obligor]!![issuedProduct] = 0L
+            if (!partyAssetInputsBalances[obligation.beneficiary]!!.containsKey(issuedProduct))
+                partyAssetInputsBalances[obligation.beneficiary]!![issuedProduct] = 0L
+
+            partyAssetInputsBalances[obligation.obligor]!![issuedProduct] =
+                    partyAssetInputsBalances[obligation.obligor]!![issuedProduct]!! - obligation.quantity
+            partyAssetInputsBalances[obligation.beneficiary]!![issuedProduct] =
+                    partyAssetInputsBalances[obligation.beneficiary]!![issuedProduct]!! + obligation.quantity
+
+        }
+
+        stripMap(partyAssetInputsBalances)
+        requireThat {
+            "input asset states adjusted by input obligation states should equal to output asset states" using
+                    (partyAssetInputsBalances == partyAssetOutputsBalances)
+        }
+    }
+
     private fun verifyNetCommand(tx: LedgerTransaction, command: CommandWithParties<NetCommand>) {
         val groups = when (command.value.type) {
             NetType.CLOSE_OUT -> tx.groupStates { it: Obligation.State<P> -> it.bilateralNetState }
@@ -429,12 +543,13 @@ class Obligation<P : Any> : Contract {
             }
 
             // TODO: Handle proxies nominated by parties, i.e. a central clearing service
-            val involvedParties: Set<PublicKey> = groupInputs.map { it.beneficiary.owningKey }.union(groupInputs.map { it.obligor.owningKey }).toSet()
+            val involvedParties: Set<PublicKey> = groupInputs.map { it.beneficiary.owningKey }
+                    .union(groupInputs.map { it.obligor.owningKey }).toSet()
             when (command.value.type) {
-            // For close-out netting, allow any involved party to sign
+                // For close-out netting, allow any involved party to sign
                 NetType.CLOSE_OUT -> require(command.signers.intersect(involvedParties).isNotEmpty()) { "any involved party has signed" }
-            // Require signatures from all parties (this constraint can be changed for other contracts, and is used as a
-            // placeholder while exact requirements are established), or fail the transaction.
+                // Require signatures from all parties (this constraint can be changed for other contracts, and is used as a
+                // placeholder while exact requirements are established), or fail the transaction.
                 NetType.PAYMENT -> require(command.signers.containsAll(involvedParties)) { "all involved parties have signed" }
             }
         }
@@ -480,7 +595,6 @@ class Obligation<P : Any> : Contract {
         }
     }
 }
-
 
 /**
  * Convert a list of settlement states into total from each obligor to a beneficiary.
