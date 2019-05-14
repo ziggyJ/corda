@@ -68,7 +68,8 @@ buildscript {
     ext.proguard_version = constants.getProperty('proguardVersion')
     ext.jsch_version = '0.1.54'
     ext.commons_cli_version = '1.4'
-    ext.protonj_version = '0.27.1' // This is now aligned with the Artemis version, but retaining in case we ever need to diverge again for a bug fix.
+    ext.protonj_version = '0.27.1'
+    // This is now aligned with the Artemis version, but retaining in case we ever need to diverge again for a bug fix.
     ext.snappy_version = '0.4'
     ext.class_graph_version = '4.6.12'
     ext.jcabi_manifests_version = '1.1'
@@ -468,4 +469,27 @@ wrapper {
 buildScan {
     termsOfServiceUrl = 'https://gradle.com/terms-of-service'
     termsOfServiceAgree = 'yes'
+}
+
+publishing {
+    publications {
+        myPublication(MavenPublication) {
+            groupId 'net.corda'
+            artifactId 'corda-finance-contracts'
+            version "$corda_release_version"
+            artifact "finance/contracts/build/libs/corda-finance-contracts-${corda_release_version}.jar"
+        }
+    }
+
+    // Repositories *to* which Gradle can publish artifacts
+    repositories {
+        maven {
+            url 'https://pkgs.dev.azure.com/jasonzzheng/_packaging/VITB/maven/v1'
+//            url 'https://pwc-au-technology.pkgs.visualstudio.com/_packaging/VITB/maven/v1'
+            credentials {
+                username "AZURE_ARTIFACTS"
+                password System.getenv("AZURE_ARTIFACTS_ENV_ACCESS_TOKEN") ?: "${azureArtifactsGradleAccessToken}"
+            }
+        }
+    }
 }

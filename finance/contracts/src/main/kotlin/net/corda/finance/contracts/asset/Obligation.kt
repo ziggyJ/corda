@@ -463,15 +463,16 @@ class Obligation<P : Any> : Contract {
 
             // That would pass this check. Ensuring they do not is best addressed in the transaction generation stage.
             val assetStates = tx.outputsOfType<FungibleAsset<*>>()
-            val acceptableAssetStates = assetStates.filter {
-                // Restrict the states to those of the correct issuance definition (this normally
-                // covers issued product and obligor, but is opaque to us)
-                it.amount.token in template.acceptableIssuedProducts
-            }
+            // do not need to check acceptable asset as sometimes, the obligation with same template can be netted to 0
+//            val acceptableAssetStates = assetStates.filter {
+//                // Restrict the states to those of the correct issuance definition (this normally
+//                // covers issued product and obligor, but is opaque to us)
+//                it.amount.token in template.acceptableIssuedProducts
+//            }
             // Catch that there's nothing useful here, so we can dump out a useful error
             requireThat {
                 "there are fungible asset state outputs" using (assetStates.isNotEmpty())
-                "there are defined acceptable fungible asset states" using (acceptableAssetStates.isNotEmpty())
+//                "there are defined acceptable fungible asset states" using (acceptableAssetStates.isNotEmpty())
             }
 
             val moveCommands = tx.commands.select<MoveCommand>()
