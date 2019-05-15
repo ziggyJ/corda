@@ -473,19 +473,25 @@ buildScan {
 
 publishing {
     publications {
-        myPublication(MavenPublication) {
+        financeContracts(MavenPublication) {
             groupId 'net.corda'
             artifactId 'corda-finance-contracts'
             version "$corda_release_version"
             artifact "finance/contracts/build/libs/corda-finance-contracts-${corda_release_version}.jar"
+        }
+        financeWorkflows(MavenPublication) {
+            groupId 'net.corda'
+            artifactId 'corda-finance-workflows'
+            version "$corda_release_version"
+            artifact "finance/workflows/build/libs/corda-finance-workflows-${corda_release_version}.jar"
         }
     }
 
     // Repositories *to* which Gradle can publish artifacts
     repositories {
         maven {
-            url 'https://pkgs.dev.azure.com/jasonzzheng/_packaging/VITB/maven/v1'
-//            url 'https://pwc-au-technology.pkgs.visualstudio.com/_packaging/VITB/maven/v1'
+//            url 'https://pkgs.dev.azure.com/jasonzzheng/_packaging/VITB/maven/v1'
+            url 'https://pwc-au-technology.pkgs.visualstudio.com/_packaging/VITB/maven/v1'
             credentials {
                 username "AZURE_ARTIFACTS"
                 password System.getenv("AZURE_ARTIFACTS_ENV_ACCESS_TOKEN") ?: "${azureArtifactsGradleAccessToken}"
