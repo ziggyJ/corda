@@ -540,6 +540,7 @@ class ObligationTests {
                 attachments(Obligation.PROGRAM_ID, Cash.PROGRAM_ID)
                 input("Alice's $1,000,000 obligation to Bob")
                 input("Bob's $1,000,000 obligation to Alice")
+                input("Alice's $100,000 POUNDS obligation to Bob")
                 input("Alice's $100,000 POUNDS")
                 output(Cash.PROGRAM_ID, "Bob's $100,000 POUNDS", 100000.POUNDS.CASH issuedBy defaultIssuer ownedBy ALICE)
                 command(listOf(ALICE_PUBKEY, BOB_PUBKEY), Obligation.Commands.Clear())
