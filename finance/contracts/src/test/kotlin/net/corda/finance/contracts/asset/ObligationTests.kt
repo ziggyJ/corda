@@ -154,7 +154,7 @@ class ObligationTests {
     }
 
     @BelongsToContract(DummyContract::class)
-    object DummyState: ContractState {
+    object DummyState : ContractState {
         override val participants: List<AbstractParty> = emptyList()
     }
 
@@ -267,7 +267,6 @@ class ObligationTests {
                     beneficiary = MINI_CORP, notary = DUMMY_NOTARY)
         }.toWireTransaction(miniCorpServices)
 
-
         // Include the previously issued obligation in a new issuance command
         val ptx = TransactionBuilder(DUMMY_NOTARY)
         ptx.addInputState(tx.outRef<Obligation.State<Currency>>(0))
@@ -330,7 +329,6 @@ class ObligationTests {
     private inline fun <reified T : ContractState> getStateAndRef(state: T, contractClassName: ContractClassName): StateAndRef<T> {
         val txState = TransactionState(state, contractClassName, DUMMY_NOTARY, constraint = AlwaysAcceptAttachmentConstraint)
         return StateAndRef(txState, StateRef(SecureHash.randomSHA256(), 0))
-
     }
 
     /** Test generating a transaction to mark outputs as having defaulted. */
@@ -549,7 +547,18 @@ class ObligationTests {
                 this.verifies()
             }
         }
-
+        ledgerServices.ledger(DUMMY_NOTARY) {
+            cashObligationTestRoots(this)
+            transaction("Settlement") {
+                attachments(Obligation.PROGRAM_ID, Cash.PROGRAM_ID)
+                input("Alice's $1,000,000 obligation to Bob")
+                input("Bob's $1,000,000 obligation to Alice")
+                command(listOf(ALICE_PUBKEY, BOB_PUBKEY), Obligation.Commands.Clear())
+                command(ALICE_PUBKEY, Cash.Commands.Move(Obligation::class.java))
+                attachment(attachment(cashContractBytes.inputStream()))
+                this.verifies()
+            }
+        }
     }
 
     @Test
@@ -795,7 +804,6 @@ class ObligationTests {
                 }
             }
         }
-
     }
 
     @Test
