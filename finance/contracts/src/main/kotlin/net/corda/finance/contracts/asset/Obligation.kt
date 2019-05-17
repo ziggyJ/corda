@@ -27,6 +27,7 @@ import net.corda.core.serialization.CordaSerializable
 import net.corda.core.transactions.LedgerTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.NonEmptySet
+import net.corda.core.utilities.OpaqueBytes
 import net.corda.core.utilities.seconds
 import net.corda.finance.contracts.NetCommand
 import net.corda.finance.contracts.NetType
@@ -423,11 +424,15 @@ class Obligation<P : Any> : Contract {
         for (asset in assets) {
             if (!result.containsKey(asset.owner))
                 result[asset.owner] = HashMap()
-            if (!result[asset.owner]!!.containsKey(asset.amount.token))
-                result[asset.owner]!![asset.amount.token] = 0L
-            result[asset.owner]!![asset.amount.token] = result[asset.owner]!![asset.amount.token]!! + asset.amount.quantity
+            val defRef = OpaqueBytes.of(0)
+            val tokenIssuer = asset.amount.token.issuer.copy(reference = defRef)
+            val tokenKey = asset.amount.token.copy(
+                    issuer = tokenIssuer
+            )
+            if (!result[asset.owner]!!.containsKey(tokenKey))
+                result[asset.owner]!![tokenKey] = 0L
+            result[asset.owner]!![tokenKey] = result[asset.owner]!![tokenKey]!! + asset.amount.quantity
         }
-
         return result
     }
 
@@ -458,7 +463,12 @@ class Obligation<P : Any> : Contract {
                 partyAssetInputsBalances[obligation.obligor] = HashMap()
             if (!partyAssetInputsBalances.containsKey(obligation.beneficiary))
                 partyAssetInputsBalances[obligation.beneficiary] = HashMap()
-            val issuedProduct = obligation.template.acceptableIssuedProducts.single()
+            val defRef = OpaqueBytes.of(0)
+            val token = obligation.template.acceptableIssuedProducts.single()
+            val tokenIssuer = token.issuer.copy(reference = defRef)
+            val issuedProduct = token.copy(
+                    issuer = tokenIssuer
+            )
             if (!partyAssetInputsBalances[obligation.obligor]!!.containsKey(issuedProduct))
                 partyAssetInputsBalances[obligation.obligor]!![issuedProduct] = 0L
             if (!partyAssetInputsBalances[obligation.beneficiary]!!.containsKey(issuedProduct))
@@ -490,22 +500,13 @@ class Obligation<P : Any> : Contract {
             }
 
             // only inspect product if asset input match obligation term's product
-            val product = template.acceptableIssuedProducts.first().product
-            var requireInspection = false
-            val iterator = partyAssetInputsBalances.iterator()
-            while (iterator.hasNext()) {
-                val assetAmountMap = iterator.next().value
-                val it2 = assetAmountMap.iterator()
-                while (it2.hasNext()) {
-                    val assetProduct = it2.next().key as Issued<P>
-                    if (assetProduct.product == product) {
-                        requireInspection = true
-                        break
-                    }
+            val products = template.acceptableIssuedProducts.map { it.product }.distinct()
+            val inputProducts = partyAssetInputsBalances.map { it ->
+                it.value.map { it2 ->
+                    (it2.key as Issued<P>).product
                 }
-                if (requireInspection)
-                    break
-            }
+            }.distinct()
+            val requireInspection = inputProducts.contains(products)
 
             if (requireInspection) {
                 // That would pass this check. Ensuring they do not is best addressed in the transaction generation stage.

@@ -66,6 +66,8 @@ class ObligationTests {
     val testSerialization = SerializationEnvironmentRule()
     private val defaultRef = OpaqueBytes.of(1)
     private val defaultIssuer = MEGA_CORP.ref(defaultRef)
+    private val newRef = OpaqueBytes.of(2)
+    private val newIssuer = MEGA_CORP.ref(newRef)
     private val oneMillionDollars = 1000000.DOLLARS `issued by` defaultIssuer
     private val trustedCashContract = NonEmptySet.of(SecureHash.randomSHA256() as SecureHash)
     private val megaIssuedDollars = NonEmptySet.of(Issued(defaultIssuer, USD))
@@ -110,6 +112,9 @@ class ObligationTests {
             output(Obligation.PROGRAM_ID, "MegaCorp's $1,000,000 obligation to Bob", oneMillionDollars.OBLIGATION between Pair(MEGA_CORP, BOB))
             output(Cash.PROGRAM_ID, "Alice's $1,000,000", 1000000.DOLLARS.CASH issuedBy defaultIssuer ownedBy ALICE)
             output(Cash.PROGRAM_ID, "Alice's $100,000 POUNDS", 100000.POUNDS.CASH issuedBy defaultIssuer ownedBy ALICE)
+            output(Obligation.PROGRAM_ID, "Alice's $50,000 obligation to Bob", (50000.DOLLARS `issued by` defaultIssuer).OBLIGATION between Pair(ALICE, BOB))
+            output(Obligation.PROGRAM_ID, "Bob's $50,000 obligation to Alice", (50000.DOLLARS `issued by` defaultIssuer).OBLIGATION between Pair(BOB, ALICE))
+            output(Cash.PROGRAM_ID, "Alice's $100,000", 100000.DOLLARS.CASH issuedBy newIssuer ownedBy ALICE)
         }
     }
 
@@ -553,6 +558,20 @@ class ObligationTests {
                 attachments(Obligation.PROGRAM_ID, Cash.PROGRAM_ID)
                 input("Alice's $1,000,000 obligation to Bob")
                 input("Bob's $1,000,000 obligation to Alice")
+                command(listOf(ALICE_PUBKEY, BOB_PUBKEY), Obligation.Commands.Clear())
+                command(ALICE_PUBKEY, Cash.Commands.Move(Obligation::class.java))
+                attachment(attachment(cashContractBytes.inputStream()))
+                this.verifies()
+            }
+        }
+        ledgerServices.ledger(DUMMY_NOTARY) {
+            cashObligationTestRoots(this)
+            transaction("Settlement") {
+                attachments(Obligation.PROGRAM_ID, Cash.PROGRAM_ID)
+                input("Alice's $50,000 obligation to Bob")
+                input("Alice's $100,000")
+                output(Cash.PROGRAM_ID, "Alice's $50,000", 50000.DOLLARS.CASH issuedBy newIssuer ownedBy ALICE)
+                output(Cash.PROGRAM_ID, "Bob's $50,000", 50000.DOLLARS.CASH issuedBy newIssuer ownedBy BOB)
                 command(listOf(ALICE_PUBKEY, BOB_PUBKEY), Obligation.Commands.Clear())
                 command(ALICE_PUBKEY, Cash.Commands.Move(Obligation::class.java))
                 attachment(attachment(cashContractBytes.inputStream()))
