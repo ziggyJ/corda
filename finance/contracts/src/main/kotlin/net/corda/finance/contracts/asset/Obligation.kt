@@ -27,6 +27,7 @@ import net.corda.core.serialization.CordaSerializable
 import net.corda.core.transactions.LedgerTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.NonEmptySet
+import net.corda.core.utilities.OpaqueBytes
 import net.corda.core.utilities.seconds
 import net.corda.finance.contracts.NetCommand
 import net.corda.finance.contracts.NetType
@@ -423,20 +424,24 @@ class Obligation<P : Any> : Contract {
         for (asset in assets) {
             if (!result.containsKey(asset.owner))
                 result[asset.owner] = HashMap()
-            if (!result[asset.owner]!!.containsKey(asset.amount.token))
-                result[asset.owner]!![asset.amount.token] = 0L
-            result[asset.owner]!![asset.amount.token] = result[asset.owner]!![asset.amount.token]!! + asset.amount.quantity
+            val defRef = OpaqueBytes.of(0)
+            val tokenIssuer = asset.amount.token.issuer.copy(reference = defRef)
+            val tokenKey = asset.amount.token.copy(
+                    issuer = tokenIssuer
+            )
+            if (!result[asset.owner]!!.containsKey(tokenKey))
+                result[asset.owner]!![tokenKey] = 0L
+            result[asset.owner]!![tokenKey] = result[asset.owner]!![tokenKey]!! + asset.amount.quantity
         }
-
         return result
     }
 
     private fun stripMap(map: HashMap<AbstractParty, HashMap<Any, Long>>) {
         val iterator = map.iterator()
-        while(iterator.hasNext()) {
+        while (iterator.hasNext()) {
             val assetAmountMap = iterator.next().value
             val it2 = assetAmountMap.iterator()
-            while(it2.hasNext()) {
+            while (it2.hasNext()) {
                 val assetAmount = it2.next().value
                 if (assetAmount == 0L)
                     it2.remove()
@@ -447,6 +452,39 @@ class Obligation<P : Any> : Contract {
     }
 
     private fun verifyClearCommand(tx: LedgerTransaction, command: CommandWithParties<Commands.Clear>) {
+
+        val assetInputs = tx.filterInputs<FungibleAsset<*>> { it.javaClass != Obligation.State::class.java }
+        val assetOutputs = tx.filterOutputs<FungibleAsset<*>> { it.javaClass != Obligation.State::class.java }
+        val partyAssetInputsBalances = sumAssetAmount(assetInputs)
+        val partyAssetOutputsBalances = sumAssetAmount(assetOutputs)
+        val obligations = tx.inputsOfType<Obligation.State<*>>()
+        for (obligation in obligations) {
+            if (!partyAssetInputsBalances.containsKey(obligation.obligor))
+                partyAssetInputsBalances[obligation.obligor] = HashMap()
+            if (!partyAssetInputsBalances.containsKey(obligation.beneficiary))
+                partyAssetInputsBalances[obligation.beneficiary] = HashMap()
+            val defRef = OpaqueBytes.of(0)
+            val token = obligation.template.acceptableIssuedProducts.single()
+            val tokenIssuer = token.issuer.copy(reference = defRef)
+            val issuedProduct = token.copy(
+                    issuer = tokenIssuer
+            )
+            if (!partyAssetInputsBalances[obligation.obligor]!!.containsKey(issuedProduct))
+                partyAssetInputsBalances[obligation.obligor]!![issuedProduct] = 0L
+            if (!partyAssetInputsBalances[obligation.beneficiary]!!.containsKey(issuedProduct))
+                partyAssetInputsBalances[obligation.beneficiary]!![issuedProduct] = 0L
+
+            partyAssetInputsBalances[obligation.obligor]!![issuedProduct] =
+                    partyAssetInputsBalances[obligation.obligor]!![issuedProduct]!! - obligation.quantity
+            partyAssetInputsBalances[obligation.beneficiary]!![issuedProduct] =
+                    partyAssetInputsBalances[obligation.beneficiary]!![issuedProduct]!! + obligation.quantity
+        }
+
+        stripMap(partyAssetInputsBalances)
+        requireThat {
+            "input asset states adjusted by input obligation states should equal to output asset states" using
+                    (partyAssetInputsBalances == partyAssetOutputsBalances)
+        }
 
         val groups = tx.groupStates { it: Obligation.State<P> -> it.template }
         for ((groupInputs, groupOutputs, template) in groups) {
@@ -461,18 +499,33 @@ class Obligation<P : Any> : Contract {
                 "an acceptable contract is attached" using acceptableContract
             }
 
-            // That would pass this check. Ensuring they do not is best addressed in the transaction generation stage.
-            val assetStates = tx.outputsOfType<FungibleAsset<*>>()
-            // do not need to check acceptable asset as sometimes, the obligation with same template can be netted to 0
-//            val acceptableAssetStates = assetStates.filter {
-//                // Restrict the states to those of the correct issuance definition (this normally
-//                // covers issued product and obligor, but is opaque to us)
-//                it.amount.token in template.acceptableIssuedProducts
-//            }
-            // Catch that there's nothing useful here, so we can dump out a useful error
-            requireThat {
-                "there are fungible asset state outputs" using (assetStates.isNotEmpty())
-//                "there are defined acceptable fungible asset states" using (acceptableAssetStates.isNotEmpty())
+            // only inspect product if asset input match obligation term's product
+            val products = template.acceptableIssuedProducts.map { it.product }.distinct()
+            val inputProducts = partyAssetInputsBalances.map { it ->
+                it.value.map { it2 ->
+                    (it2.key as Issued<P>).product
+                }
+            }.distinct()
+            val requireInspection = inputProducts.contains(products)
+
+            if (requireInspection) {
+                // That would pass this check. Ensuring they do not is best addressed in the transaction generation stage.
+                val assetStates = tx.outputsOfType<FungibleAsset<*>>()
+                // do not need to check acceptable asset as sometimes, the obligation with same template can be netted to 0
+                val acceptableAssetStates = assetStates.filter {
+                    // Restrict the states to those of the correct issuance definition (this normally
+                    // covers issued product and obligor, but is opaque to us)
+                    it.amount.token.issuer.party in
+                            template.acceptableIssuedProducts.map { it2 ->
+                                it2.issuer.party
+                            }
+                }
+
+                // Catch that there's nothing useful here, so we can dump out a useful error
+                requireThat {
+                    "there are fungible asset state outputs" using (assetStates.isNotEmpty())
+                    "there are defined acceptable fungible asset states" using (acceptableAssetStates.isNotEmpty())
+                }
             }
 
             val moveCommands = tx.commands.select<MoveCommand>()
@@ -490,35 +543,6 @@ class Obligation<P : Any> : Contract {
             val involvedParties: Set<PublicKey> = groupInputs.map { it.beneficiary.owningKey }
                     .union(groupInputs.map { it.obligor.owningKey }).toSet()
             require(command.signers.containsAll(involvedParties)) { "all involved parties have signed" }
-        }
-
-        val assetInputs = tx.filterInputs<FungibleAsset<*>> { it.javaClass != Obligation.State::class.java }
-        val assetOnputs = tx.filterOutputs<FungibleAsset<*>> { it.javaClass != Obligation.State::class.java }
-        val partyAssetInputsBalances = sumAssetAmount(assetInputs)
-        val partyAssetOutputsBalances = sumAssetAmount(assetOnputs)
-        val obligations = tx.inputsOfType<Obligation.State<*>>()
-        for (obligation in obligations) {
-            if (!partyAssetInputsBalances.containsKey(obligation.obligor))
-                partyAssetInputsBalances[obligation.obligor] = HashMap()
-            if (!partyAssetInputsBalances.containsKey(obligation.beneficiary))
-                partyAssetInputsBalances[obligation.beneficiary] = HashMap()
-            val issuedProduct = obligation.template.acceptableIssuedProducts.single()
-            if (!partyAssetInputsBalances[obligation.obligor]!!.containsKey(issuedProduct))
-                partyAssetInputsBalances[obligation.obligor]!![issuedProduct] = 0L
-            if (!partyAssetInputsBalances[obligation.beneficiary]!!.containsKey(issuedProduct))
-                partyAssetInputsBalances[obligation.beneficiary]!![issuedProduct] = 0L
-
-            partyAssetInputsBalances[obligation.obligor]!![issuedProduct] =
-                    partyAssetInputsBalances[obligation.obligor]!![issuedProduct]!! - obligation.quantity
-            partyAssetInputsBalances[obligation.beneficiary]!![issuedProduct] =
-                    partyAssetInputsBalances[obligation.beneficiary]!![issuedProduct]!! + obligation.quantity
-
-        }
-
-        stripMap(partyAssetInputsBalances)
-        requireThat {
-            "input asset states adjusted by input obligation states should equal to output asset states" using
-                    (partyAssetInputsBalances == partyAssetOutputsBalances)
         }
     }
 
